@@ -11,4 +11,5 @@ extensions.configure<KotlinJvmProjectExtension> {
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.nimbus.jose.jwt)
 }

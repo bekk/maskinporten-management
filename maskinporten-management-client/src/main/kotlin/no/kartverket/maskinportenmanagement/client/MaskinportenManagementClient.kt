@@ -1,0 +1,3 @@
+package no.kartverket.maskinportenmanagement.client
+
+public class MaskinportenManagementClient

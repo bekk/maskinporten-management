@@ -1,0 +1,22 @@
+{
+    "openapi": "3.1.1",
+    "info": {
+        "title": "Maskinporten Management REST API",
+        "version": "0.1.0",
+        "description": "REST API for managing Maskinporten scopes"
+    },
+    "paths": {
+        "/health/live": {
+            "get": {
+                "summary": "Liveness probe",
+                "description": "Returns 200 OK if the server is up. Not part of the stable API.",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "components": {}
+}

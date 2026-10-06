@@ -1,0 +1,8 @@
+server:
+  port: "$PORT:8080"
+
+accessLog:
+  enabled: "$?ACCESS_LOG_ENABLED"
+
+logback:
+  configFile: "$?LOGBACK_CONFIG_FILE"

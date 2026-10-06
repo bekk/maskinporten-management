@@ -8,20 +8,20 @@ class MaskinportenManagementExceptionTest {
 
     @Test
     fun `appends a short body to the message`() {
-        assertEquals("boom: access denied", MaskinportenException("boom", responseBody = "access denied").message)
+        assertEquals("boom: access denied", MaskinportenApiException("boom", responseBody = "access denied").message)
     }
 
     @Test
     fun `leaves the message alone when there is no body`() {
-        assertEquals("boom", MaskinportenException("boom").message)
-        assertEquals("boom", MaskinportenException("boom", responseBody = "").message)
+        assertEquals("boom", MaskinportenApiException("boom").message)
+        assertEquals("boom", MaskinportenApiException("boom", responseBody = "").message)
     }
 
     @Test
     fun `abbreviates a long body in the message but keeps it whole on the exception`() {
         val body = "x".repeat(600)
 
-        val e = MaskinportenException("boom", responseBody = body)
+        val e = MaskinportenApiException("boom", responseBody = body)
 
         assertTrue(e.message!!.startsWith("boom: " + "x".repeat(500)))
         assertTrue(e.message!!.endsWith("… (600 characters in total)"))

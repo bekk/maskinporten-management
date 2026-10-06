@@ -16,7 +16,279 @@
                     }
                 }
             }
+        },
+        "/scopeaccess": {
+            "post": {
+                "summary": "List the consumers of a scope",
+                "description": "Lists the organizations that have access to [scope], with the state of each one's access. The scope is sent in the body rather than the path, since scope names contain colons and slashes.",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScopeAccessRequest"
+                            },
+                            "examples": {
+                                "Example": {
+                                    "value": {
+                                        "scope": "kartverk:matrikkel.read"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The consumers of the scope.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScopeAccessResponse"
+                                },
+                                "examples": {
+                                    "Example": {
+                                        "value": {
+                                            "access": [
+                                                {
+                                                    "scope": "kartverk:matrikkel.read",
+                                                    "ownerOrgno": "971040238",
+                                                    "ownerOrganizationName": "Statens kartverk",
+                                                    "consumerOrgno": "971032081",
+                                                    "consumerOrganizationName": "Statens vegvesen",
+                                                    "state": "APPROVED",
+                                                    "created": "2026-03-01T08:00:00Z",
+                                                    "lastUpdated": "2026-03-01T08:00:00Z"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "NoConsumers": {
+                                        "value": {
+                                            "access": []
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The request could not be understood. Validation failures carry code VALIDATION_ERROR and list every failing field in \"errors\". A body that is not valid JSON, or has a field of the wrong type, carries MALFORMED_BODY.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "MissingScope": {
+                                        "value": {
+                                            "error": "Validation failed",
+                                            "code": "VALIDATION_ERROR",
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "MalformedBody": {
+                                        "value": {
+                                            "error": "Malformed request body",
+                                            "code": "MALFORMED_BODY"
+                                        }
+                                    },
+                                    "MaskinportenRejected": {
+                                        "value": {
+                                            "error": "Maskinporten rejected the request",
+                                            "code": "UPSTREAM_REJECTED"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "The call to Maskinporten failed for a reason unrelated to this request's content. The response never includes Maskinporten's own error details; those are logged server-side instead.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "Example": {
+                                        "value": {
+                                            "error": "The call to Maskinporten failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An unanticipated server error.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "Example": {
+                                        "value": {
+                                            "error": "Internal server error",
+                                            "code": "INTERNAL_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "components": {}
+    "components": {
+        "schemas": {
+            "ScopeAccessRequest": {
+                "type": "object",
+                "title": "ScopeAccessRequest",
+                "required": [
+                    "scope"
+                ],
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "description": "The full scope name: a prefix and a subscope separated by a colon, e.g. \"kartverk:matrikkel.read\".",
+                        "pattern": "^[^\\s:]+:\\S+$"
+                    }
+                }
+            },
+            "ConsumerAccess": {
+                "type": "object",
+                "title": "ConsumerAccess",
+                "required": [
+                    "scope",
+                    "ownerOrgno",
+                    "consumerOrgno",
+                    "state",
+                    "created",
+                    "lastUpdated"
+                ],
+                "properties": {
+                    "scope": {
+                        "type": "string"
+                    },
+                    "ownerOrgno": {
+                        "type": "string"
+                    },
+                    "ownerOrganizationName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "consumerOrgno": {
+                        "type": "string"
+                    },
+                    "consumerOrganizationName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "REQUESTED",
+                            "APPROVED",
+                            "DENIED"
+                        ]
+                    },
+                    "created": {
+                        "type": "string"
+                    },
+                    "lastUpdated": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ScopeAccessResponse": {
+                "type": "object",
+                "title": "ScopeAccessResponse",
+                "required": [
+                    "access"
+                ],
+                "properties": {
+                    "access": {
+                        "type": "array",
+                        "description": "Every consumer organization that has, has requested or has been denied access to the scope. Empty if there are none, including when the scope does not exist.",
+                        "items": {
+                            "$ref": "#/components/schemas/ConsumerAccess"
+                        }
+                    }
+                }
+            },
+            "FieldError": {
+                "type": "object",
+                "title": "FieldError",
+                "required": [
+                    "field",
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string",
+                        "enum": [
+                            "MISSING",
+                            "INVALID_FORMAT"
+                        ]
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "title": "ErrorResponse",
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Human-readable summary. Not stable - branch on `code`, not on this."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable machine-readable code.",
+                        "enum": [
+                            "VALIDATION_ERROR",
+                            "MALFORMED_BODY",
+                            "UPSTREAM_REJECTED",
+                            "UPSTREAM_ERROR",
+                            "INTERNAL_ERROR"
+                        ]
+                    },
+                    "errors": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "Present when code is VALIDATION_ERROR. Every field that failed, not just the first.",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldError"
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

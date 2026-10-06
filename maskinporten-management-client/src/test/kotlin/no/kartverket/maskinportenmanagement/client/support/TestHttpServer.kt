@@ -12,6 +12,7 @@ internal data class TestResponse(
 
 internal class RecordedRequest(
     val method: String,
+    val query: String?,
     val body: String,
     private val headers: Map<String, String>,
 ) {
@@ -37,6 +38,7 @@ internal class TestHttpServer private constructor(private val server: HttpServer
             try {
                 val request = RecordedRequest(
                     method = exchange.requestMethod,
+                    query = exchange.requestURI.rawQuery,
                     body = exchange.requestBody.readBytes().decodeToString(),
                     headers = exchange.requestHeaders.entries
                         .filter { it.value.isNotEmpty() }

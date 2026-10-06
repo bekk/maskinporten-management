@@ -33,7 +33,7 @@ class ServerTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
 
         val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        assertTrue(spec.getValue("paths").jsonObject.containsKey("/health/live"))
+        assertTrue(spec.getValue("paths").jsonObject.containsKey("/scopeaccess"))
         assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 }

@@ -1,6 +1,9 @@
 server:
   port: "$PORT:8080"
 
+maskinporten:
+  apiBaseUrl: "$MASKINPORTEN_API_BASE_URL"
+
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
 

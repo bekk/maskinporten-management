@@ -1,12 +1,13 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -146,79 +147,103 @@ class ScopeAccessTest {
         assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
     }
 
-    @Test
-    fun `removing access returns Digdir's response unchanged`() {
-        val body = """{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}""".toByteArray()
-        scopeAccessTest(answer = { DigdirHttpResponse(200, "application/json", body) }) {
-            val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+    private val changeMethods = listOf(HttpMethod.Put, HttpMethod.Delete)
 
-            assertEquals(HttpStatusCode.OK, response.status)
-            assertEquals("application/json", response.headers[HttpHeaders.ContentType])
-            assertContentEquals(body, response.readRawBytes())
+    private suspend fun ApplicationTestBuilder.change(method: HttpMethod, pathAndQuery: String): HttpResponse =
+        client.request(pathAndQuery) { this.method = method }
+
+    @Test
+    fun `giving and removing access return Digdir's response unchanged`() {
+        val body = """{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}""".toByteArray()
+        for (method in changeMethods) {
+            scopeAccessTest(answer = { DigdirHttpResponse(200, "application/json", body) }) {
+                val response = change(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+
+                assertEquals(HttpStatusCode.OK, response.status, "for $method")
+                assertEquals("application/json", response.headers[HttpHeaders.ContentType], "for $method")
+                assertContentEquals(body, response.readRawBytes(), "for $method")
+            }
         }
     }
 
     @Test
-    fun `removing access passes Digdir's other answers on unchanged`() {
+    fun `giving and removing access pass Digdir's other answers on unchanged`() {
         val error = """{"status":404,"error":"ikke funnet"}""".toByteArray()
         val answers = listOf(
             DigdirHttpResponse(204, null, ByteArray(0)),
             DigdirHttpResponse(404, "application/json", error),
             DigdirHttpResponse(409, "application/json", error),
         )
-        for (answer in answers) {
-            scopeAccessTest(answer = { answer }) {
-                val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+        for (method in changeMethods) {
+            for (answer in answers) {
+                scopeAccessTest(answer = { answer }) {
+                    val response = change(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
 
-                assertEquals(answer.statusCode, response.status.value)
-                assertContentEquals(answer.body, response.readRawBytes(), "for ${answer.statusCode}")
+                    assertEquals(answer.statusCode, response.status.value, "for $method")
+                    assertContentEquals(answer.body, response.readRawBytes(), "for $method ${answer.statusCode}")
+                }
             }
         }
     }
 
     @Test
-    fun `removing access sends the organisation and the scope to Digdir`() = scopeAccessTest {
-        client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+    fun `giving and removing access send the method, the organisation and the scope to Digdir`() {
+        for (method in changeMethods) {
+            sent.clear()
+            scopeAccessTest {
+                change(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+            }
 
-        val request = sent.single()
-        assertEquals("DELETE", request.method)
-        assertEquals("/api/v1/scopes/access/311718371", request.url.path)
-        assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery)
+            val request = sent.single()
+            assertEquals(method.value, request.method)
+            assertEquals("/api/v1/scopes/access/311718371", request.url.path, "for $method")
+            assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $method")
+        }
     }
 
     @Test
     fun `an organisation number that is not 9 digits is refused without calling Digdir`() = scopeAccessTest {
-        for (consumerOrgno in listOf("%2E%2E", "%2E", "31171837", "3117183710", "31171837a", "311718371%2F..", "orgs")) {
-            val response = client.delete("/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
+        for (method in changeMethods) {
+            for (consumerOrgno in listOf("%2E%2E", "%2E", "31171837", "3117183710", "31171837a", "311718371%2F..", "orgs")) {
+                val response = change(method, "/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "for $consumerOrgno")
-            assertEquals(
-                ErrorResponse("Path parameter consumerOrgno must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
-                response.errorResponse(),
-                "for $consumerOrgno",
-            )
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for $method $consumerOrgno")
+                assertEquals(
+                    ErrorResponse("Path parameter consumerOrgno must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
+                    response.errorResponse(),
+                    "for $method $consumerOrgno",
+                )
+            }
         }
         assertTrue(sent.isEmpty())
     }
 
     @Test
-    fun `removing access without exactly one scope is refused without calling Digdir`() = scopeAccessTest {
-        for (query in listOf("", "?scope=", "?scope=kartverk:matrikkel.read&scope=kartverk:annet")) {
-            val response = client.delete("/api/scopeaccess/311718371$query")
+    fun `giving or removing access without exactly one scope is refused without calling Digdir`() = scopeAccessTest {
+        for (method in changeMethods) {
+            for (query in listOf("", "?scope=", "?scope=kartverk:matrikkel.read&scope=kartverk:annet")) {
+                val response = change(method, "/api/scopeaccess/311718371$query")
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(ErrorCode.INVALID_REQUEST, response.errorResponse().code, "for \"$query\"")
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for $method \"$query\"")
+                assertEquals(ErrorCode.INVALID_REQUEST, response.errorResponse().code, "for $method \"$query\"")
+            }
         }
         assertTrue(sent.isEmpty())
     }
 
     @Test
-    fun `removing access gives 502 when Digdir never answers`() =
+    fun `giving or removing access gives 502 when Digdir never answers`() =
         scopeAccessTest(answer = { throw IOException("Connection refused") }) {
-            val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+            for (method in changeMethods) {
+                val response = change(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
 
-            assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+                assertEquals(HttpStatusCode.BadGateway, response.status, "for $method")
+                assertEquals(
+                    ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR),
+                    response.errorResponse(),
+                    "for $method",
+                )
+            }
         }
 
     @Test
@@ -230,7 +255,7 @@ class ScopeAccessTest {
         val spec = Json.parseToJsonElement(client.get("/openapi").bodyAsText()).jsonObject
         val paths = spec.getValue("paths").jsonObject
 
-        assertTrue(paths.getValue("/api/scopeaccess/orgs").jsonObject.containsKey("get"))
-        assertTrue(paths.getValue("/api/scopeaccess/{consumerOrgno}").jsonObject.containsKey("delete"))
+        assertEquals(setOf("get"), paths.getValue("/api/scopeaccess/orgs").jsonObject.keys)
+        assertEquals(setOf("put", "delete"), paths.getValue("/api/scopeaccess/{consumerOrgno}").jsonObject.keys)
     }
 }

@@ -14,6 +14,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.openapi.describe
 import io.ktor.server.routing.openapi.hide
+import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
@@ -55,6 +56,13 @@ fun Application.configureRouting() {
             val scope = call.onlyQueryParameter("scope")
             call.respondFromDigdir(client.listScopeAccess(scope))
         }.describe(scopeAccessOrgsOperation)
+
+        put("/api/scopeaccess/{consumerOrgno}") {
+            val client: MaskinportenManagementClient by dependencies
+            val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
+            val scope = call.onlyQueryParameter("scope")
+            call.respondFromDigdir(client.grantScopeAccess(consumerOrgno, scope))
+        }.describe(scopeAccessGrantOperation)
 
         delete("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies

@@ -136,6 +136,14 @@ private fun Parameters.Builder.scope() {
     }
 }
 
+private fun Parameters.Builder.consumerOrgno() {
+    path("consumerOrgno") {
+        required = true
+        description = "The consumer's organisation number: 9 digits, for example `311718371`."
+        schema = JsonSchema(type = JsonType.STRING, pattern = "^[0-9]{9}$")
+    }
+}
+
 private fun Responses.Builder.badRequest(description: String, vararg examples: Pair<String, ErrorResponse>) {
     HttpStatusCode.BadRequest {
         this.description = "$description Digdir can also answer `400`, in its own error format."
@@ -163,6 +171,14 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses() {
 
 private val missingScopeExample =
     "MissingScope" to ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST)
+
+private val invalidOrganisationNumberExample = "InvalidOrganisationNumber" to ErrorResponse(
+    "Path parameter consumerOrgno must be an organisation number of 9 digits",
+    ErrorCode.INVALID_REQUEST,
+)
+
+private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
+    "`scope`, or `scope` is blank or not URL-encoded correctly."
 
 internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     summary = "List the organisations that have access to a scope"
@@ -192,18 +208,37 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     }
 }
 
+internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
+    summary = "Give an organisation access to a scope"
+    description = "Asks Digdir to give `consumerOrgno` access to `scope`. Digdir's response is returned unchanged, " +
+        "with its status, body and content type, including when Digdir answers with an error."
+
+    parameters {
+        consumerOrgno()
+        scope()
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "Digdir's answer: the access that was given."
+            ContentType.Application.Json {
+                schema = scopeAccessSchema
+                example("GivenAccess", exampleScopeAccess)
+            }
+        }
+
+        badRequest(INVALID_ORGNO_OR_SCOPE, invalidOrganisationNumberExample, missingScopeExample)
+        digdirUnreachableAndOtherStatuses()
+    }
+}
+
 internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
     summary = "Remove an organisation's access to a scope"
     description = "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir's response is returned " +
         "unchanged, with its status, body and content type, including when Digdir answers with an error."
 
     parameters {
-        path("consumerOrgno") {
-            required = true
-            description = "The organisation number of the consumer that loses its access: 9 digits, for example " +
-                "`311718371`."
-            schema = JsonSchema(type = JsonType.STRING, pattern = "^[0-9]{9}$")
-        }
+        consumerOrgno()
         scope()
     }
 
@@ -215,15 +250,7 @@ internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
             }
         }
 
-        badRequest(
-            "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank or not " +
-                "URL-encoded correctly.",
-            "InvalidOrganisationNumber" to ErrorResponse(
-                "Path parameter consumerOrgno must be an organisation number of 9 digits",
-                ErrorCode.INVALID_REQUEST,
-            ),
-            missingScopeExample,
-        )
+        badRequest(INVALID_ORGNO_OR_SCOPE, invalidOrganisationNumberExample, missingScopeExample)
         digdirUnreachableAndOtherStatuses()
     }
 }

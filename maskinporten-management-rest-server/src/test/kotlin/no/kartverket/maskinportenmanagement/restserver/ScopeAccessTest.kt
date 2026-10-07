@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -146,13 +147,90 @@ class ScopeAccessTest {
     }
 
     @Test
-    fun `the endpoint is in the OpenAPI spec`() = testApplication {
+    fun `removing access returns Digdir's response unchanged`() {
+        val body = """{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}""".toByteArray()
+        scopeAccessTest(answer = { DigdirHttpResponse(200, "application/json", body) }) {
+            val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals("application/json", response.headers[HttpHeaders.ContentType])
+            assertContentEquals(body, response.readRawBytes())
+        }
+    }
+
+    @Test
+    fun `removing access passes Digdir's other answers on unchanged`() {
+        val error = """{"status":404,"error":"ikke funnet"}""".toByteArray()
+        val answers = listOf(
+            DigdirHttpResponse(204, null, ByteArray(0)),
+            DigdirHttpResponse(404, "application/json", error),
+            DigdirHttpResponse(409, "application/json", error),
+        )
+        for (answer in answers) {
+            scopeAccessTest(answer = { answer }) {
+                val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+
+                assertEquals(answer.statusCode, response.status.value)
+                assertContentEquals(answer.body, response.readRawBytes(), "for ${answer.statusCode}")
+            }
+        }
+    }
+
+    @Test
+    fun `removing access sends the organisation and the scope to Digdir`() = scopeAccessTest {
+        client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+
+        val request = sent.single()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/scopes/access/311718371", request.url.path)
+        assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery)
+    }
+
+    @Test
+    fun `an organisation number that is not 9 digits is refused without calling Digdir`() = scopeAccessTest {
+        for (consumerOrgno in listOf("%2E%2E", "%2E", "31171837", "3117183710", "31171837a", "311718371%2F..", "orgs")) {
+            val response = client.delete("/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
+
+            assertEquals(HttpStatusCode.BadRequest, response.status, "for $consumerOrgno")
+            assertEquals(
+                ErrorResponse("Path parameter consumerOrgno must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
+                response.errorResponse(),
+                "for $consumerOrgno",
+            )
+        }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `removing access without exactly one scope is refused without calling Digdir`() = scopeAccessTest {
+        for (query in listOf("", "?scope=", "?scope=kartverk:matrikkel.read&scope=kartverk:annet")) {
+            val response = client.delete("/api/scopeaccess/311718371$query")
+
+            assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
+            assertEquals(ErrorCode.INVALID_REQUEST, response.errorResponse().code, "for \"$query\"")
+        }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `removing access gives 502 when Digdir never answers`() =
+        scopeAccessTest(answer = { throw IOException("Connection refused") }) {
+            val response = client.delete("/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+        }
+
+    @Test
+    fun `the endpoints are in the OpenAPI spec`() = testApplication {
         application {
             configureRouting()
         }
 
         val spec = Json.parseToJsonElement(client.get("/openapi").bodyAsText()).jsonObject
+        val paths = spec.getValue("paths").jsonObject
 
-        assertTrue(spec.getValue("paths").jsonObject.containsKey("/api/scopeaccess/orgs"))
+        assertTrue(paths.getValue("/api/scopeaccess/orgs").jsonObject.containsKey("get"))
+        assertTrue(paths.getValue("/api/scopeaccess/{consumerOrgno}").jsonObject.containsKey("delete"))
     }
 }

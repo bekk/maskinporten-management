@@ -103,6 +103,90 @@
                     }
                 }
             }
+        },
+        "/api/scopeaccess/{consumerOrgno}": {
+            "delete": {
+                "summary": "Remove an organisation's access to a scope",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "parameters": [
+                    {
+                        "name": "consumerOrgno",
+                        "in": "path",
+                        "description": "The organisation number of the consumer that loses its access: 9 digits, for example `311718371`.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{9}$"
+                        }
+                    },
+                    {
+                        "name": "scope",
+                        "in": "query",
+                        "description": "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent once.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+                    },
+                    "200": {
+                        "description": "Digdir's answer: the access that was removed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScopeAccess"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "InvalidOrganisationNumber": {
+                                        "value": {
+                                            "error": "Path parameter consumerOrgno must be an organisation number of 9 digits",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    },
+                                    "MissingScope": {
+                                        "value": {
+                                            "error": "Query parameter scope is required",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "This API could not get an answer from Digdir. Your request did not cause it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamError": {
+                                        "value": {
+                                            "error": "The call to Digdir failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {

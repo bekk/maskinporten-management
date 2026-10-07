@@ -11,7 +11,9 @@ import io.ktor.openapi.MediaType
 import io.ktor.openapi.OpenApiDoc
 import io.ktor.openapi.OpenApiInfo
 import io.ktor.openapi.Operation
+import io.ktor.openapi.Parameters
 import io.ktor.openapi.ReferenceOr
+import io.ktor.openapi.Responses
 import io.ktor.openapi.jsonSchema
 import io.ktor.server.application.Application
 import io.ktor.server.application.plugin
@@ -114,18 +116,61 @@ internal val healthLiveOperation: Operation.Builder.() -> Unit = {
     }
 }
 
+private val exampleScopeAccess = ScopeAccess(
+    scope = "kartverk:matrikkel.read",
+    ownerOrgno = "971040238",
+    ownerOrganizationName = "STATENS KARTVERK",
+    consumerOrgno = "311718371",
+    consumerOrganizationName = "EKSEMPEL AS",
+    state = ScopeAccessState.APPROVED,
+    created = "2026-01-15T09:30:00Z",
+    lastUpdated = "2026-01-15T09:30:00Z",
+)
+
+private fun Parameters.Builder.scope() {
+    query("scope") {
+        required = true
+        description = "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent " +
+            "once."
+        schema = JsonSchema(type = JsonType.STRING)
+    }
+}
+
+private fun Responses.Builder.badRequest(description: String, vararg examples: Pair<String, ErrorResponse>) {
+    HttpStatusCode.BadRequest {
+        this.description = "$description Digdir can also answer `400`, in its own error format."
+        ContentType.Application.Json {
+            schema = errorResponseSchema
+            examples.forEach { (name, value) -> example(name, value) }
+        }
+    }
+}
+
+private fun Responses.Builder.digdirUnreachableAndOtherStatuses() {
+    HttpStatusCode.BadGateway {
+        description = "This API could not get an answer from Digdir. Your request did not cause it."
+        ContentType.Application.Json {
+            schema = errorResponseSchema
+            example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+        }
+    }
+
+    default {
+        description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
+            "The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+    }
+}
+
+private val missingScopeExample =
+    "MissingScope" to ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST)
+
 internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     summary = "List the organisations that have access to a scope"
     description = "Asks Digdir which organisations Kartverket has given access to `scope`. Digdir's response is " +
         "returned unchanged, with its status, body and content type, including when Digdir answers with an error."
 
     parameters {
-        query("scope") {
-            required = true
-            description = "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent " +
-                "once."
-            schema = JsonSchema(type = JsonType.STRING)
-        }
+        scope()
     }
 
     responses {
@@ -135,48 +180,51 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
                 "be listed too."
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
-                example(
-                    "Consumers",
-                    listOf(
-                        ScopeAccess(
-                            scope = "kartverk:matrikkel.read",
-                            ownerOrgno = "971040238",
-                            ownerOrganizationName = "STATENS KARTVERK",
-                            consumerOrgno = "311718371",
-                            consumerOrganizationName = "EKSEMPEL AS",
-                            state = ScopeAccessState.APPROVED,
-                            created = "2026-01-15T09:30:00Z",
-                            lastUpdated = "2026-01-15T09:30:00Z",
-                        ),
-                    ),
-                )
+                example("Consumers", listOf(exampleScopeAccess))
             }
         }
 
-        HttpStatusCode.BadRequest {
-            description = "The query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly. " +
-                "Digdir can also answer `400`, in its own error format."
+        badRequest(
+            "The query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly.",
+            missingScopeExample,
+        )
+        digdirUnreachableAndOtherStatuses()
+    }
+}
+
+internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
+    summary = "Remove an organisation's access to a scope"
+    description = "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir's response is returned " +
+        "unchanged, with its status, body and content type, including when Digdir answers with an error."
+
+    parameters {
+        path("consumerOrgno") {
+            required = true
+            description = "The organisation number of the consumer that loses its access: 9 digits, for example " +
+                "`311718371`."
+            schema = JsonSchema(type = JsonType.STRING, pattern = "^[0-9]{9}$")
+        }
+        scope()
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "Digdir's answer: the access that was removed."
             ContentType.Application.Json {
-                schema = errorResponseSchema
-                example(
-                    "MissingScope",
-                    ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST),
-                )
+                schema = scopeAccessSchema
             }
         }
 
-        HttpStatusCode.BadGateway {
-            description = "This API could not get an answer from Digdir. Your request did not cause it."
-            ContentType.Application.Json {
-                schema = errorResponseSchema
-                example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
-            }
-        }
-
-        default {
-            description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
-                "The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
-        }
+        badRequest(
+            "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank or not " +
+                "URL-encoded correctly.",
+            "InvalidOrganisationNumber" to ErrorResponse(
+                "Path parameter consumerOrgno must be an organisation number of 9 digits",
+                ErrorCode.INVALID_REQUEST,
+            ),
+            missingScopeExample,
+        )
+        digdirUnreachableAndOtherStatuses()
     }
 }
 

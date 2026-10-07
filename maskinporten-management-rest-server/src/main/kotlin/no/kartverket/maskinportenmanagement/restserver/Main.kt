@@ -51,7 +51,7 @@ fun Application.configureRouting() {
 
         get("/api/scopeaccess/orgs") {
             val client: MaskinportenManagementClient by dependencies
-            val scope = call.singleQueryParameter("scope")
+            val scope = call.onlyQueryParameter("scope")
             call.respondFromDigdir(client.listScopeAccess(scope))
         }.describe(scopeAccessOrgsOperation)
     }

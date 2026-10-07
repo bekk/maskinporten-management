@@ -22,13 +22,13 @@ scopes and returns Digdir's response unchanged.
 ```bash
 ./gradlew build                  # compile, ktlint and tests
 cp .env.example .env
-scripts/dev.sh                   # run the server on http://localhost:8080
-curl -i localhost:8080/health/live
+scripts/dev.sh                   # run the server on http://localhost:8081
+curl -i localhost:8081/health/live
 ```
 
 The server calls Digdir at `DIGDIR_BASE_URL`. In `.env.example` that is the mock API from
-[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock), which also
-uses port 8080, so set `PORT=8081` in `.env` when running both.
+[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8080,
+so `.env.example` moves the server to port 8081.
 
 The OpenAPI spec is served at `/openapi` and checked in as
 [`maskinporten-management-rest-server/openapi.json`](maskinporten-management-rest-server/openapi.json).

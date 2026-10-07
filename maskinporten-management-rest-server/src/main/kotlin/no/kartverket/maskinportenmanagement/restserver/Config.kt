@@ -45,7 +45,7 @@ internal fun ApplicationConfig.port(path: String): Int {
 internal fun ApplicationConfig.url(path: String): String {
     val raw = required(path)
     val uri = runCatching { URI(raw) }.getOrNull()
-    check(uri != null && uri.scheme in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
+    check(uri != null && uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
         "$path must be an http or https URL, but was \"$raw\" (see .env.example)"
     }
     check(uri.rawQuery == null && uri.rawFragment == null) {

@@ -78,7 +78,7 @@ class ConfigTest {
 
     @Test
     fun `an http or https URL is accepted as it is`() {
-        for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no")) {
+        for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no")) {
             assertEquals(raw, MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl"))
         }
     }

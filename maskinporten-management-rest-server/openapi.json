@@ -25,7 +25,7 @@
                     {
                         "name": "scope",
                         "in": "query",
-                        "description": "The scope, for example `kartverk:matrikkel.read`. Send it exactly once.",
+                        "description": "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent once.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -66,7 +66,7 @@
                         }
                     },
                     "400": {
-                        "description": "`scope` is missing, blank or sent more than once. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
                         "content": {
                             "application/json": {
                                 "schema": {

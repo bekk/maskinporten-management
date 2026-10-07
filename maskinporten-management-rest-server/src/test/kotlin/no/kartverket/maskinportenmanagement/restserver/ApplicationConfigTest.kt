@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.server.config.yaml.YamlConfig
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
@@ -16,6 +17,7 @@ class ApplicationConfigTest {
 
     @Test
     fun `the Digdir base URL has no default, so a missing one names the variable to set`() {
+        assumeTrue(System.getenv("DIGDIR_BASE_URL") == null, "DIGDIR_BASE_URL is set in this shell")
         val config = YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
 
         val e = assertFailsWith<IllegalStateException> { config.url("digdir.baseUrl") }

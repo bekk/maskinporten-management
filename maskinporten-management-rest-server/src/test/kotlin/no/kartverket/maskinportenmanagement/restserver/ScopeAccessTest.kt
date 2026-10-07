@@ -76,18 +76,34 @@ class ScopeAccessTest {
     }
 
     @Test
-    fun `sends only the scope to Digdir`() = scopeAccessTest {
-        client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read&consumer_orgno=123&inactive=true")
+    fun `a content type from Digdir that cannot be parsed is left out, and the rest passed on`() {
+        val body = "Service Unavailable".toByteArray()
+        scopeAccessTest(answer = { DigdirHttpResponse(503, "text", body) }) {
+            val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
-        val request = sent.single()
-        assertEquals("GET", request.method)
-        assertEquals("/api/v1/scopes/access", request.url.path)
-        assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery)
+            assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+            assertContentEquals(body, response.readRawBytes())
+        }
+    }
+
+    @Test
+    fun `sends the scope to Digdir`() {
+        for (query in listOf("?scope=kartverk:matrikkel.read", "?scope=kartverk%3Amatrikkel.read")) {
+            sent.clear()
+            scopeAccessTest {
+                assertEquals(HttpStatusCode.OK, client.get("/api/scopeaccess/orgs$query").status, "for $query")
+            }
+
+            val request = sent.single()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/scopes/access", request.url.path)
+            assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $query")
+        }
     }
 
     @Test
     fun `a missing or blank scope is refused without calling Digdir`() = scopeAccessTest {
-        for (query in listOf("", "?scope=", "?scope=%20", "?consumer_orgno=123")) {
+        for (query in listOf("", "?scope=", "?scope=%20", "?scope=+")) {
             val response = client.get("/api/scopeaccess/orgs$query")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
@@ -101,14 +117,23 @@ class ScopeAccessTest {
     }
 
     @Test
-    fun `a scope sent more than once is refused without calling Digdir`() = scopeAccessTest {
-        val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read&scope=kartverk:annet")
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            ErrorResponse("Query parameter scope must be sent only once", ErrorCode.INVALID_REQUEST),
-            response.errorResponse(),
+    fun `a query that is not exactly one scope is refused without calling Digdir`() = scopeAccessTest {
+        val queries = listOf(
+            "?scope=kartverk:matrikkel.read&scope=kartverk:annet",
+            "?scope=kartverk:matrikkel.read&consumer_orgno=123",
+            "?consumer_orgno=123",
+            "?Scope=kartverk:matrikkel.read",
         )
+        for (query in queries) {
+            val response = client.get("/api/scopeaccess/orgs$query")
+
+            assertEquals(HttpStatusCode.BadRequest, response.status, "for \"${query.take(60)}\"")
+            assertEquals(
+                ErrorResponse("The query must contain only the parameter scope, sent once", ErrorCode.INVALID_REQUEST),
+                response.errorResponse(),
+                "for \"${query.take(60)}\"",
+            )
+        }
         assertTrue(sent.isEmpty())
     }
 

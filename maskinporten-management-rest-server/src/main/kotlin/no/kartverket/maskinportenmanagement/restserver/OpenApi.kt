@@ -122,7 +122,8 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     parameters {
         query("scope") {
             required = true
-            description = "The scope, for example `kartverk:matrikkel.read`. Send it exactly once."
+            description = "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent " +
+                "once."
             schema = JsonSchema(type = JsonType.STRING)
         }
     }
@@ -153,8 +154,8 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
         }
 
         HttpStatusCode.BadRequest {
-            description = "`scope` is missing, blank or sent more than once. Digdir can also answer `400`, in " +
-                "its own error format."
+            description = "The query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly. " +
+                "Digdir can also answer `400`, in its own error format."
             ContentType.Application.Json {
                 schema = errorResponseSchema
                 example(

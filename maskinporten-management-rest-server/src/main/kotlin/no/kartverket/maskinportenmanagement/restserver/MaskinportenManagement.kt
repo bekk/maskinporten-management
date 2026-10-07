@@ -2,11 +2,14 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLDecodeException
+import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
+import io.ktor.server.request.queryString
 import io.ktor.server.response.respondBytes
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
@@ -35,18 +38,27 @@ private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(10)
 
 internal class InvalidRequestException(message: String) : RuntimeException(message)
 
-// Sent twice, OPA could check one value while Digdir gets the other
-internal fun ApplicationCall.singleQueryParameter(name: String): String {
-    val values = request.queryParameters.getAll(name).orEmpty()
-    if (values.size > 1) throw InvalidRequestException("Query parameter $name must be sent only once")
-    return values.singleOrNull()?.takeIf { it.isNotBlank() }
-        ?: throw InvalidRequestException("Query parameter $name is required")
+internal fun ApplicationCall.onlyQueryParameter(name: String): String = onlyQueryParameter(request.queryString(), name)
+
+// Read from the raw query, so OPA cannot see another value: Netty drops parameters past the 1024th and reads "=scope=x"
+// as scope, which OPA's parser does not
+internal fun onlyQueryParameter(query: String, name: String): String {
+    if (query.isEmpty()) throw InvalidRequestException("Query parameter $name is required")
+    val (key, raw) = query.split('=', limit = 2).takeIf { it.size == 2 && '&' !in query }
+        ?: throw InvalidRequestException("The query must contain only the parameter $name, sent once")
+    if (key != name) throw InvalidRequestException("The query must contain only the parameter $name, sent once")
+    val value = try {
+        raw.decodeURLQueryComponent(plusIsSpace = true)
+    } catch (e: URLDecodeException) {
+        throw InvalidRequestException("Query parameter $name is not URL-encoded correctly")
+    }
+    return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
 
 internal suspend fun ApplicationCall.respondFromDigdir(response: DigdirHttpResponse) {
     respondBytes(
         bytes = response.body,
-        contentType = response.contentType?.let(ContentType::parse),
+        contentType = response.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
         status = HttpStatusCode.fromValue(response.statusCode),
     )
 }

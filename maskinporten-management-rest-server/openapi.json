@@ -16,7 +16,162 @@
                     }
                 }
             }
+        },
+        "/api/scopeaccess/orgs": {
+            "get": {
+                "summary": "List the organisations that have access to a scope",
+                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "parameters": [
+                    {
+                        "name": "scope",
+                        "in": "query",
+                        "description": "The scope, for example `kartverk:matrikkel.read`. Send it exactly once.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+                    },
+                    "200": {
+                        "description": "Digdir's answer: the organisations given access to the scope. Check `state`: only `APPROVED` means access, and an organisation that has only asked for access, or was refused, may be listed too.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ScopeAccess"
+                                    }
+                                },
+                                "examples": {
+                                    "Consumers": {
+                                        "value": [
+                                            {
+                                                "scope": "kartverk:matrikkel.read",
+                                                "owner_orgno": "971040238",
+                                                "owner_organization_name": "STATENS KARTVERK",
+                                                "consumer_orgno": "311718371",
+                                                "consumer_organization_name": "EKSEMPEL AS",
+                                                "state": "APPROVED",
+                                                "created": "2026-01-15T09:30:00Z",
+                                                "last_updated": "2026-01-15T09:30:00Z"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`scope` is missing, blank or sent more than once. Digdir can also answer `400`, in its own error format.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "MissingScope": {
+                                        "value": {
+                                            "error": "Query parameter scope is required",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "This API could not get an answer from Digdir. Your request did not cause it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamError": {
+                                        "value": {
+                                            "error": "The call to Digdir failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "components": {}
+    "components": {
+        "schemas": {
+            "ScopeAccess": {
+                "type": "object",
+                "title": "ScopeAccess",
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "description": "The scope."
+                    },
+                    "owner_orgno": {
+                        "type": "string",
+                        "description": "The organisation that owns the scope: Kartverket."
+                    },
+                    "owner_organization_name": {
+                        "type": "string"
+                    },
+                    "consumer_orgno": {
+                        "type": "string",
+                        "description": "The organisation that was given access."
+                    },
+                    "consumer_organization_name": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "type": "string",
+                        "description": "Where the access stands. Only `APPROVED` means the organisation has access.\n\n- `REQUESTED`: the organisation has asked for access.\n- `APPROVED`: the organisation has access.\n- `DENIED`: the request for access was refused.",
+                        "enum": [
+                            "REQUESTED",
+                            "APPROVED",
+                            "DENIED"
+                        ]
+                    },
+                    "created": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "last_updated": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "title": "ErrorResponse",
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "A short summary for people to read. The wording may change, so check `code` in your code."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "enum": [
+                            "INVALID_REQUEST",
+                            "MALFORMED_BODY",
+                            "UPSTREAM_ERROR",
+                            "INTERNAL_ERROR"
+                        ]
+                    }
+                }
+            }
+        }
+    }
 }

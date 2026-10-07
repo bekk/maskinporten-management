@@ -55,6 +55,35 @@ class ConfigTest {
     }
 
     @Test
+    fun `a URL must be http or https and have a host`() {
+        for (raw in listOf("localhost:8080", "ftp://digdir.test", "https://", "not a url")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl")
+            }
+
+            assertContains(e.message!!, "http or https URL", message = raw)
+        }
+    }
+
+    @Test
+    fun `a URL must not have a query or fragment`() {
+        for (raw in listOf("https://digdir.test?x=1", "https://digdir.test#top")) {
+            val e = assertFailsWith<IllegalStateException>(raw) {
+                MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl")
+            }
+
+            assertContains(e.message!!, "query or fragment", message = raw)
+        }
+    }
+
+    @Test
+    fun `an http or https URL is accepted as it is`() {
+        for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no")) {
+            assertEquals(raw, MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl"))
+        }
+    }
+
+    @Test
     fun `loads the application config from the given file`() {
         val file = File.createTempFile("application", ".yaml").apply { deleteOnExit() }
         file.writeText("server:\n  port: \"9090\"\n")

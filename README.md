@@ -2,6 +2,10 @@
 
 Management of Maskinporten scopes.
 
+Requests reach the REST server through Istio, where OPA has already checked that the caller may make them. The
+server then calls [Digdir's API](https://api.samarbeid.digdir.no/swagger-ui/index.html) for managing Maskinporten
+scopes and returns Digdir's response unchanged.
+
 ## Modules
 
 | Module                                                                   | What it is                                   | Published as                                                                  |
@@ -21,6 +25,10 @@ cp .env.example .env
 scripts/dev.sh                   # run the server on http://localhost:8080
 curl -i localhost:8080/health/live
 ```
+
+The server calls Digdir at `DIGDIR_BASE_URL`. In `.env.example` that is the mock API from
+[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock), which also
+uses port 8080, so set `PORT=8081` in `.env` when running both.
 
 The OpenAPI spec is served at `/openapi` and checked in as
 [`maskinporten-management-rest-server/openapi.json`](maskinporten-management-rest-server/openapi.json).

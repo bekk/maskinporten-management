@@ -1,6 +1,9 @@
 server:
   port: "$PORT:8080"
 
+digdir:
+  baseUrl: "$?DIGDIR_BASE_URL"
+
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
 

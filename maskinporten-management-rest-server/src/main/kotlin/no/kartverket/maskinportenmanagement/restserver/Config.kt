@@ -3,6 +3,7 @@ package no.kartverket.maskinportenmanagement.restserver
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
 import java.io.File
+import java.net.URI
 
 internal fun loadApplicationConfig(
     configFile: String? = System.getProperty("APPLICATION_CONFIG_FILE") ?: System.getenv("APPLICATION_CONFIG_FILE"),
@@ -39,4 +40,16 @@ internal fun ApplicationConfig.port(path: String): Int {
     val raw = required(path)
     return raw.toIntOrNull()?.takeIf { it in 1..65535 }
         ?: error("$path must be a port number, but was \"$raw\" (see .env.example)")
+}
+
+internal fun ApplicationConfig.url(path: String): String {
+    val raw = required(path)
+    val uri = runCatching { URI(raw) }.getOrNull()
+    check(uri != null && uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
+        "$path must be an http or https URL, but was \"$raw\" (see .env.example)"
+    }
+    check(uri.rawQuery == null && uri.rawFragment == null) {
+        "$path must not have a query or fragment, but was \"$raw\" (see .env.example)"
+    }
+    return raw
 }

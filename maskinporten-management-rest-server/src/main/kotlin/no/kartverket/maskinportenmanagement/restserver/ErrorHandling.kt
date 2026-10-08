@@ -10,6 +10,7 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.ContentTransformationException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
+import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 
@@ -18,6 +19,13 @@ fun Application.configureErrorHandling() {
         exception<JsonConvertException> { call, cause -> call.respondMalformedBody(cause) }
         exception<ContentTransformationException> { call, cause -> call.respondMalformedBody(cause) }
         exception<BadRequestException> { call, cause -> call.respondMalformedBody(cause) }
+        exception<InvalidRequestException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message!!, ErrorCode.INVALID_REQUEST))
+        }
+        exception<DigdirException> { call, cause ->
+            call.application.log.error("Call to Digdir failed", cause)
+            call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+        }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)
             call.respond(

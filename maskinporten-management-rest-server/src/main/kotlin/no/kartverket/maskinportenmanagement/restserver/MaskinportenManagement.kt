@@ -11,6 +11,7 @@ import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.queryString
 import io.ktor.server.response.respondBytes
+import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
 import no.kartverket.maskinportenmanagement.client.http.JavaDigdirHttpClient
@@ -54,6 +55,16 @@ internal fun onlyQueryParameter(query: String, name: String): String {
     }
     return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
+
+internal fun RoutingCall.organizationNumberPathParameter(name: String): String {
+    val value = pathParameters[name].orEmpty()
+    if (!ORGANIZATION_NUMBER.matches(value)) {
+        throw InvalidRequestException("Path parameter $name must be an organisation number of 9 digits")
+    }
+    return value
+}
+
+private val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
 
 internal suspend fun ApplicationCall.respondFromDigdir(response: DigdirHttpResponse) {
     respondBytes(

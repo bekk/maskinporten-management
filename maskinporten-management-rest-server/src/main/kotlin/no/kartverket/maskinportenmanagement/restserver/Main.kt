@@ -10,6 +10,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.openapi.describe
 import io.ktor.server.routing.openapi.hide
@@ -54,5 +55,12 @@ fun Application.configureRouting() {
             val scope = call.onlyQueryParameter("scope")
             call.respondFromDigdir(client.listScopeAccess(scope))
         }.describe(scopeAccessOrgsOperation)
+
+        delete("/api/scopeaccess/{consumerOrgno}") {
+            val client: MaskinportenManagementClient by dependencies
+            val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
+            val scope = call.onlyQueryParameter("scope")
+            call.respondFromDigdir(client.removeScopeAccess(consumerOrgno, scope))
+        }.describe(scopeAccessRemoveOperation)
     }
 }

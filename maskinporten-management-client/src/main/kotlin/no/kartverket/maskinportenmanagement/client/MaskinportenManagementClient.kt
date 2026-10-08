@@ -14,11 +14,21 @@ public class MaskinportenManagementClient(
     private val baseUrl = baseUrl.trimEnd('/')
 
     public suspend fun listScopeAccess(scope: String): DigdirHttpResponse =
-        get("$SCOPE_ACCESS_PATH?scope=${URLEncoder.encode(scope, Charsets.UTF_8)}")
+        send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
 
-    private suspend fun get(pathAndQuery: String): DigdirHttpResponse {
+    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse {
+        // It goes into the path, where ".." would turn this into DELETE /api/v1/scopes: deleting the scope itself
+        require(ORGANIZATION_NUMBER.matches(consumerOrgno)) {
+            "consumerOrgno must be an organisation number of 9 digits, but was \"$consumerOrgno\""
+        }
+        return send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
+    }
+
+    private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
+
+    private suspend fun send(method: String, pathAndQuery: String): DigdirHttpResponse {
         val request = DigdirHttpRequest(
-            method = "GET",
+            method = method,
             url = URI.create(baseUrl + pathAndQuery),
             headers = mapOf("Accept" to "application/json"),
         )
@@ -31,5 +41,7 @@ public class MaskinportenManagementClient(
 
     internal companion object {
         const val SCOPE_ACCESS_PATH = "/api/v1/scopes/access"
+
+        val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
     }
 }

@@ -11,6 +11,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class MaskinportenManagementClientTest {
 
@@ -42,6 +43,30 @@ class MaskinportenManagementClientTest {
         clientAnswering().listScopeAccess("kartverk:x&consumer_orgno=123")
 
         assertEquals("scope=kartverk%3Ax%26consumer_orgno%3D123", sent.single().url.rawQuery)
+    }
+
+    @Test
+    fun `removes scope access with the organisation in the path and only the scope in the query`() = runBlocking {
+        clientAnswering().removeScopeAccess("311718371", "kartverk:matrikkel.read")
+
+        val request = sent.single()
+        assertEquals("DELETE", request.method)
+        assertEquals(
+            "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
+            request.url.toString(),
+        )
+    }
+
+    @Test
+    fun `an organisation number that is not 9 digits never reaches Digdir`() {
+        for (consumerOrgno in listOf("..", ".", "", "31171837", "3117183710", "31171837a", "311718371/..", " 311718371")) {
+            val e = assertFailsWith<IllegalArgumentException>(consumerOrgno) {
+                runBlocking { clientAnswering().removeScopeAccess(consumerOrgno, "kartverk:matrikkel.read") }
+            }
+
+            assertContains(e.message!!, "9 digits", message = consumerOrgno)
+        }
+        assertTrue(sent.isEmpty())
     }
 
     @Test

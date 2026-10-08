@@ -26,7 +26,13 @@ scripts/dev.sh                   # run the server on http://localhost:8081
 curl -i localhost:8081/health/live
 ```
 
-The server calls Digdir at `DIGDIR_BASE_URL`. In `.env.example` that is the mock API from
+Before `scripts/dev.sh`, create the local key and fake business certificate, and start the mock API, as its
+[README](https://github.com/bekk/maskinporten-management-frontend-mock/tree/main/mock-api) describes.
+
+The server calls Digdir at `DIGDIR_BASE_URL`, with a token from Maskinporten. It gets the token with a JWT grant that
+carries the business certificate and is signed in Cloud KMS, where the certificate's private key lives. Locally, the
+mock API plays Maskinporten, and the grant is signed with a key from a file (`LOCAL_KMS_KEY_FILE`) instead of Cloud KMS
+(`KMS_KEY_VERSION`). In `.env.example` that is the mock API from
 [maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8080,
 so `.env.example` moves the server to port 8081.
 

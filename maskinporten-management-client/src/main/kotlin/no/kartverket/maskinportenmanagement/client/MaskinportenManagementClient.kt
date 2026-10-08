@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.client
 
+import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
@@ -10,6 +11,7 @@ import java.net.URLEncoder
 public class MaskinportenManagementClient(
     baseUrl: String,
     private val httpClient: DigdirHttpClient,
+    private val accessTokenProvider: AccessTokenProvider,
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
@@ -32,17 +34,18 @@ public class MaskinportenManagementClient(
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
-    private suspend fun send(method: String, pathAndQuery: String): DigdirHttpResponse {
+    private suspend fun send(method: String, pathAndQuery: String): DigdirHttpResponse = try {
         val request = DigdirHttpRequest(
             method = method,
             url = URI.create(baseUrl + pathAndQuery),
-            headers = mapOf("Accept" to "application/json"),
+            headers = mapOf(
+                "Accept" to "application/json",
+                "Authorization" to "Bearer ${accessTokenProvider.accessToken()}",
+            ),
         )
-        return try {
-            httpClient.send(request)
-        } catch (e: IOException) {
-            throw DigdirException("Call to Digdir failed: $e", e)
-        }
+        httpClient.send(request)
+    } catch (e: IOException) {
+        throw DigdirException("Call to Digdir failed: $e", e)
     }
 
     internal companion object {

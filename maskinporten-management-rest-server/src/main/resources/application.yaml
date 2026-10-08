@@ -4,6 +4,16 @@ server:
 digdir:
   baseUrl: "$?DIGDIR_BASE_URL"
 
+maskinporten:
+  wellKnownUrl: "$?MASKINPORTEN_WELL_KNOWN_URL"
+  clientId: "$?MASKINPORTEN_CLIENT_ID"
+  scopes: "$?MASKINPORTEN_SCOPES"
+  certificateChainFile: "$?MASKINPORTEN_CERTIFICATE_CHAIN_FILE"
+
+kms:
+  keyVersion: "$?KMS_KEY_VERSION"
+  localKeyFile: "$?LOCAL_KMS_KEY_FILE"
+
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
 

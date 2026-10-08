@@ -20,9 +20,10 @@ public class JavaDigdirHttpClient(
     }
 
     override suspend fun send(request: DigdirHttpRequest): DigdirHttpResponse {
+        val body = request.body?.let(HttpRequest.BodyPublishers::ofByteArray) ?: HttpRequest.BodyPublishers.noBody()
         val builder = HttpRequest.newBuilder(request.url)
             .timeout(requestTimeout)
-            .method(request.method, HttpRequest.BodyPublishers.noBody())
+            .method(request.method, body)
         request.headers.forEach { (name, value) -> builder.header(name, value) }
 
         val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).await()

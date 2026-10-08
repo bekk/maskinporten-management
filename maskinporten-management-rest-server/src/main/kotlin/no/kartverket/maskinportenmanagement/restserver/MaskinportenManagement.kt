@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import com.google.auth.oauth2.GoogleCredentials
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLDecodeException
@@ -13,9 +14,14 @@ import io.ktor.server.request.queryString
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
 import no.kartverket.maskinportenmanagement.client.http.JavaDigdirHttpClient
+import java.io.File
+import java.net.URI
 import java.net.http.HttpClient
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.time.Duration
 
 fun Application.configureMaskinportenManagement(client: MaskinportenManagementClient = clientFromConfig()) {
@@ -23,19 +29,49 @@ fun Application.configureMaskinportenManagement(client: MaskinportenManagementCl
     dependencies.provide<MaskinportenManagementClient> { client }
 }
 
-private fun Application.clientFromConfig(): MaskinportenManagementClient = MaskinportenManagementClient(
-    baseUrl = environment.config.url("digdir.baseUrl"),
-    httpClient = JavaDigdirHttpClient(
-        HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build(),
-        REQUEST_TIMEOUT,
-    ),
-)
+private fun Application.clientFromConfig(): MaskinportenManagementClient {
+    val config = environment.config
+    val httpClient = HttpClient.newBuilder()
+        .connectTimeout(CONNECT_TIMEOUT)
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .build()
+    val digdirHttpClient = JavaDigdirHttpClient(httpClient, REQUEST_TIMEOUT)
+    val keyVersion = config.optional("kms.keyVersion")
+    val localKeyFile = config.optional("kms.localKeyFile")
+    check((keyVersion == null) != (localKeyFile == null)) {
+        "Set exactly one of kms.keyVersion (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+    }
+    // In SKIP, Workload Identity provides the credentials
+    val signer = keyVersion?.let {
+        KmsJwtGrantSigner(
+            keyVersion = it,
+            kmsUrl = KmsJwtGrantSigner.GOOGLE_KMS_URL,
+            credentials = GoogleCredentials.getApplicationDefault().createScoped(KMS_SCOPE),
+            httpClient = httpClient,
+        )
+    } ?: LocalJwtGrantSigner.fromPemFile(localKeyFile!!)
+    val tokenProvider = MaskinportenTokenProvider(
+        wellKnownUrl = URI(config.url("maskinporten.wellKnownUrl")),
+        clientId = config.required("maskinporten.clientId"),
+        scopes = config.required("maskinporten.scopes"),
+        certificateChain = certificateChain(config.required("maskinporten.certificateChainFile")),
+        signer = signer,
+        httpClient = digdirHttpClient,
+    )
+    return MaskinportenManagementClient(config.url("digdir.baseUrl"), digdirHttpClient, tokenProvider)
+}
+
+private fun certificateChain(path: String): List<X509Certificate> {
+    val file = File(path)
+    check(file.isFile) { "maskinporten.certificateChainFile must point to a PEM file, but was \"$path\" (see .env.example)" }
+    return file.inputStream().use { input ->
+        CertificateFactory.getInstance("X.509").generateCertificates(input).map { it as X509Certificate }
+    }
+}
 
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
 private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(10)
+private const val KMS_SCOPE = "https://www.googleapis.com/auth/cloudkms"
 
 internal class InvalidRequestException(message: String) : RuntimeException(message)
 

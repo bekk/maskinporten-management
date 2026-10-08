@@ -26,6 +26,7 @@ class MaskinportenManagementClientTest {
             sent += request
             answer(request)
         },
+        { "test-token" },
     )
 
     @Test
@@ -36,6 +37,7 @@ class MaskinportenManagementClientTest {
         assertEquals("GET", request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?scope=kartverk%3Amatrikkel.read", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
+        assertEquals("Bearer test-token", request.headers["Authorization"])
     }
 
     @Test

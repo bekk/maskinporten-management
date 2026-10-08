@@ -56,6 +56,7 @@ dependencies {
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
+    implementation(libs.google.auth)
 
     "toolsImplementation"(sourceSets.main.get().output)
     "toolsImplementation"(libs.kotlinx.coroutines.core)

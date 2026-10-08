@@ -16,12 +16,18 @@ public class MaskinportenManagementClient(
     public suspend fun listScopeAccess(scope: String): DigdirHttpResponse =
         send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
 
-    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse {
-        // It goes into the path, where ".." would turn this into DELETE /api/v1/scopes: deleting the scope itself
+    public suspend fun grantScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
+        send("PUT", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
+
+    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
+        send("DELETE", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
+
+    // In the path, ".." would turn DELETE .../access/.. into DELETE /api/v1/scopes: deleting the scope itself
+    private fun pathSegment(consumerOrgno: String): String {
         require(ORGANIZATION_NUMBER.matches(consumerOrgno)) {
             "consumerOrgno must be an organisation number of 9 digits, but was \"$consumerOrgno\""
         }
-        return send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
+        return consumerOrgno
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)

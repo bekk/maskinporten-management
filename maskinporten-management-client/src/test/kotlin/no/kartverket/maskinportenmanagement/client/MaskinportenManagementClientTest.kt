@@ -58,13 +58,31 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `an organisation number that is not 9 digits never reaches Digdir`() {
-        for (consumerOrgno in listOf("..", ".", "", "31171837", "3117183710", "31171837a", "311718371/..", " 311718371")) {
-            val e = assertFailsWith<IllegalArgumentException>(consumerOrgno) {
-                runBlocking { clientAnswering().removeScopeAccess(consumerOrgno, "kartverk:matrikkel.read") }
-            }
+    fun `grants scope access with the organisation in the path and only the scope in the query`() = runBlocking {
+        clientAnswering().grantScopeAccess("311718371", "kartverk:matrikkel.read")
 
-            assertContains(e.message!!, "9 digits", message = consumerOrgno)
+        val request = sent.single()
+        assertEquals("PUT", request.method)
+        assertEquals(
+            "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
+            request.url.toString(),
+        )
+    }
+
+    @Test
+    fun `an organisation number that is not 9 digits never reaches Digdir`() {
+        val calls = mapOf<String, suspend MaskinportenManagementClient.(String) -> Unit>(
+            "grant" to { grantScopeAccess(it, "kartverk:matrikkel.read") },
+            "remove" to { removeScopeAccess(it, "kartverk:matrikkel.read") },
+        )
+        for ((name, call) in calls) {
+            for (consumerOrgno in listOf("..", ".", "", "31171837", "3117183710", "31171837a", "311718371/..", " 311718371")) {
+                val e = assertFailsWith<IllegalArgumentException>("$name $consumerOrgno") {
+                    runBlocking { clientAnswering().call(consumerOrgno) }
+                }
+
+                assertContains(e.message!!, "9 digits", message = "$name $consumerOrgno")
+            }
         }
         assertTrue(sent.isEmpty())
     }

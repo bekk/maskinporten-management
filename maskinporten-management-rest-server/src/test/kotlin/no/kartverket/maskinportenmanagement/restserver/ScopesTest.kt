@@ -42,6 +42,9 @@ class ScopesTest {
         {"name":"kartverk:nrl.rapportering","active":true}
     ]"""
 
+    // For the tests of the filtering settings, which build the rest from config
+    private val unusedClient = MaskinportenManagementClient("https://digdir.test", { error("Not called") }) { "test-token" }
+
     private fun json(status: Int, body: String) = DigdirHttpResponse(status, "application/json", body.toByteArray())
 
     private fun scopesTest(
@@ -70,7 +73,7 @@ class ScopesTest {
                         digdirRequests += request
                         digdir(request)
                     },
-                ),
+                ) { "test-token" },
                 ExternalFiltering(externalFiltering),
             )
             configureRouting()
@@ -161,7 +164,7 @@ class ScopesTest {
     @Test
     fun `passes Digdir's errors on unchanged`() {
         val body = """{"status":403,"error":"ingen tilgang"}"""
-        for (status in listOf(400, 401, 403, 500, 503)) {
+        for (status in listOf(400, 403, 500, 503)) {
             scopesTest(digdir = { json(status, body) }) {
                 val response = listScopes()
 
@@ -170,6 +173,15 @@ class ScopesTest {
             }
         }
     }
+
+    @Test
+    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =
+        scopesTest(digdir = { json(401, """{"error":"invalid_token"}""") }) {
+            val response = listScopes()
+
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+        }
 
     @Test
     fun `gives 502 when Digdir answers 200 with something other than a list`() =
@@ -192,8 +204,8 @@ class ScopesTest {
     fun `filtering is on unless turned off, and then the server does not start without its URL`() {
         val e = assertFailsWith<IllegalStateException> {
             testApplication {
-                environment { config = MapApplicationConfig("digdir.baseUrl" to "https://digdir.test") }
-                application { configureMaskinportenManagement() }
+                environment { config = MapApplicationConfig() }
+                application { configureMaskinportenManagement(client = unusedClient) }
                 startApplication()
             }
         }
@@ -203,10 +215,8 @@ class ScopesTest {
 
     @Test
     fun `turned off, filtering needs no URL`() = testApplication {
-        environment {
-            config = MapApplicationConfig("digdir.baseUrl" to "https://digdir.test", "externalFiltering.enabled" to "false")
-        }
-        application { configureMaskinportenManagement() }
+        environment { config = MapApplicationConfig("externalFiltering.enabled" to "false") }
+        application { configureMaskinportenManagement(client = unusedClient) }
 
         startApplication()
     }

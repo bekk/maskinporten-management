@@ -41,7 +41,10 @@ class ScopeAccessTest {
         application {
             configureSerialization()
             configureErrorHandling()
-            configureMaskinportenManagement(MaskinportenManagementClient("https://digdir.test", digdir), ExternalFiltering(null))
+            configureMaskinportenManagement(
+                MaskinportenManagementClient("https://digdir.test", digdir) { "test-token" },
+                ExternalFiltering(null),
+            )
             configureRouting()
         }
         block()
@@ -66,7 +69,7 @@ class ScopeAccessTest {
     @Test
     fun `passes Digdir's error responses on unchanged`() {
         val body = """{"status":404,"error":"ikke funnet: æøå"}""".toByteArray(Charsets.ISO_8859_1)
-        for (status in listOf(400, 401, 403, 404, 500, 503)) {
+        for (status in listOf(400, 403, 404, 500, 503)) {
             scopeAccessTest(answer = { DigdirHttpResponse(status, "application/json;charset=ISO-8859-1", body) }) {
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
@@ -145,6 +148,20 @@ class ScopeAccessTest {
 
         assertEquals(HttpStatusCode.BadGateway, response.status)
         assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+    }
+
+    @Test
+    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() {
+        val refused = """{"error":"invalid_token"}""".toByteArray()
+        scopeAccessTest(answer = { DigdirHttpResponse(401, "application/json", refused) }) {
+            val responses = listOf(client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")) +
+                changeMethods.map { change(it, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read") }
+
+            for (response in responses) {
+                assertEquals(HttpStatusCode.BadGateway, response.status)
+                assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+            }
+        }
     }
 
     private val changeMethods = listOf(HttpMethod.Put, HttpMethod.Delete)

@@ -13,11 +13,16 @@ import io.ktor.server.request.queryString
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
 import no.kartverket.maskinportenmanagement.client.http.JavaDigdirHttpClient
+import no.kartverket.maskinportenmanagement.client.kms.CloudKms
+import no.kartverket.maskinportenmanagement.client.kms.LocalKms
+import java.io.File
+import java.net.URI
 import java.net.http.HttpClient
 import java.time.Duration
 
@@ -30,8 +35,32 @@ fun Application.configureMaskinportenManagement(
     dependencies.provide<ExternalFiltering> { externalFiltering }
 }
 
-private fun Application.clientFromConfig(): MaskinportenManagementClient =
-    MaskinportenManagementClient(environment.config.url("digdir.baseUrl"), httpClient())
+private fun Application.clientFromConfig(): MaskinportenManagementClient {
+    val config = environment.config
+    val digdirHttpClient = httpClient()
+    val keyVersion = config.optional("kms.keyVersion")
+    val localKeyFile = config.optional("kms.localKeyFile")
+    check((keyVersion == null) != (localKeyFile == null)) {
+        "Set exactly one of kms.keyVersion (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+    }
+    // In SKIP, Workload Identity provides the credentials for Cloud KMS
+    val kms = keyVersion?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
+    val tokenProvider = MaskinportenTokenProvider(
+        wellKnownUrl = URI(config.url("maskinporten.wellKnownUrl")),
+        clientId = config.required("maskinporten.clientId"),
+        scopes = config.required("maskinporten.scopes"),
+        kms = kms,
+        certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
+        httpClient = digdirHttpClient,
+    )
+    return MaskinportenManagementClient(config.url("digdir.baseUrl"), digdirHttpClient, tokenProvider)
+}
+
+private fun pemFile(setting: String, path: String): String {
+    val file = File(path)
+    check(file.isFile) { "$setting must point to a PEM file, but was \"$path\" (see .env.example)" }
+    return file.readText()
+}
 
 // On unless turned off, so a missing URL stops the server instead of showing every app all of Kartverket's scopes
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {

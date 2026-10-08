@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
@@ -16,6 +17,7 @@ import java.net.URLEncoder
 public class MaskinportenManagementClient(
     baseUrl: String,
     private val httpClient: DigdirHttpClient,
+    private val accessTokenProvider: AccessTokenProvider,
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
@@ -44,16 +46,25 @@ public class MaskinportenManagementClient(
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
     private suspend fun send(method: String, pathAndQuery: String): DigdirHttpResponse {
+        val token = callingDigdir { accessTokenProvider.accessToken() }
         val request = DigdirHttpRequest(
             method = method,
             url = URI.create(baseUrl + pathAndQuery),
-            headers = mapOf("Accept" to "application/json"),
+            headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer $token"),
         )
-        return try {
-            httpClient.send(request)
-        } catch (e: IOException) {
-            throw DigdirException("Call to Digdir failed: $e", e)
+        val response = callingDigdir { httpClient.send(request) }
+        // Our token is wrong, not the caller's request, so the caller must not get the 401
+        if (response.statusCode == 401) {
+            accessTokenProvider.refused(token)
+            throw DigdirException("Digdir refused our Maskinporten token with HTTP 401: ${response.body.decodeToString()}")
         }
+        return response
+    }
+
+    private inline fun <T> callingDigdir(call: () -> T): T = try {
+        call()
+    } catch (e: IOException) {
+        throw DigdirException("Call to Digdir failed: $e", e)
     }
 
     // Keeps the items whose field is allowed. Anything but a JSON list of objects in a 2xx answer is an error, so

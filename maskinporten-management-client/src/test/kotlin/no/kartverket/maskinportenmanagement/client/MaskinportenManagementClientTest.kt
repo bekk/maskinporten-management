@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
@@ -28,6 +29,7 @@ class MaskinportenManagementClientTest {
             sent += request
             answer(request)
         },
+        { "test-token" },
     )
 
     private val scopes = """[
@@ -77,7 +79,7 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `with a filter, passes Digdir's errors on as they are`() = runBlocking {
-        for (status in listOf(400, 401, 403, 500)) {
+        for (status in listOf(400, 403, 500)) {
             val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
 
             assertSame(response, clientAnswering { response }.listScopes(filter), "for $status")
@@ -103,6 +105,7 @@ class MaskinportenManagementClientTest {
         assertEquals("GET", request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?scope=kartverk%3Amatrikkel.read", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
+        assertEquals("Bearer test-token", request.headers["Authorization"])
     }
 
     @Test
@@ -162,12 +165,32 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `returns Digdir's response as it is, whatever the status`() = runBlocking {
+    fun `returns Digdir's response as it is, whatever the status but 401`() = runBlocking {
         for (status in listOf(200, 400, 403, 404, 500)) {
             val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
 
             assertSame(response, clientAnswering { response }.listScopeAccess("kartverk:x"), "for $status")
         }
+    }
+
+    @Test
+    fun `a 401 from Digdir becomes a DigdirException, and the token is not used again`() {
+        val refused = mutableListOf<String>()
+        val client = MaskinportenManagementClient(
+            "https://digdir.test",
+            { DigdirHttpResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
+            object : AccessTokenProvider {
+                override suspend fun accessToken() = "test-token"
+                override suspend fun refused(token: String) {
+                    refused += token
+                }
+            },
+        )
+
+        val e = assertFailsWith<DigdirException> { runBlocking { client.listScopeAccess("kartverk:x") } }
+
+        assertContains(e.message!!, "401")
+        assertEquals(listOf("test-token"), refused)
     }
 
     @Test

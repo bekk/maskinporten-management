@@ -11,4 +11,8 @@ extensions.configure<KotlinJvmProjectExtension> {
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.google.cloud.kms)
+    implementation(libs.nimbus.jose.jwt)
+    testImplementation(libs.google.cloud.kms.grpc)
+    testImplementation(libs.bouncycastle.pkix)
 }

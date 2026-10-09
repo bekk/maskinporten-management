@@ -16,6 +16,7 @@ import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
+import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
 import no.kartverket.maskinportenmanagement.client.http.JavaDigdirHttpClient
 import java.net.http.HttpClient
@@ -39,12 +40,14 @@ private fun Application.externalFilteringFromConfig(): ExternalFiltering {
     return ExternalFiltering(ExternalFilteringClient(environment.config.url("externalFiltering.url"), httpClient()))
 }
 
-private fun httpClient() = JavaDigdirHttpClient(
-    HttpClient.newBuilder()
-        .connectTimeout(CONNECT_TIMEOUT)
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build(),
-    REQUEST_TIMEOUT,
+private fun httpClient(): DigdirHttpClient = LoggingDigdirHttpClient(
+    JavaDigdirHttpClient(
+        HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build(),
+        REQUEST_TIMEOUT,
+    ),
 )
 
 class ExternalFiltering(private val client: ExternalFilteringClient?) {

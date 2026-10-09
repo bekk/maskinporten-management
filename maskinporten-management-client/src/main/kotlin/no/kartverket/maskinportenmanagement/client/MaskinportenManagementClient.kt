@@ -28,21 +28,18 @@ public class MaskinportenManagementClient(
         send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
 
     public suspend fun listConsumerScopeAccess(consumerOrgno: String, filter: ScopeFilter? = null): DigdirHttpResponse {
-        require(ORGANIZATION_NUMBER.matches(consumerOrgno)) {
-            "consumerOrgno must be an organisation number of 9 digits, but was \"$consumerOrgno\""
-        }
-        val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=${encode(consumerOrgno)}")
+        val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=${requireOrganizationNumber(consumerOrgno)}")
         return if (filter == null) response else response.keepingOnly("scope", filter)
     }
 
     public suspend fun grantScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
-        send("PUT", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
+        send("PUT", "$SCOPE_ACCESS_PATH/${requireOrganizationNumber(consumerOrgno)}?scope=${encode(scope)}")
 
     public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
-        send("DELETE", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
+        send("DELETE", "$SCOPE_ACCESS_PATH/${requireOrganizationNumber(consumerOrgno)}?scope=${encode(scope)}")
 
     // In the path, ".." would turn DELETE .../access/.. into DELETE /api/v1/scopes: deleting the scope itself
-    private fun pathSegment(consumerOrgno: String): String {
+    private fun requireOrganizationNumber(consumerOrgno: String): String {
         require(ORGANIZATION_NUMBER.matches(consumerOrgno)) {
             "consumerOrgno must be an organisation number of 9 digits, but was \"$consumerOrgno\""
         }

@@ -10,6 +10,7 @@ public class DigdirHttpRequest internal constructor(
     public val method: String,
     public val url: URI,
     public val headers: Map<String, String>,
+    public val body: ByteArray? = null,
 )
 
 public class DigdirHttpResponse(

@@ -1,5 +1,11 @@
 package no.kartverket.maskinportenmanagement.client
 
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
@@ -12,6 +18,11 @@ public class MaskinportenManagementClient(
     private val httpClient: DigdirHttpClient,
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
+
+    public suspend fun listScopes(filter: ScopeFilter? = null): DigdirHttpResponse {
+        val response = send("GET", SCOPES_PATH)
+        return if (filter == null) response else response.keepingOnly("name", filter)
+    }
 
     public suspend fun listScopeAccess(scope: String): DigdirHttpResponse =
         send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
@@ -45,7 +56,25 @@ public class MaskinportenManagementClient(
         }
     }
 
+    // Keeps the items whose field is allowed. Anything but a JSON list of objects in a 2xx answer is an error, so
+    // nothing unfiltered gets through
+    private fun DigdirHttpResponse.keepingOnly(field: String, filter: ScopeFilter): DigdirHttpResponse {
+        if (statusCode !in 200..299) return this
+        val items = try {
+            Json.parseToJsonElement(body.decodeToString()) as? JsonArray
+        } catch (e: SerializationException) {
+            null
+        } ?: throw DigdirException("Digdir answered $statusCode with something other than a JSON list")
+        val kept = items.filter { item ->
+            val value = (item as? JsonObject)?.get(field) as? JsonPrimitive
+            value != null && value.isString && filter.allows(value.content)
+        }
+        return DigdirHttpResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
+    }
+
     internal companion object {
+        const val SCOPES_PATH = "/api/v1/scopes"
+
         const val SCOPE_ACCESS_PATH = "/api/v1/scopes/access"
 
         val ORGANIZATION_NUMBER = Regex("[0-9]{9}")

@@ -1,6 +1,8 @@
 package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
 import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
@@ -27,6 +29,71 @@ class MaskinportenManagementClientTest {
             answer(request)
         },
     )
+
+    private val scopes = """[
+        {"name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","active":true,"at_max_age":120},
+        {"name":"kartverk:dokumentbestilling","prefix":"kartverk"},
+        {"name":"kartverk:nrl.rapportering"},
+        {"prefix":"kartverk","subscope":"uten.navn"},
+        {"name":["kartverk:nrl.rapportering"]},
+        "kartverk:nrl.rapportering"
+    ]"""
+
+    private val filter = ScopeFilter(exact = listOf("kartverk:nrl.rapportering"), prefix = listOf("kartverk:tilgangsstyring/"))
+
+    @Test
+    fun `lists Kartverket's scopes without a query`() = runBlocking {
+        clientAnswering().listScopes()
+
+        val request = sent.single()
+        assertEquals("GET", request.method)
+        assertEquals("https://digdir.test/api/v1/scopes", request.url.toString())
+        assertEquals("application/json", request.headers["Accept"])
+    }
+
+    @Test
+    fun `without a filter, returns Digdir's scopes as they are`() = runBlocking {
+        val response = DigdirHttpResponse(200, "application/json", scopes.toByteArray())
+
+        assertSame(response, clientAnswering { response }.listScopes())
+    }
+
+    @Test
+    fun `with a filter, keeps only the scopes it allows, each one unchanged`() = runBlocking {
+        val response = clientAnswering { DigdirHttpResponse(200, "application/json", scopes.toByteArray()) }.listScopes(filter)
+
+        assertEquals(200, response.statusCode)
+        assertEquals("application/json", response.contentType)
+        assertEquals(
+            Json.parseToJsonElement(
+                """[
+                    {"name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","active":true,"at_max_age":120},
+                    {"name":"kartverk:nrl.rapportering"}
+                ]""",
+            ),
+            Json.parseToJsonElement(response.body.decodeToString()),
+        )
+    }
+
+    @Test
+    fun `with a filter, passes Digdir's errors on as they are`() = runBlocking {
+        for (status in listOf(400, 401, 403, 500)) {
+            val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
+
+            assertSame(response, clientAnswering { response }.listScopes(filter), "for $status")
+        }
+    }
+
+    @Test
+    fun `with a filter, an answer that is not a JSON list becomes a DigdirException`() {
+        for (body in listOf("""{"name":"kartverk:nrl.rapportering"}""", "not json", "")) {
+            val e = assertFailsWith<DigdirException>(body) {
+                runBlocking { clientAnswering { DigdirHttpResponse(200, "application/json", body.toByteArray()) }.listScopes(filter) }
+            }
+
+            assertContains(e.message!!, "JSON list", message = body)
+        }
+    }
 
     @Test
     fun `lists scope access with only the scope in the query`() = runBlocking {

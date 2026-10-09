@@ -17,6 +17,69 @@
                 }
             }
         },
+        "/api/scopes": {
+            "get": {
+                "summary": "List Kartverket's scopes that the calling app has access to",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. Istio tells this API which app is calling,\nin the `X-Forwarded-Client-Cert` header.\n\nEach scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "responses": {
+                    "default": {
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+                    },
+                    "200": {
+                        "description": "The scopes the calling app has access to. The list is empty if it has access to none.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling. Digdir can also answer `400`, in its own error format.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "MissingClientCertificate": {
+                                        "value": {
+                                            "error": "Header X-Forwarded-Client-Cert is required",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "This API could not get an answer from Digdir, or from the service that says which scopes the calling app has access to. Your request did not cause it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamError": {
+                                        "value": {
+                                            "error": "The call to Digdir failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    },
+                                    "FilteringError": {
+                                        "value": {
+                                            "error": "The call to the filtering service failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/scopeaccess/orgs": {
             "get": {
                 "summary": "List the organisations that have access to a scope",
@@ -287,6 +350,30 @@
     },
     "components": {
         "schemas": {
+            "ErrorResponse": {
+                "type": "object",
+                "title": "ErrorResponse",
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "A short summary for people to read. The wording may change, so check `code` in your code."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, or from the service that says\n  which scopes the calling app has access to. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "enum": [
+                            "INVALID_REQUEST",
+                            "MALFORMED_BODY",
+                            "UPSTREAM_ERROR",
+                            "INTERNAL_ERROR"
+                        ]
+                    }
+                }
+            },
             "ScopeAccess": {
                 "type": "object",
                 "title": "ScopeAccess",
@@ -325,30 +412,6 @@
                     "last_updated": {
                         "type": "string",
                         "format": "date-time"
-                    }
-                }
-            },
-            "ErrorResponse": {
-                "type": "object",
-                "title": "ErrorResponse",
-                "required": [
-                    "error",
-                    "code"
-                ],
-                "properties": {
-                    "error": {
-                        "type": "string",
-                        "description": "A short summary for people to read. The wording may change, so check `code` in your code."
-                    },
-                    "code": {
-                        "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir. Your request did not cause\n  it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
-                        "enum": [
-                            "INVALID_REQUEST",
-                            "MALFORMED_BODY",
-                            "UPSTREAM_ERROR",
-                            "INTERNAL_ERROR"
-                        ]
                     }
                 }
             }

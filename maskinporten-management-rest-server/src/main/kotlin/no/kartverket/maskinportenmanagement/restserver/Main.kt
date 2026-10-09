@@ -51,6 +51,13 @@ fun Application.configureRouting() {
             call.respondText(spec, ContentType.Application.Json)
         }.hide()
 
+        get("/api/scopes") {
+            val client: MaskinportenManagementClient by dependencies
+            val externalFiltering: ExternalFiltering by dependencies
+            val filter = externalFiltering.filterFor(call)
+            call.respondFromDigdir(client.listScopes(filter))
+        }.describe(scopesListOperation)
+
         get("/api/scopeaccess/orgs") {
             val client: MaskinportenManagementClient by dependencies
             val scope = call.onlyQueryParameter("scope")

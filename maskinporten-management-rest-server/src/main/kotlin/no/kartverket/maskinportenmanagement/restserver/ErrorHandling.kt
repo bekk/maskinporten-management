@@ -11,6 +11,7 @@ import io.ktor.server.plugins.ContentTransformationException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 
@@ -25,6 +26,13 @@ fun Application.configureErrorHandling() {
         exception<DigdirException> { call, cause ->
             call.application.log.error("Call to Digdir failed", cause)
             call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+        }
+        exception<ExternalFilteringException> { call, cause ->
+            call.application.log.error("Call to the filtering service failed", cause)
+            call.respond(
+                HttpStatusCode.BadGateway,
+                ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
+            )
         }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)

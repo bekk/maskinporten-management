@@ -181,6 +181,15 @@ class ScopeAccessScopesTest {
     }
 
     @Test
+    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =
+        scopeAccessTest(digdir = { json(401, """{"error":"invalid_token"}""") }) {
+            val response = listScopes()
+
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+        }
+
+    @Test
     fun `with filtering turned off, returns all of Digdir's answer and needs no header`() = scopeAccessTest(filtering = null) {
         val response = client.get("/api/scopeaccess/scopes?orgnr=311718371")
 

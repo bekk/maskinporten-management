@@ -256,6 +256,7 @@ class ScopeAccessTest {
         val paths = spec.getValue("paths").jsonObject
 
         assertEquals(setOf("get"), paths.getValue("/api/scopeaccess/orgs").jsonObject.keys)
+        assertEquals(setOf("get"), paths.getValue("/api/scopeaccess/scopes").jsonObject.keys)
         assertEquals(setOf("put", "delete"), paths.getValue("/api/scopeaccess/{consumerOrgno}").jsonObject.keys)
     }
 }

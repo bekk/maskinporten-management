@@ -6,11 +6,18 @@ logback = "1.6.4"
 jib = "3.5.4"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
+google-cloud-kms = "2.102.0"
+nimbus-jose-jwt = "10.10"
+bouncycastle = "1.86"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+google-cloud-kms = { module = "com.google.cloud:google-cloud-kms", version.ref = "google-cloud-kms" }
+google-cloud-kms-grpc = { module = "com.google.api.grpc:grpc-google-cloud-kms-v1", version.ref = "google-cloud-kms" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

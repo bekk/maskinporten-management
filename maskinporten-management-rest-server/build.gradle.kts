@@ -34,6 +34,11 @@ tasks.check {
     dependsOn(tools.classesTaskName)
 }
 
+tasks.test {
+    // OpenApiSpecFileTest compares the served spec with this file, so a changed file must rerun the tests
+    inputs.file("openapi.json")
+}
+
 tasks.register<JavaExec>("generateOpenApiSpec") {
     group = "build"
     description = "Writes openapi.json from the spec the running server serves."

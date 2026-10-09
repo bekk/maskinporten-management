@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlin.test.fail
 
 class ApplicationConfigTest {
@@ -23,5 +24,13 @@ class ApplicationConfigTest {
         val e = assertFailsWith<IllegalStateException> { config.url("digdir.baseUrl") }
 
         assertContains(e.message!!, "digdir.baseUrl")
+    }
+
+    @Test
+    fun `filtering is on by default`() {
+        assumeTrue(System.getenv("EXTERNAL_FILTERING_ENABLED") == null, "EXTERNAL_FILTERING_ENABLED is set in this shell")
+        val config = YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
+
+        assertTrue(config.boolean("externalFiltering.enabled", default = true))
     }
 }

@@ -97,8 +97,8 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
                 What went wrong. These values do not change, so your code can rely on them.
 
                 - `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.
-                - `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir. Your request did not cause
-                  it.
+                - `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, or from the service that says
+                  which scopes the calling app has access to. Your request did not cause it.
                 - `INTERNAL_ERROR` (500): an unexpected error in this API.
             """.trimIndent(),
         )
@@ -154,12 +154,23 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
     }
 }
 
-private fun Responses.Builder.digdirUnreachableAndOtherStatuses() {
+private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolean = false) {
     HttpStatusCode.BadGateway {
-        description = "This API could not get an answer from Digdir. Your request did not cause it."
+        description = if (filtered) {
+            "This API could not get an answer from Digdir, or from the service that says which scopes the calling " +
+                "app has access to. Your request did not cause it."
+        } else {
+            "This API could not get an answer from Digdir. Your request did not cause it."
+        }
         ContentType.Application.Json {
             schema = errorResponseSchema
             example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+            if (filtered) {
+                example(
+                    "FilteringError",
+                    ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
+                )
+            }
         }
     }
 
@@ -179,6 +190,35 @@ private val invalidOrganisationNumberExample = "InvalidOrganisationNumber" to Er
 
 private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
     "`scope`, or `scope` is blank or not URL-encoded correctly."
+
+internal val scopesListOperation: Operation.Builder.() -> Unit = {
+    summary = "List Kartverket's scopes that the calling app has access to"
+    description = """
+        Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in
+        its `exact` list, and the ones that start with one of its prefixes. Istio tells this API which app is calling,
+        in the `X-Forwarded-Client-Cert` header.
+
+        Each scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
+    """.trimIndent()
+
+    responses {
+        HttpStatusCode.OK {
+            description = "The scopes the calling app has access to. The list is empty if it has access to none."
+            ContentType.Application.Json {
+                schema = JsonSchema(type = JsonType.ARRAY)
+            }
+        }
+
+        badRequest(
+            "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling.",
+            "MissingClientCertificate" to ErrorResponse(
+                "Header X-Forwarded-Client-Cert is required",
+                ErrorCode.INVALID_REQUEST,
+            ),
+        )
+        digdirUnreachableAndOtherStatuses(filtered = true)
+    }
+}
 
 internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     summary = "List the organisations that have access to a scope"

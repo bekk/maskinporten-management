@@ -167,6 +167,106 @@
                 }
             }
         },
+        "/api/scopeaccess/scopes": {
+            "get": {
+                "summary": "List the scopes an organisation has access to",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. Istio tells this\nAPI which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nEach access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "parameters": [
+                    {
+                        "name": "orgnr",
+                        "in": "query",
+                        "description": "The consumer's organisation number: 9 digits, for example `311718371`. It must be the only query parameter, sent once.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{9}$"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+                    },
+                    "200": {
+                        "description": "The organisation's access to the scopes the calling app has access to. Check `state`: only `APPROVED` means access, and a scope the organisation has only asked for, or was refused, may be listed too. The list is empty if there is none.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ScopeAccess"
+                                    }
+                                },
+                                "examples": {
+                                    "Scopes": {
+                                        "value": [
+                                            {
+                                                "scope": "kartverk:matrikkel.read",
+                                                "owner_orgno": "971040238",
+                                                "owner_organization_name": "STATENS KARTVERK",
+                                                "consumer_orgno": "311718371",
+                                                "consumer_organization_name": "EKSEMPEL AS",
+                                                "state": "APPROVED",
+                                                "created": "2026-01-15T09:30:00Z",
+                                                "last_updated": "2026-01-15T09:30:00Z"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` header is missing. Digdir can also answer `400`, in its own error format.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "InvalidOrganisationNumber": {
+                                        "value": {
+                                            "error": "Query parameter orgnr must be an organisation number of 9 digits",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    },
+                                    "MissingClientCertificate": {
+                                        "value": {
+                                            "error": "Header X-Forwarded-Client-Cert is required",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "This API could not get an answer from Digdir, or from the service that says which scopes the calling app has access to. Your request did not cause it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamError": {
+                                        "value": {
+                                            "error": "The call to Digdir failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    },
+                                    "FilteringError": {
+                                        "value": {
+                                            "error": "The call to the filtering service failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/scopeaccess/{consumerOrgno}": {
             "put": {
                 "summary": "Give an organisation access to a scope",

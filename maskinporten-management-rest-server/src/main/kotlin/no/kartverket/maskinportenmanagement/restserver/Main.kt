@@ -70,7 +70,7 @@ fun Application.configureRouting() {
             val orgnr = call.organizationNumberQueryParameter("orgnr")
             val filter = externalFiltering.filterFor(call)
             call.respondFromDigdir(client.listConsumerScopeAccess(orgnr, filter))
-        }
+        }.describe(scopeAccessScopesOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies

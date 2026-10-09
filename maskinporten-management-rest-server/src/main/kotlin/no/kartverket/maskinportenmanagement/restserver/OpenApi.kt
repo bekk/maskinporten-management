@@ -136,6 +136,15 @@ private fun Parameters.Builder.scope() {
     }
 }
 
+private fun Parameters.Builder.orgnr() {
+    query("orgnr") {
+        required = true
+        description = "The consumer's organisation number: 9 digits, for example `311718371`. It must be the only " +
+            "query parameter, sent once."
+        schema = JsonSchema(type = JsonType.STRING, pattern = "^[0-9]{9}$")
+    }
+}
+
 private fun Parameters.Builder.consumerOrgno() {
     path("consumerOrgno") {
         required = true
@@ -188,6 +197,11 @@ private val invalidOrganisationNumberExample = "InvalidOrganisationNumber" to Er
     ErrorCode.INVALID_REQUEST,
 )
 
+private val missingClientCertificateExample = "MissingClientCertificate" to ErrorResponse(
+    "Header X-Forwarded-Client-Cert is required",
+    ErrorCode.INVALID_REQUEST,
+)
+
 private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
     "`scope`, or `scope` is blank or not URL-encoded correctly."
 
@@ -211,10 +225,7 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
 
         badRequest(
             "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling.",
-            "MissingClientCertificate" to ErrorResponse(
-                "Header X-Forwarded-Client-Cert is required",
-                ErrorCode.INVALID_REQUEST,
-            ),
+            missingClientCertificateExample,
         )
         digdirUnreachableAndOtherStatuses(filtered = true)
     }
@@ -245,6 +256,44 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
             missingScopeExample,
         )
         digdirUnreachableAndOtherStatuses()
+    }
+}
+
+internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
+    summary = "List the scopes an organisation has access to"
+    description = """
+        Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has
+        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. Istio tells this
+        API which app is calling, in the `X-Forwarded-Client-Cert` header.
+
+        Each access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
+    """.trimIndent()
+
+    parameters {
+        orgnr()
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "The organisation's access to the scopes the calling app has access to. Check `state`: " +
+                "only `APPROVED` means access, and a scope the organisation has only asked for, or was refused, may " +
+                "be listed too. The list is empty if there is none."
+            ContentType.Application.Json {
+                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
+                example("Scopes", listOf(exampleScopeAccess))
+            }
+        }
+
+        badRequest(
+            "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` " +
+                "header is missing.",
+            "InvalidOrganisationNumber" to ErrorResponse(
+                "Query parameter orgnr must be an organisation number of 9 digits",
+                ErrorCode.INVALID_REQUEST,
+            ),
+            missingClientCertificateExample,
+        )
+        digdirUnreachableAndOtherStatuses(filtered = true)
     }
 }
 

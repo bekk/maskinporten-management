@@ -41,7 +41,7 @@ class ScopeAccessTest {
         application {
             configureSerialization()
             configureErrorHandling()
-            configureMaskinportenManagement(MaskinportenManagementClient("https://digdir.test", digdir))
+            configureMaskinportenManagement(MaskinportenManagementClient("https://digdir.test", digdir), ExternalFiltering(null))
             configureRouting()
         }
         block()

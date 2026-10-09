@@ -7,32 +7,32 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
 
 public class MaskinportenManagementClient(
     baseUrl: String,
-    private val httpClient: DigdirHttpClient,
+    private val httpClient: OutgoingHttpClient,
     private val accessTokenProvider: AccessTokenProvider,
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
-    public suspend fun listScopes(filter: ScopeFilter? = null): DigdirHttpResponse {
+    public suspend fun listScopes(filter: ScopeFilter? = null): OutgoingResponse {
         val response = send("GET", SCOPES_PATH)
         return if (filter == null) response else response.keepingOnly("name", filter)
     }
 
-    public suspend fun listScopeAccess(scope: String): DigdirHttpResponse =
+    public suspend fun listScopeAccess(scope: String): OutgoingResponse =
         send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
 
-    public suspend fun grantScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
+    public suspend fun grantScopeAccess(consumerOrgno: String, scope: String): OutgoingResponse =
         send("PUT", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
 
-    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): DigdirHttpResponse =
+    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): OutgoingResponse =
         send("DELETE", "$SCOPE_ACCESS_PATH/${pathSegment(consumerOrgno)}?scope=${encode(scope)}")
 
     // In the path, ".." would turn DELETE .../access/.. into DELETE /api/v1/scopes: deleting the scope itself
@@ -45,9 +45,9 @@ public class MaskinportenManagementClient(
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
-    private suspend fun send(method: String, pathAndQuery: String): DigdirHttpResponse {
+    private suspend fun send(method: String, pathAndQuery: String): OutgoingResponse {
         val token = callingDigdir { accessTokenProvider.accessToken() }
-        val request = DigdirHttpRequest(
+        val request = OutgoingRequest(
             method = method,
             url = URI.create(baseUrl + pathAndQuery),
             headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer $token"),
@@ -69,7 +69,7 @@ public class MaskinportenManagementClient(
 
     // Keeps the items whose field is allowed. Anything but a JSON list of objects in a 2xx answer is an error, so
     // nothing unfiltered gets through
-    private fun DigdirHttpResponse.keepingOnly(field: String, filter: ScopeFilter): DigdirHttpResponse {
+    private fun OutgoingResponse.keepingOnly(field: String, filter: ScopeFilter): OutgoingResponse {
         if (statusCode !in 200..299) return this
         val items = try {
             Json.parseToJsonElement(body.decodeToString()) as? JsonArray
@@ -80,7 +80,7 @@ public class MaskinportenManagementClient(
             val value = (item as? JsonObject)?.get(field) as? JsonPrimitive
             value != null && value.isString && filter.allows(value.content)
         }
-        return DigdirHttpResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
+        return OutgoingResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
     }
 
     internal companion object {

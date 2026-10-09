@@ -15,9 +15,9 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
@@ -28,13 +28,13 @@ import kotlin.test.assertTrue
 
 class ScopeAccessTest {
 
-    private val sent = mutableListOf<DigdirHttpRequest>()
+    private val sent = mutableListOf<OutgoingRequest>()
 
     private fun scopeAccessTest(
-        answer: (DigdirHttpRequest) -> DigdirHttpResponse = { DigdirHttpResponse(200, "application/json", "[]".toByteArray()) },
+        answer: (OutgoingRequest) -> OutgoingResponse = { OutgoingResponse(200, "application/json", "[]".toByteArray()) },
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
-        val digdir = DigdirHttpClient { request ->
+        val digdir = OutgoingHttpClient { request ->
             sent += request
             answer(request)
         }
@@ -57,7 +57,7 @@ class ScopeAccessTest {
     fun `returns Digdir's response unchanged`() {
         val body = """[{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}]"""
             .toByteArray()
-        scopeAccessTest(answer = { DigdirHttpResponse(200, "application/json", body) }) {
+        scopeAccessTest(answer = { OutgoingResponse(200, "application/json", body) }) {
             val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
             assertEquals(HttpStatusCode.OK, response.status)
@@ -70,7 +70,7 @@ class ScopeAccessTest {
     fun `passes Digdir's error responses on unchanged`() {
         val body = """{"status":404,"error":"ikke funnet: æøå"}""".toByteArray(Charsets.ISO_8859_1)
         for (status in listOf(400, 403, 404, 500, 503)) {
-            scopeAccessTest(answer = { DigdirHttpResponse(status, "application/json;charset=ISO-8859-1", body) }) {
+            scopeAccessTest(answer = { OutgoingResponse(status, "application/json;charset=ISO-8859-1", body) }) {
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
                 assertEquals(status, response.status.value)
@@ -83,7 +83,7 @@ class ScopeAccessTest {
     @Test
     fun `a content type from Digdir that cannot be parsed is left out, and the rest passed on`() {
         val body = "Service Unavailable".toByteArray()
-        scopeAccessTest(answer = { DigdirHttpResponse(503, "text", body) }) {
+        scopeAccessTest(answer = { OutgoingResponse(503, "text", body) }) {
             val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
             assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
@@ -153,7 +153,7 @@ class ScopeAccessTest {
     @Test
     fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() {
         val refused = """{"error":"invalid_token"}""".toByteArray()
-        scopeAccessTest(answer = { DigdirHttpResponse(401, "application/json", refused) }) {
+        scopeAccessTest(answer = { OutgoingResponse(401, "application/json", refused) }) {
             val responses = listOf(client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")) +
                 changeMethods.map { change(it, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read") }
 
@@ -173,7 +173,7 @@ class ScopeAccessTest {
     fun `giving and removing access return Digdir's response unchanged`() {
         val body = """{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}""".toByteArray()
         for (method in changeMethods) {
-            scopeAccessTest(answer = { DigdirHttpResponse(200, "application/json", body) }) {
+            scopeAccessTest(answer = { OutgoingResponse(200, "application/json", body) }) {
                 val response = change(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
 
                 assertEquals(HttpStatusCode.OK, response.status, "for $method")
@@ -187,9 +187,9 @@ class ScopeAccessTest {
     fun `giving and removing access pass Digdir's other answers on unchanged`() {
         val error = """{"status":404,"error":"ikke funnet"}""".toByteArray()
         val answers = listOf(
-            DigdirHttpResponse(204, null, ByteArray(0)),
-            DigdirHttpResponse(404, "application/json", error),
-            DigdirHttpResponse(409, "application/json", error),
+            OutgoingResponse(204, null, ByteArray(0)),
+            OutgoingResponse(404, "application/json", error),
+            OutgoingResponse(409, "application/json", error),
         )
         for (method in changeMethods) {
             for (answer in answers) {

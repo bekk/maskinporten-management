@@ -4,9 +4,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
 import java.net.ConnectException
 import kotlin.test.Test
@@ -18,14 +18,14 @@ import kotlin.test.assertTrue
 
 class MaskinportenManagementClientTest {
 
-    private val sent = mutableListOf<DigdirHttpRequest>()
+    private val sent = mutableListOf<OutgoingRequest>()
 
     private fun clientAnswering(
         baseUrl: String = "https://digdir.test",
-        answer: (DigdirHttpRequest) -> DigdirHttpResponse = { DigdirHttpResponse(200, "application/json", "[]".toByteArray()) },
+        answer: (OutgoingRequest) -> OutgoingResponse = { OutgoingResponse(200, "application/json", "[]".toByteArray()) },
     ) = MaskinportenManagementClient(
         baseUrl,
-        DigdirHttpClient { request ->
+        OutgoingHttpClient { request ->
             sent += request
             answer(request)
         },
@@ -55,14 +55,14 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `without a filter, returns Digdir's scopes as they are`() = runBlocking {
-        val response = DigdirHttpResponse(200, "application/json", scopes.toByteArray())
+        val response = OutgoingResponse(200, "application/json", scopes.toByteArray())
 
         assertSame(response, clientAnswering { response }.listScopes())
     }
 
     @Test
     fun `with a filter, keeps only the scopes it allows, each one unchanged`() = runBlocking {
-        val response = clientAnswering { DigdirHttpResponse(200, "application/json", scopes.toByteArray()) }.listScopes(filter)
+        val response = clientAnswering { OutgoingResponse(200, "application/json", scopes.toByteArray()) }.listScopes(filter)
 
         assertEquals(200, response.statusCode)
         assertEquals("application/json", response.contentType)
@@ -80,7 +80,7 @@ class MaskinportenManagementClientTest {
     @Test
     fun `with a filter, passes Digdir's errors on as they are`() = runBlocking {
         for (status in listOf(400, 403, 500)) {
-            val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
+            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
 
             assertSame(response, clientAnswering { response }.listScopes(filter), "for $status")
         }
@@ -90,7 +90,7 @@ class MaskinportenManagementClientTest {
     fun `with a filter, an answer that is not a JSON list becomes a DigdirException`() {
         for (body in listOf("""{"name":"kartverk:nrl.rapportering"}""", "not json", "")) {
             val e = assertFailsWith<DigdirException>(body) {
-                runBlocking { clientAnswering { DigdirHttpResponse(200, "application/json", body.toByteArray()) }.listScopes(filter) }
+                runBlocking { clientAnswering { OutgoingResponse(200, "application/json", body.toByteArray()) }.listScopes(filter) }
             }
 
             assertContains(e.message!!, "JSON list", message = body)
@@ -167,7 +167,7 @@ class MaskinportenManagementClientTest {
     @Test
     fun `returns Digdir's response as it is, whatever the status but 401`() = runBlocking {
         for (status in listOf(200, 400, 403, 404, 500)) {
-            val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
+            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
 
             assertSame(response, clientAnswering { response }.listScopeAccess("kartverk:x"), "for $status")
         }
@@ -178,7 +178,7 @@ class MaskinportenManagementClientTest {
         val refused = mutableListOf<String>()
         val client = MaskinportenManagementClient(
             "https://digdir.test",
-            { DigdirHttpResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
+            { OutgoingResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
             object : AccessTokenProvider {
                 override suspend fun accessToken() = "test-token"
                 override suspend fun refused(token: String) {

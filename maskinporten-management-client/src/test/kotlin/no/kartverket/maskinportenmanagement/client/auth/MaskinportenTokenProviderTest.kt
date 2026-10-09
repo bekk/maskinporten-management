@@ -8,9 +8,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import no.kartverket.maskinportenmanagement.client.DigdirException
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
@@ -43,12 +43,12 @@ class MaskinportenTokenProviderTest {
         override fun withZone(zone: java.time.ZoneId?) = this
     }
 
-    private val tokenRequests = mutableListOf<DigdirHttpRequest>()
-    private var tokenAnswer = DigdirHttpResponse(200, "application/json", """{"access_token":"token-1","expires_in":120}""".toByteArray())
+    private val tokenRequests = mutableListOf<OutgoingRequest>()
+    private var tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-1","expires_in":120}""".toByteArray())
 
-    private val maskinporten = DigdirHttpClient { request ->
+    private val maskinporten = OutgoingHttpClient { request ->
         when (request.url.toString()) {
-            "https://maskinporten.test/.well-known/oauth-authorization-server" -> DigdirHttpResponse(
+            "https://maskinporten.test/.well-known/oauth-authorization-server" -> OutgoingResponse(
                 200,
                 "application/json",
                 """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token","jwks_uri":"x"}""".toByteArray(),
@@ -111,7 +111,7 @@ class MaskinportenTokenProviderTest {
         provider.accessToken()
         assertEquals(1, tokenRequests.size)
 
-        tokenAnswer = DigdirHttpResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
+        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         now = now.plusSeconds(1)
         assertEquals("token-2", provider.accessToken())
         assertEquals(2, tokenRequests.size)
@@ -122,7 +122,7 @@ class MaskinportenTokenProviderTest {
         provider.accessToken()
         provider.refused("token-1")
 
-        tokenAnswer = DigdirHttpResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
+        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         assertEquals("token-2", provider.accessToken())
         assertEquals(2, tokenRequests.size)
     }
@@ -131,7 +131,7 @@ class MaskinportenTokenProviderTest {
     fun `refusing an old token keeps the new one`() = runBlocking {
         provider.accessToken()
         provider.refused("token-1")
-        tokenAnswer = DigdirHttpResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
+        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         provider.accessToken()
 
         provider.refused("token-1")
@@ -142,7 +142,7 @@ class MaskinportenTokenProviderTest {
 
     @Test
     fun `an answer without the expected JSON is a DigdirException that does not quote it`() {
-        tokenAnswer = DigdirHttpResponse(200, "application/json", """{"access_token":"secret-token"}""".toByteArray())
+        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"secret-token"}""".toByteArray())
 
         val e = assertFailsWith<DigdirException> { runBlocking { provider.accessToken() } }
 
@@ -152,7 +152,7 @@ class MaskinportenTokenProviderTest {
 
     @Test
     fun `a refused grant names Maskinporten's answer`() {
-        tokenAnswer = DigdirHttpResponse(400, "application/json", """{"error":"invalid_grant"}""".toByteArray())
+        tokenAnswer = OutgoingResponse(400, "application/json", """{"error":"invalid_grant"}""".toByteArray())
 
         val e = assertFailsWith<DigdirException> { runBlocking { provider.accessToken() } }
 

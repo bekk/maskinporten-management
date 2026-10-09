@@ -17,8 +17,8 @@ import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvide
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
-import no.kartverket.maskinportenmanagement.client.http.JavaDigdirHttpClient
+import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.CloudKms
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
@@ -37,7 +37,7 @@ fun Application.configureMaskinportenManagement(
 
 private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val config = environment.config
-    val digdirHttpClient = httpClient()
+    val httpClient = httpClient()
     val keyVersion = config.optional("kms.keyVersion")
     val localKeyFile = config.optional("kms.localKeyFile")
     check((keyVersion == null) != (localKeyFile == null)) {
@@ -51,9 +51,9 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
         scopes = config.required("maskinporten.scopes"),
         kms = kms,
         certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
-        httpClient = digdirHttpClient,
+        httpClient = httpClient,
     )
-    return MaskinportenManagementClient(config.url("digdir.baseUrl"), digdirHttpClient, tokenProvider)
+    return MaskinportenManagementClient(config.url("digdir.baseUrl"), httpClient, tokenProvider)
 }
 
 private fun pemFile(setting: String, path: String): String {
@@ -68,7 +68,7 @@ private fun Application.externalFilteringFromConfig(): ExternalFiltering {
     return ExternalFiltering(ExternalFilteringClient(environment.config.url("externalFiltering.url"), httpClient()))
 }
 
-private fun httpClient() = JavaDigdirHttpClient(
+private fun httpClient() = JavaOutgoingHttpClient(
     HttpClient.newBuilder()
         .connectTimeout(CONNECT_TIMEOUT)
         .followRedirects(HttpClient.Redirect.NEVER)
@@ -117,7 +117,7 @@ internal fun RoutingCall.organizationNumberPathParameter(name: String): String {
 
 private val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
 
-internal suspend fun ApplicationCall.respondFromDigdir(response: DigdirHttpResponse) {
+internal suspend fun ApplicationCall.respondFromDigdir(response: OutgoingResponse) {
     respondBytes(
         bytes = response.body,
         contentType = response.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },

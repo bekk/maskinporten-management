@@ -30,7 +30,39 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Scope"
+                                    }
+                                },
+                                "examples": {
+                                    "Scopes": {
+                                        "value": [
+                                            {
+                                                "name": "kartverk:tilgangsstyring/demo.read",
+                                                "prefix": "kartverk",
+                                                "subscope": "tilgangsstyring/demo.read",
+                                                "description": "Lesetilgang til demo-API-et",
+                                                "active": true,
+                                                "created": "2026-01-15T09:30:00Z",
+                                                "last_updated": "2026-01-15T09:30:00Z",
+                                                "allowed_integration_types": [
+                                                    "maskinporten"
+                                                ],
+                                                "owner_orgno": "971040238",
+                                                "token_type": "SELF_CONTAINED",
+                                                "visibility": "PUBLIC",
+                                                "requires_user_consent": false,
+                                                "requires_user_authentication": false,
+                                                "requires_pseudonymous_tokens": false,
+                                                "at_max_age": 120,
+                                                "authorization_max_lifetime": 0,
+                                                "accessible_for_all": false,
+                                                "protected": false,
+                                                "supports_european_businesses": false
+                                            }
+                                        ]
+                                    }
                                 }
                             }
                         }
@@ -450,6 +482,124 @@
     },
     "components": {
         "schemas": {
+            "Scope": {
+                "type": "object",
+                "title": "Scope",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The whole scope: the prefix, a colon and the subscope."
+                    },
+                    "prefix": {
+                        "type": "string"
+                    },
+                    "subscope": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "long_description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "descriptions": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "description": "Always `true` here, since only active scopes are listed."
+                    },
+                    "created": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "last_updated": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "allowed_integration_types": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "ansattporten",
+                                "api_klient",
+                                "eformidling",
+                                "idporten",
+                                "idporten_saml2",
+                                "krr",
+                                "maskinporten"
+                            ]
+                        }
+                    },
+                    "owner_orgno": {
+                        "type": "string",
+                        "description": "The organisation that owns the scope: Kartverket."
+                    },
+                    "token_type": {
+                        "type": "string",
+                        "enum": [
+                            "SELF_CONTAINED",
+                            "OPAQUE"
+                        ]
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "enum": [
+                            "INTERNAL",
+                            "PRIVATE",
+                            "PUBLIC"
+                        ]
+                    },
+                    "requires_user_consent": {
+                        "type": "boolean"
+                    },
+                    "requires_user_authentication": {
+                        "type": "boolean"
+                    },
+                    "requires_pseudonymous_tokens": {
+                        "type": "boolean"
+                    },
+                    "delegation_source": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "at_max_age": {
+                        "type": "integer",
+                        "description": "The most seconds an access token for the scope can live."
+                    },
+                    "authorization_max_lifetime": {
+                        "type": "integer",
+                        "description": "The most seconds an authorization for the scope can live."
+                    },
+                    "accessible_for_all": {
+                        "type": "boolean"
+                    },
+                    "enforced_aud_for_access_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "protected": {
+                        "type": "boolean"
+                    },
+                    "supports_european_businesses": {
+                        "type": "boolean"
+                    }
+                }
+            },
             "ErrorResponse": {
                 "type": "object",
                 "title": "ErrorResponse",

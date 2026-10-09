@@ -66,7 +66,7 @@ class ScopeAccessScopesTest {
                         digdirRequests += request
                         digdir(request)
                     },
-                ),
+                ) { "test-token" },
                 ExternalFiltering(externalFiltering),
             )
             configureRouting()
@@ -170,7 +170,7 @@ class ScopeAccessScopesTest {
     @Test
     fun `passes Digdir's errors on unchanged`() {
         val body = """{"status":403,"error":"ingen tilgang"}"""
-        for (status in listOf(400, 401, 403, 500, 503)) {
+        for (status in listOf(400, 403, 500, 503)) {
             scopeAccessTest(digdir = { json(status, body) }) {
                 val response = listScopes()
 

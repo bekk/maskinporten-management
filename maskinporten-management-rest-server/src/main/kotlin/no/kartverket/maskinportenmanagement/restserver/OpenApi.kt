@@ -25,14 +25,21 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.models.IntegrationType
+import no.kartverket.maskinportenmanagement.restserver.models.Scope
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessState
+import no.kartverket.maskinportenmanagement.restserver.models.TokenType
+import no.kartverket.maskinportenmanagement.restserver.models.Visibility
 
 private val openApiJson = Json { prettyPrint = true }
 
 private val schemaInference = KotlinxSerializerJsonSchemaInference(EmptySerializersModule())
 
-private val exampleJson = Json { encodeDefaults = true }
+private val exampleJson = Json {
+    encodeDefaults = true
+    explicitNulls = false
+}
 
 private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
@@ -82,6 +89,17 @@ private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().docume
             """.trimIndent(),
         )
     },
+    "created" to { copy(format = "date-time") },
+    "last_updated" to { copy(format = "date-time") },
+    required = null,
+)
+
+private val scopeSchema = schemaInference.jsonSchema<Scope>().documented(
+    "name" to { copy(description = "The whole scope: the prefix, a colon and the subscope.") },
+    "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
+    "active" to { copy(description = "Always `true` here, since only active scopes are listed.") },
+    "at_max_age" to { copy(description = "The most seconds an access token for the scope can live.") },
+    "authorization_max_lifetime" to { copy(description = "The most seconds an authorization for the scope can live.") },
     "created" to { copy(format = "date-time") },
     "last_updated" to { copy(format = "date-time") },
     required = null,
@@ -205,6 +223,28 @@ private val missingClientCertificateExample = "MissingClientCertificate" to Erro
 private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
     "`scope`, or `scope` is blank or not URL-encoded correctly."
 
+private val exampleScope = Scope(
+    name = "kartverk:tilgangsstyring/demo.read",
+    prefix = "kartverk",
+    subscope = "tilgangsstyring/demo.read",
+    description = "Lesetilgang til demo-API-et",
+    active = true,
+    created = "2026-01-15T09:30:00Z",
+    lastUpdated = "2026-01-15T09:30:00Z",
+    allowedIntegrationTypes = listOf(IntegrationType.MASKINPORTEN),
+    ownerOrgno = "971040238",
+    tokenType = TokenType.SELF_CONTAINED,
+    visibility = Visibility.PUBLIC,
+    requiresUserConsent = false,
+    requiresUserAuthentication = false,
+    requiresPseudonymousTokens = false,
+    atMaxAge = 120,
+    authorizationMaxLifetime = 0,
+    accessibleForAll = false,
+    protected = false,
+    supportsEuropeanBusinesses = false,
+)
+
 internal val scopesListOperation: Operation.Builder.() -> Unit = {
     summary = "List Kartverket's scopes that the calling app has access to"
     description = """
@@ -219,7 +259,8 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The scopes the calling app has access to. The list is empty if it has access to none."
             ContentType.Application.Json {
-                schema = JsonSchema(type = JsonType.ARRAY)
+                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeSchema))
+                example("Scopes", listOf(exampleScope))
             }
         }
 

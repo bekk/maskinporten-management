@@ -115,6 +115,56 @@ class MaskinportenManagementClientTest {
         assertEquals("scope=kartverk%3Ax%26consumer_orgno%3D123", sent.single().url.rawQuery)
     }
 
+    private val consumerScopeAccess = """[
+        {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
+        {"scope":"kartverk:dokumentbestilling","consumer_orgno":"311718371"},
+        {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371"},
+        {"name":"kartverk:nrl.rapportering","consumer_orgno":"311718371"}
+    ]"""
+
+    @Test
+    fun `lists a consumer's scope access with only the organisation in the query`() = runBlocking {
+        clientAnswering().listConsumerScopeAccess("311718371")
+
+        val request = sent.single()
+        assertEquals("GET", request.method)
+        assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", request.url.toString())
+        assertEquals("application/json", request.headers["Accept"])
+    }
+
+    @Test
+    fun `without a filter, returns a consumer's scope access as it is`() = runBlocking {
+        val response = DigdirHttpResponse(200, "application/json", consumerScopeAccess.toByteArray())
+
+        assertSame(response, clientAnswering { response }.listConsumerScopeAccess("311718371"))
+    }
+
+    @Test
+    fun `with a filter, keeps only the consumer's scope access whose scope it allows`() = runBlocking {
+        val response = clientAnswering { DigdirHttpResponse(200, "application/json", consumerScopeAccess.toByteArray()) }
+            .listConsumerScopeAccess("311718371", filter)
+
+        assertEquals(200, response.statusCode)
+        assertEquals(
+            Json.parseToJsonElement(
+                """[
+                    {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
+                    {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371"}
+                ]""",
+            ),
+            Json.parseToJsonElement(response.body.decodeToString()),
+        )
+    }
+
+    @Test
+    fun `with a filter, passes Digdir's errors for a consumer's scope access on as they are`() = runBlocking {
+        for (status in listOf(400, 403, 500)) {
+            val response = DigdirHttpResponse(status, "application/json", """{"status":$status}""".toByteArray())
+
+            assertSame(response, clientAnswering { response }.listConsumerScopeAccess("311718371", filter), "for $status")
+        }
+    }
+
     @Test
     fun `removes scope access with the organisation in the path and only the scope in the query`() = runBlocking {
         clientAnswering().removeScopeAccess("311718371", "kartverk:matrikkel.read")
@@ -144,6 +194,7 @@ class MaskinportenManagementClientTest {
         val calls = mapOf<String, suspend MaskinportenManagementClient.(String) -> Unit>(
             "grant" to { grantScopeAccess(it, "kartverk:matrikkel.read") },
             "remove" to { removeScopeAccess(it, "kartverk:matrikkel.read") },
+            "list" to { listConsumerScopeAccess(it) },
         )
         for ((name, call) in calls) {
             for (consumerOrgno in listOf("..", ".", "", "31171837", "3117183710", "31171837a", "311718371/..", " 311718371")) {

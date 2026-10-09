@@ -115,6 +115,14 @@ internal fun RoutingCall.organizationNumberPathParameter(name: String): String {
     return value
 }
 
+internal fun ApplicationCall.organizationNumberQueryParameter(name: String): String {
+    val value = onlyQueryParameter(name)
+    if (!ORGANIZATION_NUMBER.matches(value)) {
+        throw InvalidRequestException("Query parameter $name must be an organisation number of 9 digits")
+    }
+    return value
+}
+
 private val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
 
 internal suspend fun ApplicationCall.respondFromDigdir(response: DigdirHttpResponse) {

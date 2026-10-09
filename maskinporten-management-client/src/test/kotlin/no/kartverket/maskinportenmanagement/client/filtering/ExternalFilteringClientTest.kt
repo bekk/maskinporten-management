@@ -1,9 +1,9 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlinx.coroutines.runBlocking
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -12,19 +12,19 @@ import kotlin.test.assertFailsWith
 
 class ExternalFilteringClientTest {
 
-    private val sent = mutableListOf<DigdirHttpRequest>()
+    private val sent = mutableListOf<OutgoingRequest>()
     private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
 
-    private fun filteringAnswering(answer: (DigdirHttpRequest) -> DigdirHttpResponse) =
+    private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
             "https://filtering.test/scopes",
-            DigdirHttpClient { request ->
+            OutgoingHttpClient { request ->
                 sent += request
                 answer(request)
             },
         )
 
-    private fun answer(status: Int, body: String) = DigdirHttpResponse(status, "application/json", body.toByteArray())
+    private fun answer(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
 
     @Test
     fun `posts the client certificate to the URL and reads exact and prefix`() = runBlocking {

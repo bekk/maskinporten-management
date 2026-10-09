@@ -6,10 +6,10 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
-public class JavaDigdirHttpClient(
+public class JavaOutgoingHttpClient(
     private val httpClient: HttpClient,
     private val requestTimeout: Duration,
-) : DigdirHttpClient {
+) : OutgoingHttpClient {
     init {
         require(httpClient.followRedirects() == HttpClient.Redirect.NEVER) {
             "httpClient must not follow redirects, or a redirect would hand our tokens to another host"
@@ -19,7 +19,7 @@ public class JavaDigdirHttpClient(
         }
     }
 
-    override suspend fun send(request: DigdirHttpRequest): DigdirHttpResponse {
+    override suspend fun send(request: OutgoingRequest): OutgoingResponse {
         val body = request.body?.let(HttpRequest.BodyPublishers::ofByteArray) ?: HttpRequest.BodyPublishers.noBody()
         val builder = HttpRequest.newBuilder(request.url)
             .timeout(requestTimeout)
@@ -27,7 +27,7 @@ public class JavaDigdirHttpClient(
         request.headers.forEach { (name, value) -> builder.header(name, value) }
 
         val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).await()
-        return DigdirHttpResponse(
+        return OutgoingResponse(
             statusCode = response.statusCode(),
             contentType = response.headers().firstValue("Content-Type").orElse(null),
             body = response.body(),

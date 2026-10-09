@@ -12,7 +12,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class JavaDigdirHttpClientTest {
+class JavaOutgoingHttpClientTest {
 
     private val noRedirects = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()
 
@@ -20,14 +20,14 @@ class JavaDigdirHttpClientTest {
     fun `refuses an HttpClient that follows redirects`() {
         val following = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()
 
-        val e = assertFailsWith<IllegalArgumentException> { JavaDigdirHttpClient(following, Duration.ofSeconds(3)) }
+        val e = assertFailsWith<IllegalArgumentException> { JavaOutgoingHttpClient(following, Duration.ofSeconds(3)) }
 
         assertContains(e.message!!, "redirects")
     }
 
     @Test
     fun `rejects a request timeout that is not positive`() {
-        val e = assertFailsWith<IllegalArgumentException> { JavaDigdirHttpClient(noRedirects, Duration.ZERO) }
+        val e = assertFailsWith<IllegalArgumentException> { JavaOutgoingHttpClient(noRedirects, Duration.ZERO) }
 
         assertContains(e.message!!, "positive")
     }
@@ -46,7 +46,7 @@ class JavaDigdirHttpClientTest {
         try {
             val url = URI("http://localhost:${server.address.port}/api/v1/scopes/access")
             val response = runBlocking {
-                JavaDigdirHttpClient(noRedirects, Duration.ofSeconds(3)).send(DigdirHttpRequest("GET", url, emptyMap()))
+                JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(3)).send(OutgoingRequest("GET", url, emptyMap()))
             }
 
             assertEquals(404, response.statusCode)

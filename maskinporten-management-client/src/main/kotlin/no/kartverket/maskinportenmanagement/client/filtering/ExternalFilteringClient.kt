@@ -1,16 +1,16 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlinx.serialization.json.Json
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import java.io.IOException
 import java.net.URI
 
-public class ExternalFilteringClient(url: String, private val httpClient: DigdirHttpClient) {
+public class ExternalFilteringClient(url: String, private val httpClient: OutgoingHttpClient) {
     private val url = URI.create(url)
 
     public suspend fun filterFor(clientCertificate: String): ScopeFilter {
-        val request = DigdirHttpRequest(
+        val request = OutgoingRequest(
             method = "POST",
             url = url,
             headers = mapOf("Accept" to "application/json", CLIENT_CERTIFICATE_HEADER to clientCertificate),

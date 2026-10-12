@@ -4,9 +4,9 @@ Management of Maskinporten scopes.
 
 Requests reach the REST server through Istio, where OPA has already checked that the caller may make them. The
 server then calls [Digdir's API](https://api.samarbeid.digdir.no/swagger-ui/index.html) for managing Maskinporten
-scopes and returns Digdir's response unchanged. Lists like `GET /api/scopes` are the exception: they only keep the
-scopes the calling app has access to, which the server gets from `EXTERNAL_FILTERING_URL` (see
-[`.env.example`](.env.example)).
+scopes and returns Digdir's response unchanged. Lists like `GET /api/scopes` and `GET /api/scopeaccess/scopes` are
+the exception: they only keep the scopes the calling app has access to, which the server gets from
+`EXTERNAL_FILTERING_URL` (see [`.env.example`](.env.example)).
 
 ## Modules
 

@@ -6,7 +6,7 @@ import ch.qos.logback.core.read.ListAppender
 import kotlinx.coroutines.runBlocking
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import kotlin.test.AfterTest
@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class LoggingDigdirHttpClientTest {
+class LoggingOutgoingHttpClientTest {
 
     private lateinit var appender: ListAppender<ILoggingEvent>
 
@@ -38,9 +38,9 @@ class LoggingDigdirHttpClientTest {
 
     @Test
     fun `logs the call before it is sent and its status after, but not its headers`() = runBlocking {
-        val client = LoggingDigdirHttpClient {
+        val client = LoggingOutgoingHttpClient {
             assertEquals(listOf("Calling POST https://filtering.test/filter"), lines)
-            DigdirHttpResponse(200, "application/json", """{"exact":[],"prefix":[]}""".toByteArray())
+            OutgoingResponse(200, "application/json", """{"exact":[],"prefix":[]}""".toByteArray())
         }
 
         ExternalFilteringClient("https://filtering.test/filter", client).filterFor("URI=spiffe://cluster.local/ns/a/sa/b")
@@ -52,7 +52,7 @@ class LoggingDigdirHttpClientTest {
 
     @Test
     fun `logs a call that got no answer, and passes the failure on`() {
-        val client = LoggingDigdirHttpClient { throw IOException("Connection refused") }
+        val client = LoggingOutgoingHttpClient { throw IOException("Connection refused") }
 
         assertFailsWith<ExternalFilteringException> {
             runBlocking { ExternalFilteringClient("https://filtering.test/filter", client).filterFor("certificate") }

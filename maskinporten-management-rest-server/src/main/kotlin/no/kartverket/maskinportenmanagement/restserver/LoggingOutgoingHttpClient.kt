@@ -1,14 +1,14 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import org.slf4j.LoggerFactory
 import kotlin.time.TimeSource
 
 // Logs only the method and URL, never headers or bodies: they hold our Maskinporten token
-internal class LoggingDigdirHttpClient(private val httpClient: DigdirHttpClient) : DigdirHttpClient {
-    override suspend fun send(request: DigdirHttpRequest): DigdirHttpResponse {
+internal class LoggingOutgoingHttpClient(private val httpClient: OutgoingHttpClient) : OutgoingHttpClient {
+    override suspend fun send(request: OutgoingRequest): OutgoingResponse {
         val call = "${request.method} ${request.url}"
         log.info("Calling $call")
         val start = TimeSource.Monotonic.markNow()

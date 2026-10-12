@@ -10,9 +10,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.DigdirException
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.GrantSigner
 import no.kartverket.maskinportenmanagement.client.kms.Kms
 import java.net.URI
@@ -34,7 +34,7 @@ public class MaskinportenTokenProvider(
     private val scopes: String,
     kms: Kms,
     certificateChainPem: String,
-    private val httpClient: DigdirHttpClient,
+    private val httpClient: OutgoingHttpClient,
     private val clock: Clock = Clock.systemUTC(),
 ) : AccessTokenProvider {
     private val grantSigner = GrantSigner(kms, certificateChainPem)
@@ -49,7 +49,7 @@ public class MaskinportenTokenProvider(
         val requestedAt = clock.instant()
         val form = "grant_type=${encode(GRANT_TYPE)}&assertion=${encode(grant(metadata.issuer, requestedAt))}"
         val response = httpClient.send(
-            DigdirHttpRequest(
+            OutgoingRequest(
                 method = "POST",
                 url = URI.create(metadata.tokenEndpoint),
                 headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
@@ -67,7 +67,7 @@ public class MaskinportenTokenProvider(
     }
 
     private suspend fun fetchMetadata(): Metadata = httpClient.send(
-        DigdirHttpRequest(method = "GET", url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
+        OutgoingRequest(method = "GET", url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
     ).decode("metadata request")
 
     private suspend fun grant(audience: String, now: Instant): String {
@@ -83,7 +83,7 @@ public class MaskinportenTokenProvider(
         return withContext(Dispatchers.IO) { grantSigner.sign(claims) }
     }
 
-    private inline fun <reified T> DigdirHttpResponse.decode(what: String): T {
+    private inline fun <reified T> OutgoingResponse.decode(what: String): T {
         val text = body.decodeToString()
         if (statusCode != 200) throw DigdirException("Maskinporten $what failed with HTTP $statusCode: $text")
         return try {

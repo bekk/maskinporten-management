@@ -16,9 +16,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpClient
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpRequest
-import no.kartverket.maskinportenmanagement.client.http.DigdirHttpResponse
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
@@ -31,8 +31,8 @@ import kotlin.test.assertTrue
 
 class ScopesTest {
 
-    private val digdirRequests = mutableListOf<DigdirHttpRequest>()
-    private val filteringRequests = mutableListOf<DigdirHttpRequest>()
+    private val digdirRequests = mutableListOf<OutgoingRequest>()
+    private val filteringRequests = mutableListOf<OutgoingRequest>()
     private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
 
     private val scopes = """[
@@ -45,19 +45,19 @@ class ScopesTest {
     // For the tests of the filtering settings, which build the rest from config
     private val unusedClient = MaskinportenManagementClient("https://digdir.test", { error("Not called") }) { "test-token" }
 
-    private fun json(status: Int, body: String) = DigdirHttpResponse(status, "application/json", body.toByteArray())
+    private fun json(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
 
     private fun scopesTest(
-        filtering: ((DigdirHttpRequest) -> DigdirHttpResponse)? = {
+        filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
             json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}""")
         },
-        digdir: (DigdirHttpRequest) -> DigdirHttpResponse = { json(200, scopes) },
+        digdir: (OutgoingRequest) -> OutgoingResponse = { json(200, scopes) },
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
         val externalFiltering = filtering?.let { answer ->
             ExternalFilteringClient(
                 "https://filtering.test/scopes",
-                DigdirHttpClient { request ->
+                OutgoingHttpClient { request ->
                     filteringRequests += request
                     answer(request)
                 },
@@ -69,7 +69,7 @@ class ScopesTest {
             configureMaskinportenManagement(
                 MaskinportenManagementClient(
                     "https://digdir.test",
-                    DigdirHttpClient { request ->
+                    OutgoingHttpClient { request ->
                         digdirRequests += request
                         digdir(request)
                     },
@@ -141,7 +141,7 @@ class ScopesTest {
 
     @Test
     fun `gives 502 without calling Digdir when the filtering service fails`() {
-        val failures = listOf<(DigdirHttpRequest) -> DigdirHttpResponse>(
+        val failures = listOf<(OutgoingRequest) -> OutgoingResponse>(
             { json(500, "{}") },
             { json(404, "{}") },
             { json(200, "not json") },

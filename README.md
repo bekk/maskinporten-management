@@ -2,8 +2,8 @@
 
 Management of Maskinporten scopes.
 
-Requests reach the REST server through Istio, where OPA has already checked that the caller may make them. The
-server then calls [Digdir's API](https://api.samarbeid.digdir.no/swagger-ui/index.html) for managing Maskinporten
+A request only reaches the REST server after the platform has checked that the caller may make it. The server
+then calls [Digdir's API](https://api.samarbeid.digdir.no/swagger-ui/index.html) for managing Maskinporten
 scopes and returns Digdir's response unchanged. Lists like `GET /api/scopes` and `GET /api/scopeaccess/scopes` are
 the exception: they only keep the scopes the calling app has access to, which the server gets from
 `EXTERNAL_FILTERING_URL` (see [`.env.example`](.env.example)).
@@ -35,7 +35,7 @@ The server calls Digdir at `DIGDIR_BASE_URL`, with a token from Maskinporten. It
 carries the business certificate and is signed in Cloud KMS, where the certificate's private key lives. Locally, the
 mock API plays Maskinporten and the filtering service, and the grant is signed with a key from a file
 (`LOCAL_KMS_KEY_FILE`) instead of Cloud KMS (`KMS_KEY_VERSION`). Lists then need the `X-Forwarded-Client-Cert` header
-that Istio sets in production; the mock's test frontend sets it for you. In `.env.example`, `DIGDIR_BASE_URL` is the
+that the platform sets in production; the mock's test frontend sets it for you. In `.env.example`, `DIGDIR_BASE_URL` is the
 mock API from [maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on
 port 8080, so `.env.example` moves the server to port 8081.
 

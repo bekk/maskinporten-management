@@ -15,12 +15,14 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -42,7 +44,7 @@ class ScopeAccessTest {
             configureSerialization()
             configureErrorHandling()
             configureMaskinportenManagement(
-                MaskinportenManagementClient("https://digdir.test", digdir) { "test-token" },
+                MaskinportenManagementClient(URI("https://digdir.test"), digdir) { AccessToken.of("test-token") },
                 ExternalFiltering(null),
             )
             configureRouting()
@@ -100,7 +102,7 @@ class ScopeAccessTest {
             }
 
             val request = sent.single()
-            assertEquals("GET", request.method)
+            assertEquals("GET", request.method.name)
             assertEquals("/api/v1/scopes/access", request.url.path)
             assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $query")
         }
@@ -138,6 +140,24 @@ class ScopeAccessTest {
                 response.errorResponse(),
                 "for \"${query.take(60)}\"",
             )
+        }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `a scope with whitespace is refused without calling Digdir`() = scopeAccessTest {
+        for (query in listOf("?scope=kartverk:a+kartverk:b", "?scope=kartverk:a%20kartverk:b", "?scope=kartverk:a%09kartverk:b", "?scope=+kartverk:a")) {
+            val responses = listOf(client.get("/api/scopeaccess/orgs$query")) +
+                changeMethods.map { change(it, "/api/scopeaccess/311718371$query") }
+
+            for (response in responses) {
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
+                assertEquals(
+                    ErrorResponse("Query parameter scope must not contain whitespace", ErrorCode.INVALID_REQUEST),
+                    response.errorResponse(),
+                    "for \"$query\"",
+                )
+            }
         }
         assertTrue(sent.isEmpty())
     }
@@ -212,7 +232,7 @@ class ScopeAccessTest {
             }
 
             val request = sent.single()
-            assertEquals(method.value, request.method)
+            assertEquals(method.value, request.method.name)
             assertEquals("/api/v1/scopes/access/311718371", request.url.path, "for $method")
             assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $method")
         }

@@ -15,13 +15,16 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -43,7 +46,7 @@ class ScopesTest {
     ]"""
 
     // For the tests of the filtering settings, which build the rest from config
-    private val unusedClient = MaskinportenManagementClient("https://digdir.test", { error("Not called") }) { "test-token" }
+    private val unusedClient = MaskinportenManagementClient(URI("https://digdir.test"), { error("Not called") }) { AccessToken.of("test-token") }
 
     private fun json(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
 
@@ -56,7 +59,7 @@ class ScopesTest {
     ) = testApplication {
         val externalFiltering = filtering?.let { answer ->
             ExternalFilteringClient(
-                "https://filtering.test/scopes",
+                URI("https://filtering.test/scopes"),
                 OutgoingHttpClient { request ->
                     filteringRequests += request
                     answer(request)
@@ -68,12 +71,12 @@ class ScopesTest {
             configureErrorHandling()
             configureMaskinportenManagement(
                 MaskinportenManagementClient(
-                    "https://digdir.test",
+                    URI("https://digdir.test"),
                     OutgoingHttpClient { request ->
                         digdirRequests += request
                         digdir(request)
                     },
-                ) { "test-token" },
+                ) { AccessToken.of("test-token") },
                 ExternalFiltering(externalFiltering),
             )
             configureRouting()
@@ -106,11 +109,11 @@ class ScopesTest {
         listScopes()
 
         val filtering = filteringRequests.single()
-        assertEquals("POST", filtering.method)
+        assertEquals(HttpMethod.POST, filtering.method)
         assertEquals("https://filtering.test/scopes", filtering.url.toString())
         assertEquals(certificate, filtering.headers["X-Forwarded-Client-Cert"])
         val digdir = digdirRequests.single()
-        assertEquals("GET", digdir.method)
+        assertEquals(HttpMethod.GET, digdir.method)
         assertEquals("https://digdir.test/api/v1/scopes", digdir.url.toString())
     }
 

@@ -32,7 +32,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/Scope"
+                                        "$ref": "#/components/schemas/ScopeDetails"
                                     }
                                 },
                                 "examples": {
@@ -482,9 +482,9 @@
     },
     "components": {
         "schemas": {
-            "Scope": {
+            "ScopeDetails": {
                 "type": "object",
-                "title": "Scope",
+                "title": "ScopeDetails",
                 "properties": {
                     "name": {
                         "type": "string",

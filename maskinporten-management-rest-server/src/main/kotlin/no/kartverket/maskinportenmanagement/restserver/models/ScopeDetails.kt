@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Scope(
+internal data class ScopeDetails(
     val name: String,
     val prefix: String,
     val subscope: String,
@@ -31,7 +31,7 @@ data class Scope(
 )
 
 @Serializable
-enum class IntegrationType {
+internal enum class IntegrationType {
     @SerialName("ansattporten")
     ANSATTPORTEN,
 
@@ -55,13 +55,13 @@ enum class IntegrationType {
 }
 
 @Serializable
-enum class TokenType {
+internal enum class TokenType {
     SELF_CONTAINED,
     OPAQUE,
 }
 
 @Serializable
-enum class Visibility {
+internal enum class Visibility {
     INTERNAL,
     PRIVATE,
     PUBLIC,

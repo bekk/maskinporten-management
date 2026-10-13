@@ -8,6 +8,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -60,22 +62,24 @@ class MaskinportenTokenProviderTest {
         }
     }
 
-    private val provider = MaskinportenTokenProvider(
+    private fun providerAsking(scopes: List<Scope>) = MaskinportenTokenProvider(
         wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
         clientId = "test-client",
-        scopes = "idporten:scopes.write",
+        scopes = scopes,
         kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
         certificateChainPem = chain.joinToString("") { pem(it) },
         httpClient = maskinporten,
         clock = clock,
     )
 
+    private val provider = providerAsking(listOf(Scope.of("idporten:scopes.write")))
+
     @Test
     fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
-        assertEquals("token-1", provider.accessToken())
+        assertEquals("token-1", provider.accessToken().value)
 
         val request = tokenRequests.single()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.POST, request.method)
         assertEquals("application/x-www-form-urlencoded", request.headers["Content-Type"])
         val form = request.body!!.decodeToString().split('&').associate {
             val (key, value) = it.split('=', limit = 2)
@@ -105,6 +109,21 @@ class MaskinportenTokenProviderTest {
     }
 
     @Test
+    fun `asks for all the scopes, space-separated`() = runBlocking {
+        providerAsking(listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))).accessToken()
+
+        val form = tokenRequests.single().body!!.decodeToString()
+        val assertion = URLDecoder.decode(form.substringAfter("assertion="), Charsets.UTF_8)
+        val claimsJson = decodeJson(assertion.split('.')[1])
+        assertEquals("idporten:scopes.read idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `refuses no scopes`() {
+        assertFailsWith<IllegalArgumentException> { providerAsking(emptyList()) }
+    }
+
+    @Test
     fun `reuses the token until shortly before it expires`() = runBlocking {
         provider.accessToken()
         now = now.plusSeconds(99)
@@ -113,30 +132,30 @@ class MaskinportenTokenProviderTest {
 
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         now = now.plusSeconds(1)
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 
     @Test
     fun `a token Digdir refused is replaced on the next call`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
 
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 
     @Test
     fun `refusing an old token keeps the new one`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         provider.accessToken()
 
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
 
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 

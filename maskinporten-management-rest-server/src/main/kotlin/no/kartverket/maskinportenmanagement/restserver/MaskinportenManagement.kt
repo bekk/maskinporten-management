@@ -13,7 +13,10 @@ import io.ktor.server.request.queryString
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.OrganizationNumber
+import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
+import no.kartverket.maskinportenmanagement.client.filtering.ClientCertificate
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
@@ -23,7 +26,6 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.CloudKms
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
-import java.net.URI
 import java.net.http.HttpClient
 import java.time.Duration
 
@@ -46,9 +48,9 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
     }
     val kms = keyVersion?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
     val tokenProvider = MaskinportenTokenProvider(
-        wellKnownUrl = URI(config.url("maskinporten.wellKnownUrl")),
+        wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
-        scopes = config.required("maskinporten.scopes"),
+        scopes = config.spaceSeparated("maskinporten.scopes").map(Scope::of),
         kms = kms,
         certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
         httpClient = httpClient,
@@ -83,7 +85,7 @@ class ExternalFiltering(private val client: ExternalFilteringClient?) {
         val client = client ?: return null
         val certificate = call.request.headers[CLIENT_CERTIFICATE_HEADER]?.takeIf { it.isNotBlank() }
             ?: throw InvalidRequestException("Header $CLIENT_CERTIFICATE_HEADER is required")
-        return client.filterFor(certificate)
+        return client.filterFor(ClientCertificate.of(certificate))
     }
 }
 
@@ -109,23 +111,23 @@ internal fun onlyQueryParameter(query: String, name: String): String {
     return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
 
-internal fun RoutingCall.organizationNumberPathParameter(name: String): String {
-    val value = pathParameters[name].orEmpty()
-    if (!ORGANIZATION_NUMBER.matches(value)) {
-        throw InvalidRequestException("Path parameter $name must be an organisation number of 9 digits")
-    }
-    return value
-}
-
-internal fun ApplicationCall.organizationNumberQueryParameter(name: String): String {
+internal fun ApplicationCall.scopeQueryParameter(name: String): Scope {
     val value = onlyQueryParameter(name)
-    if (!ORGANIZATION_NUMBER.matches(value)) {
-        throw InvalidRequestException("Query parameter $name must be an organisation number of 9 digits")
-    }
-    return value
+    return runCatching { Scope.of(value) }.getOrNull()
+        ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
 }
 
-private val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
+internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {
+    val value = pathParameters[name].orEmpty()
+    return runCatching { OrganizationNumber.of(value) }.getOrNull()
+        ?: throw InvalidRequestException("Path parameter $name must be an organisation number of 9 digits")
+}
+
+internal fun ApplicationCall.organizationNumberQueryParameter(name: String): OrganizationNumber {
+    val value = onlyQueryParameter(name)
+    return runCatching { OrganizationNumber.of(value) }.getOrNull()
+        ?: throw InvalidRequestException("Query parameter $name must be an organisation number of 9 digits")
+}
 
 internal suspend fun ApplicationCall.respondFromDigdir(response: OutgoingResponse) {
     respondBytes(

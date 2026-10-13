@@ -1,10 +1,12 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlinx.coroutines.runBlocking
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -13,11 +15,12 @@ import kotlin.test.assertFailsWith
 class ExternalFilteringClientTest {
 
     private val sent = mutableListOf<OutgoingRequest>()
-    private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
+    private val certificate =
+        ClientCertificate.of("By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app")
 
     private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
-            "https://filtering.test/scopes",
+            URI("https://filtering.test/scopes"),
             OutgoingHttpClient { request ->
                 sent += request
                 answer(request)
@@ -36,9 +39,9 @@ class ExternalFilteringClientTest {
 
         assertEquals(ScopeFilter(listOf("kartverk:nrl.rapportering"), listOf("kartverk:tilgangsstyring/")), filter)
         val request = sent.single()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.POST, request.method)
         assertEquals("https://filtering.test/scopes", request.url.toString())
-        assertEquals(certificate, request.headers["X-Forwarded-Client-Cert"])
+        assertEquals(certificate.value, request.headers["X-Forwarded-Client-Cert"])
     }
 
     @Test

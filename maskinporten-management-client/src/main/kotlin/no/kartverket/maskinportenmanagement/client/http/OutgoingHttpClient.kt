@@ -7,7 +7,7 @@ public fun interface OutgoingHttpClient {
 }
 
 public class OutgoingRequest internal constructor(
-    public val method: String,
+    public val method: HttpMethod,
     public val url: URI,
     public val headers: Map<String, String>,
     public val body: ByteArray? = null,

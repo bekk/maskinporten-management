@@ -58,6 +58,15 @@ class ExternalFilteringClientTest {
     }
 
     @Test
+    fun `fails when a prefix is blank, since it would allow every scope`() {
+        val filtering = filteringAnswering { answer(200, """{"exact":[],"prefix":["kartverk:tilgangsstyring/",""]}""") }
+
+        val e = assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
+
+        assertContains(e.message!!, "must not be blank")
+    }
+
+    @Test
     fun `fails when the filtering service answers with an error`() {
         for (status in listOf(400, 403, 404, 500, 503)) {
             val filtering = filteringAnswering { answer(status, """{"exact":[],"prefix":[]}""") }

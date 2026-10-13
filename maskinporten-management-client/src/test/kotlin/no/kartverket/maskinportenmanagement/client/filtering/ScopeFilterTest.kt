@@ -1,6 +1,8 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -26,6 +28,15 @@ class ScopeFilterTest {
     fun `allows nothing else`() {
         for (scope in listOf("kartverk:nrl.rapportering.ny", "kartverk:dokumentbestilling", "kartverk:tilgangsstyring", "")) {
             assertFalse(filter.allows(scope), scope)
+        }
+    }
+
+    @Test
+    fun `refuses a blank prefix, which would allow every scope`() {
+        for (prefix in listOf("", " ")) {
+            val e = assertFailsWith<IllegalArgumentException>("\"$prefix\"") { ScopeFilter(emptyList(), listOf(prefix)) }
+
+            assertContains(e.message!!, "must not be blank", message = "\"$prefix\"")
         }
     }
 

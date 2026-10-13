@@ -3,7 +3,6 @@ package no.kartverket.maskinportenmanagement.restserver.models
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Only documents Digdir's scopes in the OpenAPI spec; each scope is passed on unchanged
 @Serializable
 data class Scope(
     val name: String,

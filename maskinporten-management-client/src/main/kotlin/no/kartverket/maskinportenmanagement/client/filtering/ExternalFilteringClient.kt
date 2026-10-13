@@ -25,7 +25,7 @@ public class ExternalFilteringClient(private val url: URI, private val httpClien
         return try {
             json.decodeFromString(ScopeFilter.serializer(), response.body.decodeToString())
         } catch (e: IllegalArgumentException) {
-            throw ExternalFilteringException("The filtering service did not answer with exact and prefix: ${e.message}", e)
+            throw ExternalFilteringException("The filtering service did not answer with a valid filter: ${e.message}", e)
         }
     }
 

@@ -165,6 +165,19 @@ class ScopesTest {
     }
 
     @Test
+    fun `a blank prefix from the filtering service gives 502 instead of every scope`() =
+        scopesTest(filtering = { json(200, """{"exact":[],"prefix":[""]}""") }) {
+            val response = listScopes()
+
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals(
+                ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
+                response.errorResponse(),
+            )
+            assertTrue(digdirRequests.isEmpty())
+        }
+
+    @Test
     fun `passes Digdir's errors on unchanged`() {
         val body = """{"status":403,"error":"ingen tilgang"}"""
         for (status in listOf(400, 403, 500, 503)) {

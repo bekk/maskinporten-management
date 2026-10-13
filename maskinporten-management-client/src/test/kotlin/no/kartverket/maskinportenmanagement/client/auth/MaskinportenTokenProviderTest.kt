@@ -94,7 +94,7 @@ class MaskinportenTokenProviderTest {
         assertEquals("test-client", claimsJson.getValue("iss").jsonPrimitive.content)
         assertEquals("idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
         assertEquals(now.epochSecond, claimsJson.getValue("iat").jsonPrimitive.long)
-        assertEquals(now.epochSecond + 60, claimsJson.getValue("exp").jsonPrimitive.long)
+        assertEquals(now.epochSecond + 120, claimsJson.getValue("exp").jsonPrimitive.long)
         assertTrue(claimsJson.getValue("jti").jsonPrimitive.content.isNotBlank())
 
         val verifier = Signature.getInstance("SHA256withRSA").apply {

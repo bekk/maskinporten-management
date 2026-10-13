@@ -62,7 +62,7 @@ public class MaskinportenTokenProvider(
     }
 
     override suspend fun refused(token: String): Unit = mutex.withLock {
-        // Only forget it if no other call has fetched a new one since
+        // Another call may already have fetched a new token
         if (this.token?.value == token) this.token = null
     }
 
@@ -79,7 +79,6 @@ public class MaskinportenTokenProvider(
             .expirationTime(Date.from(now.plusSeconds(GRANT_LIFETIME_SECONDS)))
             .jwtID(UUID.randomUUID().toString())
             .build()
-        // Cloud KMS signs over the network and blocks
         return withContext(Dispatchers.IO) { grantSigner.sign(claims) }
     }
 
@@ -111,8 +110,10 @@ public class MaskinportenTokenProvider(
     private companion object {
         const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
-        // Maskinporten accepts grants that live at most 180 seconds, and recommends 120
-        const val GRANT_LIFETIME_SECONDS = 60L
+        // Digdir's recommended lifetime
+        const val GRANT_LIFETIME_SECONDS = 120L
+
+        // So a token does not expire on its way to Digdir, or early because our clock differs from Maskinporten's
         const val REFRESH_MARGIN_SECONDS = 20L
 
         val json = Json { ignoreUnknownKeys = true }

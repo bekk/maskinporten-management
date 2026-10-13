@@ -15,7 +15,8 @@ import kotlin.test.assertFailsWith
 class ExternalFilteringClientTest {
 
     private val sent = mutableListOf<OutgoingRequest>()
-    private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
+    private val certificate =
+        ClientCertificate.of("By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app")
 
     private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
@@ -40,7 +41,7 @@ class ExternalFilteringClientTest {
         val request = sent.single()
         assertEquals(HttpMethod.POST, request.method)
         assertEquals("https://filtering.test/scopes", request.url.toString())
-        assertEquals(certificate, request.headers["X-Forwarded-Client-Cert"])
+        assertEquals(certificate.value, request.headers["X-Forwarded-Client-Cert"])
     }
 
     @Test

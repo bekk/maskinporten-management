@@ -8,11 +8,11 @@ import java.io.IOException
 import java.net.URI
 
 public class ExternalFilteringClient(private val url: URI, private val httpClient: OutgoingHttpClient) {
-    public suspend fun filterFor(clientCertificate: String): ScopeFilter {
+    public suspend fun filterFor(clientCertificate: ClientCertificate): ScopeFilter {
         val request = OutgoingRequest(
             method = HttpMethod.POST,
             url = url,
-            headers = mapOf("Accept" to "application/json", CLIENT_CERTIFICATE_HEADER to clientCertificate),
+            headers = mapOf("Accept" to "application/json", CLIENT_CERTIFICATE_HEADER to clientCertificate.value),
         )
         val response = try {
             httpClient.send(request)

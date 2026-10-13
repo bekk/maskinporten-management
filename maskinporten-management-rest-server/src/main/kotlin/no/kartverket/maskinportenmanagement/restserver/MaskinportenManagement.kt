@@ -16,6 +16,7 @@ import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
+import no.kartverket.maskinportenmanagement.client.filtering.ClientCertificate
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
@@ -84,7 +85,7 @@ class ExternalFiltering(private val client: ExternalFilteringClient?) {
         val client = client ?: return null
         val certificate = call.request.headers[CLIENT_CERTIFICATE_HEADER]?.takeIf { it.isNotBlank() }
             ?: throw InvalidRequestException("Header $CLIENT_CERTIFICATE_HEADER is required")
-        return client.filterFor(certificate)
+        return client.filterFor(ClientCertificate.of(certificate))
     }
 }
 

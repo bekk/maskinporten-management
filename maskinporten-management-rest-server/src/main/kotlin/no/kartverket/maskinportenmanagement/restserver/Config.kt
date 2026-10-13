@@ -24,6 +24,8 @@ internal fun ApplicationConfig.optional(path: String): String? =
 internal fun ApplicationConfig.required(path: String): String =
     optional(path) ?: error("Missing required configuration $path (see .env.example)")
 
+internal fun ApplicationConfig.spaceSeparated(path: String): List<String> = required(path).split(Regex("\\s+"))
+
 internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean {
     val raw = optional(path) ?: return default
     return raw.toBooleanStrictOrNull()

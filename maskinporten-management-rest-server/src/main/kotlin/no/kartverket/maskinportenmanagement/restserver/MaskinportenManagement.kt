@@ -48,7 +48,7 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
-        scopes = config.required("maskinporten.scopes"),
+        scopes = config.spaceSeparated("maskinporten.scopes"),
         kms = kms,
         certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
         httpClient = httpClient,

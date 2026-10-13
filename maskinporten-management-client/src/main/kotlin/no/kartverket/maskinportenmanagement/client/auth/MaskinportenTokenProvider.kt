@@ -31,12 +31,19 @@ import java.util.UUID
 public class MaskinportenTokenProvider(
     private val wellKnownUrl: URI,
     private val clientId: String,
-    private val scopes: String,
+    private val scopes: List<String>,
     kms: Kms,
     certificateChainPem: String,
     private val httpClient: OutgoingHttpClient,
     private val clock: Clock = Clock.systemUTC(),
 ) : AccessTokenProvider {
+    init {
+        require(scopes.isNotEmpty()) { "scopes must not be empty" }
+        require(scopes.none { it.isEmpty() || it.any(Char::isWhitespace) }) {
+            "Each scope must be non-empty and without whitespace, but scopes were ${scopes.joinToString { "\"$it\"" }}"
+        }
+    }
+
     private val grantSigner = GrantSigner(kms, certificateChainPem)
     private val mutex = Mutex()
     private var metadata: Metadata? = null
@@ -74,7 +81,7 @@ public class MaskinportenTokenProvider(
         val claims = JWTClaimsSet.Builder()
             .audience(audience)
             .issuer(clientId)
-            .claim("scope", scopes)
+            .claim("scope", scopes.joinToString(" "))
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plusSeconds(GRANT_LIFETIME_SECONDS)))
             .jwtID(UUID.randomUUID().toString())

@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 // Only documents Digdir's scopes in the OpenAPI spec; each scope is passed on unchanged
 @Serializable
-data class Scope(
+internal data class Scope(
     val name: String,
     val prefix: String,
     val subscope: String,
@@ -32,7 +32,7 @@ data class Scope(
 )
 
 @Serializable
-enum class IntegrationType {
+internal enum class IntegrationType {
     @SerialName("ansattporten")
     ANSATTPORTEN,
 
@@ -56,13 +56,13 @@ enum class IntegrationType {
 }
 
 @Serializable
-enum class TokenType {
+internal enum class TokenType {
     SELF_CONTAINED,
     OPAQUE,
 }
 
 @Serializable
-enum class Visibility {
+internal enum class Visibility {
     INTERNAL,
     PRIVATE,
     PUBLIC,

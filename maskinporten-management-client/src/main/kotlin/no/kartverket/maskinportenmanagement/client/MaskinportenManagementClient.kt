@@ -72,8 +72,7 @@ public class MaskinportenManagementClient(
         throw DigdirException("Call to Digdir failed: $e", e)
     }
 
-    // Keeps the items whose field is allowed. Anything but a JSON list of objects in a 2xx answer is an error, so
-    // nothing unfiltered gets through
+    // Anything but a JSON list in a 2xx answer is an error, so nothing unfiltered gets through
     private fun OutgoingResponse.keepingOnly(field: String, filter: ScopeFilter): OutgoingResponse {
         if (statusCode !in 200..299) return this
         val items = try {

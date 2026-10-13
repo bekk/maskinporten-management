@@ -113,7 +113,7 @@ public class MaskinportenTokenProvider(
         // Digdir's recommended lifetime
         const val GRANT_LIFETIME_SECONDS = 120L
 
-        // So a token does not expire on its way to Digdir, or early because our clock differs from Maskinporten's
+        // So a token does not run out on its way to Digdir
         const val REFRESH_MARGIN_SECONDS = 20L
 
         val json = Json { ignoreUnknownKeys = true }

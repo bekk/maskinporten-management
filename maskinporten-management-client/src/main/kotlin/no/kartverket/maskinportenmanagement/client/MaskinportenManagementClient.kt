@@ -47,7 +47,7 @@ public class MaskinportenManagementClient(
         val request = OutgoingRequest(
             method = method,
             url = URI.create(baseUrl + pathAndQuery),
-            headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer $token"),
+            headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer ${token.value}"),
         )
         val response = callingDigdir { httpClient.send(request) }
         // Our token is wrong, not the caller's request, so the caller must not get the 401

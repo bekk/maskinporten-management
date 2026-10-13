@@ -15,6 +15,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -43,7 +44,7 @@ class ScopeAccessTest {
             configureSerialization()
             configureErrorHandling()
             configureMaskinportenManagement(
-                MaskinportenManagementClient(URI("https://digdir.test"), digdir) { "test-token" },
+                MaskinportenManagementClient(URI("https://digdir.test"), digdir) { AccessToken.of("test-token") },
                 ExternalFiltering(null),
             )
             configureRouting()

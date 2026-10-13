@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
@@ -29,7 +30,7 @@ class MaskinportenManagementClientTest {
             sent += request
             answer(request)
         },
-        { "test-token" },
+        { AccessToken.of("test-token") },
     )
 
     private val scopes = """[
@@ -209,13 +210,13 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `a 401 from Digdir becomes a DigdirException, and the token is not used again`() {
-        val refused = mutableListOf<String>()
+        val refused = mutableListOf<AccessToken>()
         val client = MaskinportenManagementClient(
             URI("https://digdir.test"),
             { OutgoingResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
             object : AccessTokenProvider {
-                override suspend fun accessToken() = "test-token"
-                override suspend fun refused(token: String) {
+                override suspend fun accessToken() = AccessToken.of("test-token")
+                override suspend fun refused(token: AccessToken) {
                     refused += token
                 }
             },
@@ -224,7 +225,7 @@ class MaskinportenManagementClientTest {
         val e = assertFailsWith<DigdirException> { runBlocking { client.listScopeAccess("kartverk:x") } }
 
         assertContains(e.message!!, "401")
-        assertEquals(listOf("test-token"), refused)
+        assertEquals(listOf(AccessToken.of("test-token")), refused)
     }
 
     @Test

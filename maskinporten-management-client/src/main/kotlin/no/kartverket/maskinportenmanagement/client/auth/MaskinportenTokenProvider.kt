@@ -49,7 +49,7 @@ public class MaskinportenTokenProvider(
     private var metadata: Metadata? = null
     private var token: Token? = null
 
-    override suspend fun accessToken(): String = mutex.withLock {
+    override suspend fun accessToken(): AccessToken = mutex.withLock {
         token?.takeIf { clock.instant() < it.refreshAt }?.let { return it.value }
 
         val metadata = metadata ?: fetchMetadata().also { metadata = it }
@@ -64,11 +64,12 @@ public class MaskinportenTokenProvider(
             ),
         )
         val tokenResponse = response.decode<TokenResponse>("token request")
-        token = Token(tokenResponse.accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
-        tokenResponse.accessToken
+        val accessToken = AccessToken.of(tokenResponse.accessToken)
+        token = Token(accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
+        accessToken
     }
 
-    override suspend fun refused(token: String): Unit = mutex.withLock {
+    override suspend fun refused(token: AccessToken): Unit = mutex.withLock {
         // Another call may already have fetched a new token
         if (this.token?.value == token) this.token = null
     }
@@ -112,7 +113,7 @@ public class MaskinportenTokenProvider(
         @SerialName("expires_in") val expiresIn: Long,
     )
 
-    private class Token(val value: String, val refreshAt: Instant)
+    private class Token(val value: AccessToken, val refreshAt: Instant)
 
     private companion object {
         const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"

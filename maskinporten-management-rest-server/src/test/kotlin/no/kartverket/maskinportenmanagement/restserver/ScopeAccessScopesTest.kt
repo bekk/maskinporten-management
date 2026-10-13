@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
@@ -67,7 +68,7 @@ class ScopeAccessScopesTest {
                         digdirRequests += request
                         digdir(request)
                     },
-                ) { "test-token" },
+                ) { AccessToken.of("test-token") },
                 ExternalFiltering(externalFiltering),
             )
             configureRouting()

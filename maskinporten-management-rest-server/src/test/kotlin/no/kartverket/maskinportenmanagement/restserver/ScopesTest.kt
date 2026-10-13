@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
@@ -44,7 +45,7 @@ class ScopesTest {
     ]"""
 
     // For the tests of the filtering settings, which build the rest from config
-    private val unusedClient = MaskinportenManagementClient(URI("https://digdir.test"), { error("Not called") }) { "test-token" }
+    private val unusedClient = MaskinportenManagementClient(URI("https://digdir.test"), { error("Not called") }) { AccessToken.of("test-token") }
 
     private fun json(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
 
@@ -74,7 +75,7 @@ class ScopesTest {
                         digdirRequests += request
                         digdir(request)
                     },
-                ) { "test-token" },
+                ) { AccessToken.of("test-token") },
                 ExternalFiltering(externalFiltering),
             )
             configureRouting()

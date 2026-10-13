@@ -74,7 +74,7 @@ class MaskinportenTokenProviderTest {
 
     @Test
     fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
-        assertEquals("token-1", provider.accessToken())
+        assertEquals("token-1", provider.accessToken().value)
 
         val request = tokenRequests.single()
         assertEquals("POST", request.method)
@@ -132,30 +132,30 @@ class MaskinportenTokenProviderTest {
 
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         now = now.plusSeconds(1)
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 
     @Test
     fun `a token Digdir refused is replaced on the next call`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
 
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 
     @Test
     fun `refusing an old token keeps the new one`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         provider.accessToken()
 
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
 
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 

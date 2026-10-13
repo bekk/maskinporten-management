@@ -1,5 +1,7 @@
 package no.kartverket.maskinportenmanagement.client.auth
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -45,6 +47,7 @@ class MaskinportenTokenProviderTest {
         override fun withZone(zone: java.time.ZoneId?) = this
     }
 
+    private var metadataRequests = 0
     private val tokenRequests = mutableListOf<OutgoingRequest>()
     private var tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-1","expires_in":120}""".toByteArray())
 
@@ -54,7 +57,7 @@ class MaskinportenTokenProviderTest {
                 200,
                 "application/json",
                 """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token","jwks_uri":"x"}""".toByteArray(),
-            )
+            ).also { metadataRequests++ }
 
             "https://maskinporten.test/token" -> tokenAnswer.also { tokenRequests += request }
 
@@ -134,6 +137,24 @@ class MaskinportenTokenProviderTest {
         now = now.plusSeconds(1)
         assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
+    }
+
+    @Test
+    fun `fetches Maskinporten's metadata only once`() = runBlocking {
+        provider.accessToken()
+        now = now.plusSeconds(120)
+        provider.accessToken()
+
+        assertEquals(2, tokenRequests.size)
+        assertEquals(1, metadataRequests)
+    }
+
+    @Test
+    fun `calls at the same time share one token request`() = runBlocking {
+        val tokens = List(2) { async { provider.accessToken() } }.awaitAll()
+
+        assertEquals(listOf("token-1", "token-1"), tokens.map { it.value })
+        assertEquals(1, tokenRequests.size)
     }
 
     @Test

@@ -1,7 +1,16 @@
 plugins {
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.jib)
 }
+
+val dockerImage = providers.gradleProperty("dockerImage").orElse("maskinporten-management-rest-server:local")
+val dockerTags = providers.gradleProperty("dockerTags").orNull
+    ?.split(',')
+    ?.map(String::trim)
+    ?.filter(String::isNotEmpty)
+    ?.toSet()
+    ?: emptySet()
 
 application {
     mainClass = "no.kartverket.maskinportenmanagement.restserver.MainKt"
@@ -58,4 +67,19 @@ dependencies {
 
     testImplementation(ktorLibs.server.testHost)
     testImplementation(testFixtures(project(":maskinporten-management-client")))
+}
+
+jib {
+    from {
+        // TODO: DHI
+        image = "eclipse-temurin:25-jre-alpine-3.24@sha256:3c0a9084927a221ccd1d007fcaf614465672c0af37aaa834c5184483afe56d61"
+    }
+    to {
+        image = dockerImage.get()
+        tags = dockerTags
+    }
+    container {
+        ports = listOf("8080")
+        user = "1000:1000"
+    }
 }

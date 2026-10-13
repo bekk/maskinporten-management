@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -60,7 +61,7 @@ class MaskinportenTokenProviderTest {
         }
     }
 
-    private fun providerAsking(scopes: List<String>) = MaskinportenTokenProvider(
+    private fun providerAsking(scopes: List<Scope>) = MaskinportenTokenProvider(
         wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
         clientId = "test-client",
         scopes = scopes,
@@ -70,7 +71,7 @@ class MaskinportenTokenProviderTest {
         clock = clock,
     )
 
-    private val provider = providerAsking(listOf("idporten:scopes.write"))
+    private val provider = providerAsking(listOf(Scope.of("idporten:scopes.write")))
 
     @Test
     fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
@@ -108,7 +109,7 @@ class MaskinportenTokenProviderTest {
 
     @Test
     fun `asks for all the scopes, space-separated`() = runBlocking {
-        providerAsking(listOf("idporten:scopes.read", "idporten:scopes.write")).accessToken()
+        providerAsking(listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))).accessToken()
 
         val form = tokenRequests.single().body!!.decodeToString()
         val assertion = URLDecoder.decode(form.substringAfter("assertion="), Charsets.UTF_8)
@@ -118,7 +119,7 @@ class MaskinportenTokenProviderTest {
 
     @Test
     fun `refuses no scopes, and a scope with whitespace`() {
-        for (scopes in listOf(emptyList(), listOf(""), listOf("idporten:scopes.read idporten:scopes.write"))) {
+        for (scopes in listOf(emptyList(), listOf(Scope.of("")), listOf(Scope.of("idporten:scopes.read idporten:scopes.write")))) {
             assertFailsWith<IllegalArgumentException>("$scopes") { providerAsking(scopes) }
         }
     }

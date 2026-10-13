@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -31,7 +32,7 @@ import java.util.UUID
 public class MaskinportenTokenProvider(
     private val wellKnownUrl: URI,
     private val clientId: String,
-    private val scopes: List<String>,
+    private val scopes: List<Scope>,
     kms: Kms,
     certificateChainPem: String,
     private val httpClient: OutgoingHttpClient,
@@ -39,8 +40,8 @@ public class MaskinportenTokenProvider(
 ) : AccessTokenProvider {
     init {
         require(scopes.isNotEmpty()) { "scopes must not be empty" }
-        require(scopes.none { it.isEmpty() || it.any(Char::isWhitespace) }) {
-            "Each scope must be non-empty and without whitespace, but scopes were ${scopes.joinToString { "\"$it\"" }}"
+        require(scopes.none { it.value.isEmpty() || it.value.any(Char::isWhitespace) }) {
+            "Each scope must be non-empty and without whitespace, but scopes were ${scopes.joinToString { "\"${it.value}\"" }}"
         }
     }
 
@@ -82,7 +83,7 @@ public class MaskinportenTokenProvider(
         val claims = JWTClaimsSet.Builder()
             .audience(audience)
             .issuer(clientId)
-            .claim("scope", scopes.joinToString(" "))
+            .claim("scope", scopes.joinToString(" ") { it.value })
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plusSeconds(GRANT_LIFETIME_SECONDS)))
             .jwtID(UUID.randomUUID().toString())

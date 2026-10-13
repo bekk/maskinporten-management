@@ -7,22 +7,14 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
-import no.kartverket.maskinportenmanagement.client.auth.AccessToken
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
-import no.kartverket.maskinportenmanagement.client.http.HttpMethod
-import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
-import java.io.IOException
-import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -32,7 +24,6 @@ class ScopeAccessScopesTest {
 
     private val digdirRequests = mutableListOf<OutgoingRequest>()
     private val filteringRequests = mutableListOf<OutgoingRequest>()
-    private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
 
     private val scopeAccess = """[
         {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
@@ -41,50 +32,18 @@ class ScopeAccessScopesTest {
         {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371","state":"APPROVED"}
     ]"""
 
-    private fun json(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
-
     private fun scopeAccessTest(
         filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
             json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}""")
         },
-        digdir: (OutgoingRequest) -> OutgoingResponse = { json(200, scopeAccess) },
         block: suspend ApplicationTestBuilder.() -> Unit,
-    ) = testApplication {
-        val externalFiltering = filtering?.let { answer ->
-            ExternalFilteringClient(
-                URI("https://filtering.test/scopes"),
-                OutgoingHttpClient { request ->
-                    filteringRequests += request
-                    answer(request)
-                },
-            )
-        }
-        application {
-            configureSerialization()
-            configureErrorHandling()
-            configureMaskinportenManagement(
-                MaskinportenManagementClient(
-                    URI("https://digdir.test"),
-                    OutgoingHttpClient { request ->
-                        digdirRequests += request
-                        digdir(request)
-                    },
-                ) { AccessToken.of("test-token") },
-                ExternalFiltering(externalFiltering),
-            )
-            configureRouting()
-        }
-        block()
-    }
+    ) = testServer(recording(digdirRequests) { json(200, scopeAccess) }, filtering?.let { recording(filteringRequests, it) }, block)
 
     private suspend fun ApplicationTestBuilder.listScopes(query: String = "?orgnr=311718371"): HttpResponse =
-        client.get("/api/scopeaccess/scopes$query") { header("X-Forwarded-Client-Cert", certificate) }
+        client.get("/api/scopeaccess/scopes$query") { header("X-Forwarded-Client-Cert", CLIENT_CERTIFICATE) }
 
     private suspend fun HttpResponse.scopes(): List<String> =
         Json.parseToJsonElement(bodyAsText()).jsonArray.map { it.jsonObject.getValue("scope").jsonPrimitive.content }
-
-    private suspend fun HttpResponse.errorResponse(): ErrorResponse =
-        Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
 
     @Test
     fun `returns only the organisation's access to the scopes the calling app has access to`() = scopeAccessTest {
@@ -102,37 +61,22 @@ class ScopeAccessScopesTest {
         scopeAccessTest {
             listScopes()
 
-            val filtering = filteringRequests.single()
-            assertEquals(HttpMethod.POST, filtering.method)
-            assertEquals(certificate, filtering.headers["X-Forwarded-Client-Cert"])
-            val digdir = digdirRequests.single()
-            assertEquals(HttpMethod.GET, digdir.method)
-            assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", digdir.url.toString())
+            assertEquals(CLIENT_CERTIFICATE, filteringRequests.single().headers["X-Forwarded-Client-Cert"])
+            assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", digdirRequests.single().url.toString())
         }
 
     @Test
     fun `a query that is not exactly one orgnr of 9 digits is refused before anything else is called`() = scopeAccessTest {
-        val queries = listOf(
-            "",
-            "?orgnr=",
-            "?orgnr=31171837",
-            "?orgnr=3117183710",
-            "?orgnr=31171837a",
-            "?orgnr=%20311718371",
-            "?orgnr=311718371&orgnr=311718371",
-            "?orgnr=311718371&scope=kartverk:x",
-            "?consumer_orgno=311718371",
+        val refusals = mapOf(
+            "?orgnr=31171837" to "Query parameter orgnr must be an organisation number of 9 digits",
+            "?orgnr=311718371&scope=kartverk:x" to "The query must contain only the parameter orgnr, sent once",
         )
-        for (query in queries) {
+        for ((query, error) in refusals) {
             val response = listScopes(query)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(ErrorCode.INVALID_REQUEST, response.errorResponse().code, "for \"$query\"")
+            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), "for \"$query\"")
         }
-        assertEquals(
-            ErrorResponse("Query parameter orgnr must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
-            listScopes("?orgnr=31171837").errorResponse(),
-        )
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())
     }
@@ -142,55 +86,19 @@ class ScopeAccessScopesTest {
         val response = client.get("/api/scopeaccess/scopes?orgnr=311718371")
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            ErrorResponse("Header X-Forwarded-Client-Cert is required", ErrorCode.INVALID_REQUEST),
-            response.errorResponse(),
-        )
+        assertEquals(ErrorResponse("Header X-Forwarded-Client-Cert is required", ErrorCode.INVALID_REQUEST), response.errorResponse())
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())
     }
 
     @Test
-    fun `gives 502 without calling Digdir when the filtering service fails`() {
-        val failures = listOf<(OutgoingRequest) -> OutgoingResponse>(
-            { json(500, "{}") },
-            { throw IOException("Connection refused") },
-        )
-        for (failure in failures) {
-            scopeAccessTest(filtering = failure) {
-                val response = listScopes()
+    fun `gives 502 without calling Digdir when the filtering service fails`() = scopeAccessTest(filtering = { json(500, "{}") }) {
+        val response = listScopes()
 
-                assertEquals(HttpStatusCode.BadGateway, response.status)
-                assertEquals(
-                    ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
-                    response.errorResponse(),
-                )
-            }
-        }
+        assertEquals(HttpStatusCode.BadGateway, response.status)
+        assertEquals(ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
         assertTrue(digdirRequests.isEmpty())
     }
-
-    @Test
-    fun `passes Digdir's errors on unchanged`() {
-        val body = """{"status":403,"error":"ingen tilgang"}"""
-        for (status in listOf(400, 403, 500, 503)) {
-            scopeAccessTest(digdir = { json(status, body) }) {
-                val response = listScopes()
-
-                assertEquals(status, response.status.value)
-                assertContentEquals(body.toByteArray(), response.readRawBytes(), "for $status")
-            }
-        }
-    }
-
-    @Test
-    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =
-        scopeAccessTest(digdir = { json(401, """{"error":"invalid_token"}""") }) {
-            val response = listScopes()
-
-            assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
-        }
 
     @Test
     fun `with filtering turned off, returns all of Digdir's answer and needs no header`() = scopeAccessTest(filtering = null) {

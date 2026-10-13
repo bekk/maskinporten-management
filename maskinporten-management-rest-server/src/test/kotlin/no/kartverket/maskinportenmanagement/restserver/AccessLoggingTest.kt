@@ -12,7 +12,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class AccessLoggingTest {
 
@@ -50,18 +49,8 @@ class AccessLoggingTest {
     }
 
     @Test
-    fun `logs one line per request by default`() {
-        val logged = linesFor(null)
-
-        assertTrue(
-            logged.any { it.contains("/health/live") },
-            "expected an access log line for the request, got: $logged",
-        )
-    }
-
-    @Test
-    fun `the line has its own logger, so logback can route it apart from other logs`() {
-        linesFor("true")
+    fun `logs one line per request by default, on its own logger so logback can route it apart from other logs`() {
+        linesFor(null)
         val event = appender.list.single { it.formattedMessage.contains("/health/live") }
 
         assertEquals("access", event.loggerName)

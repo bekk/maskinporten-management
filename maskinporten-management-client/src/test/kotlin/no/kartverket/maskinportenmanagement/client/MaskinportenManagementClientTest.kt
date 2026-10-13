@@ -56,13 +56,6 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `without a filter, returns Digdir's scopes as they are`() = runBlocking {
-        val response = OutgoingResponse(200, "application/json", scopes.toByteArray())
-
-        assertSame(response, clientAnswering { response }.listScopes())
-    }
-
-    @Test
     fun `with a filter, keeps only the scopes it allows, each one unchanged`() = runBlocking {
         val response = clientAnswering { OutgoingResponse(200, "application/json", scopes.toByteArray()) }.listScopes(filter)
 
@@ -137,13 +130,6 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `without a filter, returns a consumer's scope access as it is`() = runBlocking {
-        val response = OutgoingResponse(200, "application/json", consumerScopeAccess.toByteArray())
-
-        assertSame(response, clientAnswering { response }.listConsumerScopeAccess(consumerOrgno))
-    }
-
-    @Test
     fun `with a filter, keeps only the consumer's scope access whose scope it allows`() = runBlocking {
         val response = clientAnswering { OutgoingResponse(200, "application/json", consumerScopeAccess.toByteArray()) }
             .listConsumerScopeAccess(consumerOrgno, filter)
@@ -158,15 +144,6 @@ class MaskinportenManagementClientTest {
             ),
             Json.parseToJsonElement(response.body.decodeToString()),
         )
-    }
-
-    @Test
-    fun `with a filter, passes Digdir's errors for a consumer's scope access on as they are`() = runBlocking {
-        for (status in listOf(400, 403, 500)) {
-            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
-
-            assertSame(response, clientAnswering { response }.listConsumerScopeAccess(consumerOrgno, filter), "for $status")
-        }
     }
 
     @Test

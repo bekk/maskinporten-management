@@ -26,9 +26,9 @@ import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.IntegrationType
-import no.kartverket.maskinportenmanagement.restserver.models.Scope
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessState
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
 import no.kartverket.maskinportenmanagement.restserver.models.TokenType
 import no.kartverket.maskinportenmanagement.restserver.models.Visibility
 
@@ -94,7 +94,7 @@ private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().docume
     required = null,
 )
 
-private val scopeSchema = schemaInference.jsonSchema<Scope>().documented(
+private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "name" to { copy(description = "The whole scope: the prefix, a colon and the subscope.") },
     "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
     "active" to { copy(description = "Always `true` here, since only active scopes are listed.") },
@@ -222,7 +222,7 @@ private val missingClientCertificateExample = "MissingClientCertificate" to Erro
 private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
     "`scope`, or `scope` is blank or not URL-encoded correctly."
 
-private val exampleScope = Scope(
+private val exampleScope = ScopeDetails(
     name = "kartverk:tilgangsstyring/demo.read",
     prefix = "kartverk",
     subscope = "tilgangsstyring/demo.read",

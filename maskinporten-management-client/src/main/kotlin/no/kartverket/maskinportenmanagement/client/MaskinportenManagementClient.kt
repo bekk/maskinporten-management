@@ -15,11 +15,11 @@ import java.net.URI
 import java.net.URLEncoder
 
 public class MaskinportenManagementClient(
-    baseUrl: String,
+    baseUrl: URI,
     private val httpClient: OutgoingHttpClient,
     private val accessTokenProvider: AccessTokenProvider,
 ) {
-    private val baseUrl = baseUrl.trimEnd('/')
+    private val baseUrl = baseUrl.toString().trimEnd('/')
 
     public suspend fun listScopes(filter: ScopeFilter? = null): OutgoingResponse {
         val response = send("GET", SCOPES_PATH)

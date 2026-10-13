@@ -6,9 +6,7 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import java.io.IOException
 import java.net.URI
 
-public class ExternalFilteringClient(url: String, private val httpClient: OutgoingHttpClient) {
-    private val url = URI.create(url)
-
+public class ExternalFilteringClient(private val url: URI, private val httpClient: OutgoingHttpClient) {
     public suspend fun filterFor(clientCertificate: String): ScopeFilter {
         val request = OutgoingRequest(
             method = "POST",

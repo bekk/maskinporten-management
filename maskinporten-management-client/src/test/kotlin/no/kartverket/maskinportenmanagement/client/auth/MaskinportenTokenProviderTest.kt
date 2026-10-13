@@ -119,10 +119,8 @@ class MaskinportenTokenProviderTest {
     }
 
     @Test
-    fun `refuses no scopes, and a scope with whitespace`() {
-        for (scopes in listOf(emptyList(), listOf(Scope.of("")), listOf(Scope.of("idporten:scopes.read idporten:scopes.write")))) {
-            assertFailsWith<IllegalArgumentException>("$scopes") { providerAsking(scopes) }
-        }
+    fun `refuses no scopes`() {
+        assertFailsWith<IllegalArgumentException> { providerAsking(emptyList()) }
     }
 
     @Test

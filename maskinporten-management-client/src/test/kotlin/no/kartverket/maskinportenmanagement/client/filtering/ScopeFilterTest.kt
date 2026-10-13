@@ -25,7 +25,7 @@ class ScopeFilterTest {
 
     @Test
     fun `allows nothing else`() {
-        for (scope in listOf("kartverk:nrl.rapportering.ny", "kartverk:dokumentbestilling", "kartverk:tilgangsstyring", "")) {
+        for (scope in listOf("kartverk:nrl.rapportering.ny", "kartverk:dokumentbestilling", "kartverk:tilgangsstyring")) {
             assertFalse(filter.allows(Scope.of(scope)), scope)
         }
     }

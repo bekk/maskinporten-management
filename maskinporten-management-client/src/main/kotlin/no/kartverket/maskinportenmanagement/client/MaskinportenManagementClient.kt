@@ -75,7 +75,8 @@ public class MaskinportenManagementClient(
         } ?: throw DigdirException("Digdir answered $statusCode with something other than a JSON list")
         val kept = items.filter { item ->
             val value = (item as? JsonObject)?.get(field) as? JsonPrimitive
-            value != null && value.isString && filter.allows(Scope.of(value.content))
+            val scope = value?.takeIf { it.isString }?.let { runCatching { Scope.of(it.content) }.getOrNull() }
+            scope != null && filter.allows(scope)
         }
         return OutgoingResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
     }

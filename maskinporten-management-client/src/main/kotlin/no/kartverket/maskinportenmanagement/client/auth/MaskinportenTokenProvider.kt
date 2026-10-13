@@ -41,9 +41,6 @@ public class MaskinportenTokenProvider(
 ) : AccessTokenProvider {
     init {
         require(scopes.isNotEmpty()) { "scopes must not be empty" }
-        require(scopes.none { it.value.isEmpty() || it.value.any(Char::isWhitespace) }) {
-            "Each scope must be non-empty and without whitespace, but scopes were ${scopes.joinToString { "\"${it.value}\"" }}"
-        }
     }
 
     private val grantSigner = GrantSigner(kms, certificateChainPem)

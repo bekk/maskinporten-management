@@ -111,7 +111,11 @@ internal fun onlyQueryParameter(query: String, name: String): String {
     return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
 
-internal fun ApplicationCall.scopeQueryParameter(name: String): Scope = Scope.of(onlyQueryParameter(name))
+internal fun ApplicationCall.scopeQueryParameter(name: String): Scope {
+    val value = onlyQueryParameter(name)
+    return runCatching { Scope.of(value) }.getOrNull()
+        ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
+}
 
 internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {
     val value = pathParameters[name].orEmpty()

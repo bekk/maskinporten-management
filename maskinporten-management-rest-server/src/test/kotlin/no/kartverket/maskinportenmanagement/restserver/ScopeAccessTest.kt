@@ -145,6 +145,24 @@ class ScopeAccessTest {
     }
 
     @Test
+    fun `a scope with whitespace is refused without calling Digdir`() = scopeAccessTest {
+        for (query in listOf("?scope=kartverk:a+kartverk:b", "?scope=kartverk:a%20kartverk:b", "?scope=kartverk:a%09kartverk:b", "?scope=+kartverk:a")) {
+            val responses = listOf(client.get("/api/scopeaccess/orgs$query")) +
+                changeMethods.map { change(it, "/api/scopeaccess/311718371$query") }
+
+            for (response in responses) {
+                assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
+                assertEquals(
+                    ErrorResponse("Query parameter scope must not contain whitespace", ErrorCode.INVALID_REQUEST),
+                    response.errorResponse(),
+                    "for \"$query\"",
+                )
+            }
+        }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
     fun `a call Digdir never answers gives 502`() = scopeAccessTest(answer = { throw IOException("Connection refused") }) {
         val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 

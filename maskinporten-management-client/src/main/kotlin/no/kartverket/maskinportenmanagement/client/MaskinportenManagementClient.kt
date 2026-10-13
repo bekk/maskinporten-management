@@ -29,24 +29,16 @@ public class MaskinportenManagementClient(
     public suspend fun listScopeAccess(scope: String): OutgoingResponse =
         send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
 
-    public suspend fun listConsumerScopeAccess(consumerOrgno: String, filter: ScopeFilter? = null): OutgoingResponse {
-        val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=${requireOrganizationNumber(consumerOrgno)}")
+    public suspend fun listConsumerScopeAccess(consumerOrgno: OrganizationNumber, filter: ScopeFilter? = null): OutgoingResponse {
+        val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno")
         return if (filter == null) response else response.keepingOnly("scope", filter)
     }
 
-    public suspend fun grantScopeAccess(consumerOrgno: String, scope: String): OutgoingResponse =
-        send("PUT", "$SCOPE_ACCESS_PATH/${requireOrganizationNumber(consumerOrgno)}?scope=${encode(scope)}")
+    public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: String): OutgoingResponse =
+        send("PUT", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
 
-    public suspend fun removeScopeAccess(consumerOrgno: String, scope: String): OutgoingResponse =
-        send("DELETE", "$SCOPE_ACCESS_PATH/${requireOrganizationNumber(consumerOrgno)}?scope=${encode(scope)}")
-
-    // In the path, ".." would turn DELETE .../access/.. into DELETE /api/v1/scopes: deleting the scope itself
-    private fun requireOrganizationNumber(consumerOrgno: String): String {
-        require(ORGANIZATION_NUMBER.matches(consumerOrgno)) {
-            "consumerOrgno must be an organisation number of 9 digits, but was \"$consumerOrgno\""
-        }
-        return consumerOrgno
-    }
+    public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: String): OutgoingResponse =
+        send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
@@ -91,7 +83,5 @@ public class MaskinportenManagementClient(
         const val SCOPES_PATH = "/api/v1/scopes"
 
         const val SCOPE_ACCESS_PATH = "/api/v1/scopes/access"
-
-        val ORGANIZATION_NUMBER = Regex("[0-9]{9}")
     }
 }

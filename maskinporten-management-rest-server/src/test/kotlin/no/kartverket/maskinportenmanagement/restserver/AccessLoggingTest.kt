@@ -12,6 +12,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AccessLoggingTest {
@@ -75,5 +76,27 @@ class AccessLoggingTest {
             logged.any { it.contains("/health/live") },
             "expected no access log line, got: $logged",
         )
+    }
+
+    @Test
+    fun `the workload is the namespace and service account of the caller`() {
+        val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
+
+        assertEquals("team/app", workloadFrom(certificate))
+    }
+
+    @Test
+    fun `the workload is the caller Istio added last, not one the caller sent itself`() {
+        val certificate = "URI=spiffe://cluster.local/ns/fake/sa/app," +
+            "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
+
+        assertEquals("team/app", workloadFrom(certificate))
+    }
+
+    @Test
+    fun `there is no workload without a caller`() {
+        assertNull(workloadFrom(null))
+        assertNull(workloadFrom(""))
+        assertNull(workloadFrom("By=spiffe://cluster.local/ns/a/sa/b;Hash=abc"))
     }
 }

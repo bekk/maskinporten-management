@@ -11,3 +11,9 @@ fun Application.configureAccessLogging() {
         logger = LoggerFactory.getLogger("access")
     }
 }
+
+private val spiffeUri = Regex("""URI=spiffe://[^/;,"]+/ns/([^/;,"]+)/sa/([^/;,"]+)""")
+
+// The last match, since Istio appends the caller it verified after any header the caller sent itself
+internal fun workloadFrom(clientCertificate: String?): String? =
+    clientCertificate?.let { spiffeUri.findAll(it).lastOrNull() }?.let { "${it.groupValues[1]}/${it.groupValues[2]}" }

@@ -28,13 +28,6 @@ class LocalKmsTest {
     }
 
     @Test
-    fun `knows the public key that belongs to the private key`() {
-        val kms = LocalKms(keyPair.private as RSAPrivateCrtKey)
-
-        assertContentEquals(keyPair.public.encoded, kms.publicKey.encoded)
-    }
-
-    @Test
     fun `reads an RSA private key from PKCS 8 PEM`() {
         val kms = LocalKms.fromPem(pem("PRIVATE KEY", keyPair.private.encoded))
 

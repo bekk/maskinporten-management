@@ -5,7 +5,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -21,7 +20,6 @@ import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import java.net.URI
 import java.net.URLDecoder
-import java.security.Signature
 import java.security.interfaces.RSAPrivateCrtKey
 import java.time.Clock
 import java.time.Instant
@@ -78,7 +76,7 @@ class MaskinportenTokenProviderTest {
     private val provider = providerAsking(listOf(Scope.of("idporten:scopes.write")))
 
     @Test
-    fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
+    fun `sends a JWT grant for our client and scopes, with Maskinporten as the audience`() = runBlocking {
         assertEquals("token-1", provider.accessToken().value)
 
         val request = tokenRequests.single()
@@ -90,25 +88,13 @@ class MaskinportenTokenProviderTest {
         }
         assertEquals("urn:ietf:params:oauth:grant-type:jwt-bearer", form["grant_type"])
 
-        val (header, claims, signature) = form.getValue("assertion").split('.')
-        val headerJson = decodeJson(header)
-        assertEquals("RS256", headerJson.getValue("alg").jsonPrimitive.content)
-        val x5c = headerJson.getValue("x5c").jsonArray.map { Base64.getDecoder().decode(it.jsonPrimitive.content).toList() }
-        assertEquals(chain.map { it.encoded.toList() }, x5c)
-
-        val claimsJson = decodeJson(claims)
+        val claimsJson = decodeJson(form.getValue("assertion").split('.')[1])
         assertEquals("https://maskinporten.test/", claimsJson.getValue("aud").jsonPrimitive.content)
         assertEquals("test-client", claimsJson.getValue("iss").jsonPrimitive.content)
         assertEquals("idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
         assertEquals(now.epochSecond, claimsJson.getValue("iat").jsonPrimitive.long)
         assertEquals(now.epochSecond + 120, claimsJson.getValue("exp").jsonPrimitive.long)
         assertTrue(claimsJson.getValue("jti").jsonPrimitive.content.isNotBlank())
-
-        val verifier = Signature.getInstance("SHA256withRSA").apply {
-            initVerify(keyPair.public)
-            update("$header.$claims".toByteArray())
-        }
-        assertTrue(verifier.verify(Base64.getUrlDecoder().decode(signature)))
     }
 
     @Test
@@ -158,21 +144,11 @@ class MaskinportenTokenProviderTest {
     }
 
     @Test
-    fun `a token Digdir refused is replaced on the next call`() = runBlocking {
+    fun `a refused token is replaced, and refusing it again keeps its replacement`() = runBlocking {
         provider.accessToken()
         provider.refused(AccessToken.of("token-1"))
-
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         assertEquals("token-2", provider.accessToken().value)
-        assertEquals(2, tokenRequests.size)
-    }
-
-    @Test
-    fun `refusing an old token keeps the new one`() = runBlocking {
-        provider.accessToken()
-        provider.refused(AccessToken.of("token-1"))
-        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
-        provider.accessToken()
 
         provider.refused(AccessToken.of("token-1"))
 

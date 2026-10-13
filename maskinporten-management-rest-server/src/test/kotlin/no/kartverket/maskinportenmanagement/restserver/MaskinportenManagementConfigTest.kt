@@ -60,6 +60,14 @@ class MaskinportenManagementConfigTest {
     }
 
     @Test
+    fun `filtering is on unless turned off, and then the server does not start without its URL`() {
+        assertContains(startupFailure(complete - "externalFiltering.url"), "externalFiltering.url")
+    }
+
+    @Test
+    fun `turned off, filtering needs no URL`() = start(complete - "externalFiltering.url" + ("externalFiltering.enabled" to "false"))
+
+    @Test
     fun `the server does not start unless exactly one KMS is set`() {
         assertContains(startupFailure(complete - "kms.localKeyFile"), "exactly one")
         assertContains(startupFailure(complete + ("kms.keyVersion" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")

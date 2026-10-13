@@ -36,7 +36,7 @@ internal fun ApplicationConfig.port(path: String): Int {
         ?: error("$path must be a port number, but was \"$raw\" (see .env.example)")
 }
 
-internal fun ApplicationConfig.url(path: String): String {
+internal fun ApplicationConfig.url(path: String): URI {
     val raw = required(path)
     val uri = runCatching { URI(raw) }.getOrNull()
     check(uri != null && uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
@@ -45,5 +45,5 @@ internal fun ApplicationConfig.url(path: String): String {
     check(uri.rawQuery == null && uri.rawFragment == null) {
         "$path must not have a query or fragment, but was \"$raw\" (see .env.example)"
     }
-    return raw
+    return uri
 }

@@ -14,6 +14,7 @@ import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
+import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
@@ -108,6 +109,8 @@ internal fun onlyQueryParameter(query: String, name: String): String {
     }
     return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
+
+internal fun ApplicationCall.scopeQueryParameter(name: String): Scope = Scope.of(onlyQueryParameter(name))
 
 internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {
     val value = pathParameters[name].orEmpty()

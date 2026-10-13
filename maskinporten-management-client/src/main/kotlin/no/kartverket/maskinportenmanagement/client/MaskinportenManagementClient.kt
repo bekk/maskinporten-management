@@ -26,19 +26,19 @@ public class MaskinportenManagementClient(
         return if (filter == null) response else response.keepingOnly("name", filter)
     }
 
-    public suspend fun listScopeAccess(scope: String): OutgoingResponse =
-        send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope)}")
+    public suspend fun listScopeAccess(scope: Scope): OutgoingResponse =
+        send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}")
 
     public suspend fun listConsumerScopeAccess(consumerOrgno: OrganizationNumber, filter: ScopeFilter? = null): OutgoingResponse {
         val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno")
         return if (filter == null) response else response.keepingOnly("scope", filter)
     }
 
-    public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: String): OutgoingResponse =
-        send("PUT", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
+    public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
+        send("PUT", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
 
-    public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: String): OutgoingResponse =
-        send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope)}")
+    public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
+        send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
@@ -74,7 +74,7 @@ public class MaskinportenManagementClient(
         } ?: throw DigdirException("Digdir answered $statusCode with something other than a JSON list")
         val kept = items.filter { item ->
             val value = (item as? JsonObject)?.get(field) as? JsonPrimitive
-            value != null && value.isString && filter.allows(value.content)
+            value != null && value.isString && filter.allows(Scope.of(value.content))
         }
         return OutgoingResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
     }

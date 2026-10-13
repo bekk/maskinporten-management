@@ -60,7 +60,7 @@ fun Application.configureRouting() {
 
         get("/api/scopeaccess/orgs") {
             val client: MaskinportenManagementClient by dependencies
-            val scope = call.onlyQueryParameter("scope")
+            val scope = call.scopeQueryParameter("scope")
             call.respondFromDigdir(client.listScopeAccess(scope))
         }.describe(scopeAccessOrgsOperation)
 
@@ -75,14 +75,14 @@ fun Application.configureRouting() {
         put("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
-            val scope = call.onlyQueryParameter("scope")
+            val scope = call.scopeQueryParameter("scope")
             call.respondFromDigdir(client.grantScopeAccess(consumerOrgno, scope))
         }.describe(scopeAccessGrantOperation)
 
         delete("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
-            val scope = call.onlyQueryParameter("scope")
+            val scope = call.scopeQueryParameter("scope")
             call.respondFromDigdir(client.removeScopeAccess(consumerOrgno, scope))
         }.describe(scopeAccessRemoveOperation)
     }

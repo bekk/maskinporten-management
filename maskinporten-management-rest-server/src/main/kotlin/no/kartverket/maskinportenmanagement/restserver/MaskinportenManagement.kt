@@ -44,7 +44,6 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
     check((keyVersion == null) != (localKeyFile == null)) {
         "Set exactly one of kms.keyVersion (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
     }
-    // In SKIP, Workload Identity provides the credentials for Cloud KMS
     val kms = keyVersion?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = URI(config.url("maskinporten.wellKnownUrl")),
@@ -63,7 +62,7 @@ private fun pemFile(setting: String, path: String): String {
     return file.readText()
 }
 
-// On unless turned off, so a missing URL stops the server instead of showing every app all of Kartverket's scopes
+// On by default, so a missing URL stops the server instead of showing every app all of Kartverket's scopes
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {
     if (!environment.config.boolean("externalFiltering.enabled", default = true)) return ExternalFiltering(null)
     return ExternalFiltering(ExternalFilteringClient(environment.config.url("externalFiltering.url"), httpClient()))
@@ -95,8 +94,8 @@ internal class InvalidRequestException(message: String) : RuntimeException(messa
 
 internal fun ApplicationCall.onlyQueryParameter(name: String): String = onlyQueryParameter(request.queryString(), name)
 
-// Read from the raw query, so OPA cannot see another value: Netty drops parameters past the 1024th and reads "=scope=x"
-// as scope, which OPA's parser does not
+// Read from the raw query, so we act on the same value as the access check in front of the server: Netty drops
+// parameters past the 1024th and reads "=scope=x" as scope, which other parsers do not
 internal fun onlyQueryParameter(query: String, name: String): String {
     if (query.isEmpty()) throw InvalidRequestException("Query parameter $name is required")
     val (key, raw) = query.split('=', limit = 2).takeIf { it.size == 2 && '&' !in query }

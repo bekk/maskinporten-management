@@ -22,7 +22,6 @@ internal fun pem(type: String, der: ByteArray): String =
 
 internal fun pem(certificate: X509Certificate): String = pem("CERTIFICATE", certificate.encoded)
 
-// A test certificate for the key, issued by a fake CA, and the CA's own certificate
 internal fun certificateChain(publicKey: PublicKey): List<X509Certificate> {
     val ca = rsaKeyPair()
     val caCertificate = certificate("CN=Falsk CA", ca.public, "CN=Falsk CA", ca.private)

@@ -9,18 +9,6 @@ import kotlin.test.assertFailsWith
 
 class ConfigTest {
 
-    private enum class Color { RED, GREEN }
-
-    @Test
-    fun `a misspelled enum value names the valid values`() {
-        val e = assertFailsWith<IllegalStateException> {
-            MapApplicationConfig("color" to "red").enum<Color>("color")
-        }
-
-        assertContains(e.message!!, "color")
-        assertContains(e.message!!, "RED, GREEN")
-    }
-
     @Test
     fun `every value is trimmed the same way`() {
         val config = MapApplicationConfig("key" to "  value  ", "flag" to " true ")

@@ -30,12 +30,6 @@ internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean 
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
 }
 
-internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
-    val raw = required(path)
-    return enumValues<T>().find { it.name == raw }
-        ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
-}
-
 internal fun ApplicationConfig.port(path: String): Int {
     val raw = required(path)
     return raw.toIntOrNull()?.takeIf { it in 1..65535 }

@@ -3,7 +3,7 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "0.1.0",
-        "description": "REST API for managing Maskinporten scopes"
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes\norganisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Otherwise, this API returns Digdir's\nanswer unchanged: its status, body and content type."
     },
     "paths": {
         "/health/live": {
@@ -20,7 +20,18 @@
         "/api/scopes": {
             "get": {
                 "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. Istio tells this API which app is calling,\nin the `X-Forwarded-Client-Cert` header.\n\nEach scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is\ncalling, in the `X-Forwarded-Client-Cert` header.\n\nEach scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "parameters": [
+                    {
+                        "name": "X-Forwarded-Client-Cert",
+                        "in": "header",
+                        "description": "Says which app is calling. The platform sets it on every call, so the app does not.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "default": {
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
@@ -132,7 +143,7 @@
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
                     },
                     "200": {
-                        "description": "Digdir's answer: the organisations given access to the scope. Check `state`: only `APPROVED` means access, and an organisation that has only asked for access, or was refused, may be listed too.",
+                        "description": "Digdir's answer: the organisations given access to the scope. Check `state`: only `APPROVED` means access.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -202,7 +213,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. Istio tells this\nAPI which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nEach access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells\nthis API which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nEach access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -213,6 +224,15 @@
                             "type": "string",
                             "pattern": "^[0-9]{9}$"
                         }
+                    },
+                    {
+                        "name": "X-Forwarded-Client-Cert",
+                        "in": "header",
+                        "description": "Says which app is calling. The platform sets it on every call, so the app does not.",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -220,7 +240,7 @@
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
                     },
                     "200": {
-                        "description": "The organisation's access to the scopes the calling app has access to. Check `state`: only `APPROVED` means access, and a scope the organisation has only asked for, or was refused, may be listed too. The list is empty if there is none.",
+                        "description": "The organisation's access to the scopes the calling app has access to. Check `state`: only `APPROVED` means access. The list is empty if there is none.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -398,7 +418,7 @@
             },
             "delete": {
                 "summary": "Remove an organisation's access to a scope",
-                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -430,6 +450,20 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ScopeAccess"
+                                },
+                                "examples": {
+                                    "RemovedAccess": {
+                                        "value": {
+                                            "scope": "kartverk:matrikkel.read",
+                                            "owner_orgno": "971040238",
+                                            "owner_organization_name": "STATENS KARTVERK",
+                                            "consumer_orgno": "311718371",
+                                            "consumer_organization_name": "EKSEMPEL AS",
+                                            "state": "APPROVED",
+                                            "created": "2026-01-15T09:30:00Z",
+                                            "last_updated": "2026-01-15T09:30:00Z"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -491,28 +525,36 @@
                         "description": "The whole scope: the prefix, a colon and the subscope."
                     },
                     "prefix": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Digdir's prefix for the owner, `kartverk` for Kartverket: only the part before the colon."
                     },
                     "subscope": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The part after the colon, which the owner chose. It cannot be changed."
                     },
                     "description": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "A short description in Norwegian Bokmål."
                     },
                     "long_description": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string",
+                        "description": "A longer description in Norwegian Bokmål. Left out, or empty, if the owner has not written one."
                     },
-                    "descriptions": {
-                        "type": [
-                            "object",
-                            "null"
-                        ],
-                        "additionalProperties": {
-                            "type": "string"
-                        }
+                    "description#en": {
+                        "type": "string",
+                        "description": "`description` in English. Left out if the owner has not written one."
+                    },
+                    "description#nn": {
+                        "type": "string",
+                        "description": "`description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "long_description#en": {
+                        "type": "string",
+                        "description": "`long_description` in English. Left out if the owner has not written one."
+                    },
+                    "long_description#nn": {
+                        "type": "string",
+                        "description": "`long_description` in Norwegian Nynorsk. Left out if the owner has not written one."
                     },
                     "active": {
                         "type": "boolean",
@@ -520,14 +562,17 @@
                     },
                     "created": {
                         "type": "string",
+                        "description": "When the scope was created.",
                         "format": "date-time"
                     },
                     "last_updated": {
                         "type": "string",
+                        "description": "When the scope was last changed.",
                         "format": "date-time"
                     },
                     "allowed_integration_types": {
                         "type": "array",
+                        "description": "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or an empty list, which allows every kind.",
                         "items": {
                             "type": "string",
                             "enum": [
@@ -547,6 +592,7 @@
                     },
                     "token_type": {
                         "type": "string",
+                        "description": "The kind of access token issued for the scope.\n\n- `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.\n- `OPAQUE`: a token that the API has to look up with Digdir.",
                         "enum": [
                             "SELF_CONTAINED",
                             "OPAQUE"
@@ -554,6 +600,7 @@
                     },
                     "visibility": {
                         "type": "string",
+                        "description": "Who can see the scope.\n\n- `PUBLIC`: anyone, in Digdir's list of all scopes.\n- `PRIVATE`: only the owner and the organisations given access.\n- `INTERNAL`: Digdir's own use.",
                         "enum": [
                             "INTERNAL",
                             "PRIVATE",
@@ -561,42 +608,44 @@
                         ]
                     },
                     "requires_user_consent": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must consent before a client gets a token."
                     },
                     "requires_user_authentication": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must log in again, even with an active session."
                     },
                     "requires_pseudonymous_tokens": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: tokens leave out the person's national identity number."
                     },
                     "delegation_source": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string",
+                        "description": "Where an organisation with access can delegate it to a supplier, such as `https://www.altinn.no/`. Left out when the scope cannot be delegated."
                     },
                     "at_max_age": {
                         "type": "integer",
-                        "description": "The most seconds an access token for the scope can live."
+                        "description": "The most seconds an access token for the scope can live. `0` means Digdir's default."
                     },
                     "authorization_max_lifetime": {
                         "type": "integer",
-                        "description": "The most seconds an authorization for the scope can live."
+                        "description": "The most seconds an authorization for the scope can live. `0` means Digdir's default."
                     },
                     "accessible_for_all": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "If `true`, every organisation can get tokens for the scope without being given access."
                     },
                     "enforced_aud_for_access_token": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string",
+                        "description": "Digdir does not document this field."
                     },
                     "protected": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Digdir does not document this field."
                     },
                     "supports_european_businesses": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Digdir does not document this field. Its name matches Digdir's feature that lets European businesses get tokens with an eIDAS seal, without being given access."
                     }
                 }
             },
@@ -636,18 +685,20 @@
                         "description": "The organisation that owns the scope: Kartverket."
                     },
                     "owner_organization_name": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The name of the organisation that owns the scope."
                     },
                     "consumer_orgno": {
                         "type": "string",
                         "description": "The organisation that was given access."
                     },
                     "consumer_organization_name": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The name of the organisation that was given access."
                     },
                     "state": {
                         "type": "string",
-                        "description": "Where the access stands. Only `APPROVED` means the organisation has access.\n\n- `REQUESTED`: the organisation has asked for access.\n- `APPROVED`: the organisation has access.\n- `DENIED`: the request for access was refused.",
+                        "description": "Where the access stands. Only `APPROVED` means the organisation has access, and giving access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and `DENIED`.",
                         "enum": [
                             "REQUESTED",
                             "APPROVED",
@@ -656,10 +707,12 @@
                     },
                     "created": {
                         "type": "string",
+                        "description": "When the access was given.",
                         "format": "date-time"
                     },
                     "last_updated": {
                         "type": "string",
+                        "description": "When the access was last changed.",
                         "format": "date-time"
                     }
                 }

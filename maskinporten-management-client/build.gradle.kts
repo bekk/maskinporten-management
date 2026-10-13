@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
+    `java-test-fixtures`
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -14,5 +15,5 @@ dependencies {
     implementation(libs.google.cloud.kms)
     implementation(libs.nimbus.jose.jwt)
     testImplementation(libs.google.cloud.kms.grpc)
-    testImplementation(libs.bouncycastle.pkix)
+    testFixturesImplementation(libs.bouncycastle.pkix)
 }

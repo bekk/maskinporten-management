@@ -70,12 +70,14 @@ private fun Application.externalFilteringFromConfig(): ExternalFiltering {
     return ExternalFiltering(ExternalFilteringClient(environment.config.url("externalFiltering.url"), httpClient()))
 }
 
-private fun httpClient(): OutgoingHttpClient = JavaOutgoingHttpClient(
-    HttpClient.newBuilder()
-        .connectTimeout(CONNECT_TIMEOUT)
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build(),
-    REQUEST_TIMEOUT,
+private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(
+    JavaOutgoingHttpClient(
+        HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build(),
+        REQUEST_TIMEOUT,
+    ),
 )
 
 class ExternalFiltering(private val client: ExternalFilteringClient?) {

@@ -121,7 +121,6 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
             """.trimIndent(),
         )
     },
-    required = listOf("error", "code"),
 )
 
 internal val healthLiveOperation: Operation.Builder.() -> Unit = {

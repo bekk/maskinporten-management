@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -108,11 +109,11 @@ class ScopesTest {
         listScopes()
 
         val filtering = filteringRequests.single()
-        assertEquals("POST", filtering.method)
+        assertEquals(HttpMethod.POST, filtering.method)
         assertEquals("https://filtering.test/scopes", filtering.url.toString())
         assertEquals(certificate, filtering.headers["X-Forwarded-Client-Cert"])
         val digdir = digdirRequests.single()
-        assertEquals("GET", digdir.method)
+        assertEquals(HttpMethod.GET, digdir.method)
         assertEquals("https://digdir.test/api/v1/scopes", digdir.url.toString())
     }
 

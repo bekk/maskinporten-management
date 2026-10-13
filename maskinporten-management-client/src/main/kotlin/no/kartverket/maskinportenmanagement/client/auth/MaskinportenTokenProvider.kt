@@ -11,6 +11,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -58,7 +59,7 @@ public class MaskinportenTokenProvider(
         val form = "grant_type=${encode(GRANT_TYPE)}&assertion=${encode(grant(metadata.issuer, requestedAt))}"
         val response = httpClient.send(
             OutgoingRequest(
-                method = "POST",
+                method = HttpMethod.POST,
                 url = URI.create(metadata.tokenEndpoint),
                 headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
                 body = form.toByteArray(),
@@ -76,7 +77,7 @@ public class MaskinportenTokenProvider(
     }
 
     private suspend fun fetchMetadata(): Metadata = httpClient.send(
-        OutgoingRequest(method = "GET", url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
+        OutgoingRequest(method = HttpMethod.GET, url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
     ).decode("metadata request")
 
     private suspend fun grant(audience: String, now: Instant): String {

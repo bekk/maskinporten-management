@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -22,27 +23,27 @@ public class MaskinportenManagementClient(
     private val baseUrl = baseUrl.toString().trimEnd('/')
 
     public suspend fun listScopes(filter: ScopeFilter? = null): OutgoingResponse {
-        val response = send("GET", SCOPES_PATH)
+        val response = send(HttpMethod.GET, SCOPES_PATH)
         return if (filter == null) response else response.keepingOnly("name", filter)
     }
 
     public suspend fun listScopeAccess(scope: Scope): OutgoingResponse =
-        send("GET", "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}")
+        send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}")
 
     public suspend fun listConsumerScopeAccess(consumerOrgno: OrganizationNumber, filter: ScopeFilter? = null): OutgoingResponse {
-        val response = send("GET", "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno")
+        val response = send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno")
         return if (filter == null) response else response.keepingOnly("scope", filter)
     }
 
     public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
-        send("PUT", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
+        send(HttpMethod.PUT, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
 
     public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
-        send("DELETE", "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
+        send(HttpMethod.DELETE, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
-    private suspend fun send(method: String, pathAndQuery: String): OutgoingResponse {
+    private suspend fun send(method: HttpMethod, pathAndQuery: String): OutgoingResponse {
         val token = callingDigdir { accessTokenProvider.accessToken() }
         val request = OutgoingRequest(
             method = method,

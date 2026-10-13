@@ -23,7 +23,7 @@ public class JavaOutgoingHttpClient(
         val body = request.body?.let(HttpRequest.BodyPublishers::ofByteArray) ?: HttpRequest.BodyPublishers.noBody()
         val builder = HttpRequest.newBuilder(request.url)
             .timeout(requestTimeout)
-            .method(request.method, body)
+            .method(request.method.name, body)
         request.headers.forEach { (name, value) -> builder.header(name, value) }
 
         val response = httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).await()

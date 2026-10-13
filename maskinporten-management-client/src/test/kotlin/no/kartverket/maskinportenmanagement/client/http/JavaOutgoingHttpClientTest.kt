@@ -46,7 +46,7 @@ class JavaOutgoingHttpClientTest {
         try {
             val url = URI("http://localhost:${server.address.port}/api/v1/scopes/access")
             val response = runBlocking {
-                JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(3)).send(OutgoingRequest("GET", url, emptyMap()))
+                JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(3)).send(OutgoingRequest(HttpMethod.GET, url, emptyMap()))
             }
 
             assertEquals(404, response.statusCode)

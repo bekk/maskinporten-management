@@ -9,6 +9,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -78,7 +79,7 @@ class MaskinportenTokenProviderTest {
         assertEquals("token-1", provider.accessToken().value)
 
         val request = tokenRequests.single()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.POST, request.method)
         assertEquals("application/x-www-form-urlencoded", request.headers["Content-Type"])
         val form = request.body!!.decodeToString().split('&').associate {
             val (key, value) = it.split('=', limit = 2)

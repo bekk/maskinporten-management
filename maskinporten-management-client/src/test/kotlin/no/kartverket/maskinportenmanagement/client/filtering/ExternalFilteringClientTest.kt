@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlinx.coroutines.runBlocking
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -37,7 +38,7 @@ class ExternalFilteringClientTest {
 
         assertEquals(ScopeFilter(listOf("kartverk:nrl.rapportering"), listOf("kartverk:tilgangsstyring/")), filter)
         val request = sent.single()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.POST, request.method)
         assertEquals("https://filtering.test/scopes", request.url.toString())
         assertEquals(certificate, request.headers["X-Forwarded-Client-Cert"])
     }

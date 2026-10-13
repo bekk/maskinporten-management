@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -49,7 +50,7 @@ class MaskinportenManagementClientTest {
         clientAnswering().listScopes()
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
     }
@@ -103,7 +104,7 @@ class MaskinportenManagementClientTest {
         clientAnswering().listScopeAccess(Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?scope=kartverk%3Amatrikkel.read", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
         assertEquals("Bearer test-token", request.headers["Authorization"])
@@ -130,7 +131,7 @@ class MaskinportenManagementClientTest {
         clientAnswering().listConsumerScopeAccess(consumerOrgno)
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
     }
@@ -173,7 +174,7 @@ class MaskinportenManagementClientTest {
         clientAnswering().removeScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("DELETE", request.method)
+        assertEquals(HttpMethod.DELETE, request.method)
         assertEquals(
             "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
             request.url.toString(),
@@ -185,7 +186,7 @@ class MaskinportenManagementClientTest {
         clientAnswering().grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("PUT", request.method)
+        assertEquals(HttpMethod.PUT, request.method)
         assertEquals(
             "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
             request.url.toString(),

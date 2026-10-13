@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.client.filtering
 
 import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import java.io.IOException
@@ -9,7 +10,7 @@ import java.net.URI
 public class ExternalFilteringClient(private val url: URI, private val httpClient: OutgoingHttpClient) {
     public suspend fun filterFor(clientCertificate: String): ScopeFilter {
         val request = OutgoingRequest(
-            method = "POST",
+            method = HttpMethod.POST,
             url = url,
             headers = mapOf("Accept" to "application/json", CLIENT_CERTIFICATE_HEADER to clientCertificate),
         )

@@ -102,7 +102,7 @@ class ScopeAccessTest {
             }
 
             val request = sent.single()
-            assertEquals("GET", request.method)
+            assertEquals("GET", request.method.name)
             assertEquals("/api/v1/scopes/access", request.url.path)
             assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $query")
         }
@@ -214,7 +214,7 @@ class ScopeAccessTest {
             }
 
             val request = sent.single()
-            assertEquals(method.value, request.method)
+            assertEquals(method.value, request.method.name)
             assertEquals("/api/v1/scopes/access/311718371", request.url.path, "for $method")
             assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $method")
         }

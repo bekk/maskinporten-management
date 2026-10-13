@@ -617,7 +617,6 @@
                         "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, or from the service that says\n  which scopes the calling app has access to. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "INVALID_REQUEST",
-                            "MALFORMED_BODY",
                             "UPSTREAM_ERROR",
                             "INTERNAL_ERROR"
                         ]

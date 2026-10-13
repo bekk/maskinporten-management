@@ -9,6 +9,7 @@ import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringEx
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.URI
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -43,7 +44,7 @@ class LoggingOutgoingHttpClientTest {
             OutgoingResponse(200, "application/json", """{"exact":[],"prefix":[]}""".toByteArray())
         }
 
-        ExternalFilteringClient("https://filtering.test/filter", client).filterFor("URI=spiffe://cluster.local/ns/a/sa/b")
+        ExternalFilteringClient(URI("https://filtering.test/filter"), client).filterFor("URI=spiffe://cluster.local/ns/a/sa/b")
 
         assertEquals(2, lines.size)
         assertTrue(lines[1].startsWith("POST https://filtering.test/filter answered 200 in "), lines[1])
@@ -55,7 +56,7 @@ class LoggingOutgoingHttpClientTest {
         val client = LoggingOutgoingHttpClient { throw IOException("Connection refused") }
 
         assertFailsWith<ExternalFilteringException> {
-            runBlocking { ExternalFilteringClient("https://filtering.test/filter", client).filterFor("certificate") }
+            runBlocking { ExternalFilteringClient(URI("https://filtering.test/filter"), client).filterFor("certificate") }
         }
 
         assertTrue(lines.last().startsWith("POST https://filtering.test/filter failed after "), lines.last())

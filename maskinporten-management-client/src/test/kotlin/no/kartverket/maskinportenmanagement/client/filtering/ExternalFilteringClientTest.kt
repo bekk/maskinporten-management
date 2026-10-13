@@ -5,6 +5,7 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -17,7 +18,7 @@ class ExternalFilteringClientTest {
 
     private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
-            "https://filtering.test/scopes",
+            URI("https://filtering.test/scopes"),
             OutgoingHttpClient { request ->
                 sent += request
                 answer(request)

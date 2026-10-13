@@ -60,15 +60,17 @@ class MaskinportenTokenProviderTest {
         }
     }
 
-    private val provider = MaskinportenTokenProvider(
+    private fun providerAsking(scopes: List<String>) = MaskinportenTokenProvider(
         wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
         clientId = "test-client",
-        scopes = "idporten:scopes.write",
+        scopes = scopes,
         kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
         certificateChainPem = chain.joinToString("") { pem(it) },
         httpClient = maskinporten,
         clock = clock,
     )
+
+    private val provider = providerAsking(listOf("idporten:scopes.write"))
 
     @Test
     fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
@@ -102,6 +104,23 @@ class MaskinportenTokenProviderTest {
             update("$header.$claims".toByteArray())
         }
         assertTrue(verifier.verify(Base64.getUrlDecoder().decode(signature)))
+    }
+
+    @Test
+    fun `asks for all the scopes, space-separated`() = runBlocking {
+        providerAsking(listOf("idporten:scopes.read", "idporten:scopes.write")).accessToken()
+
+        val form = tokenRequests.single().body!!.decodeToString()
+        val assertion = URLDecoder.decode(form.substringAfter("assertion="), Charsets.UTF_8)
+        val claimsJson = decodeJson(assertion.split('.')[1])
+        assertEquals("idporten:scopes.read idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `refuses no scopes, and a scope with whitespace`() {
+        for (scopes in listOf(emptyList(), listOf(""), listOf("idporten:scopes.read idporten:scopes.write"))) {
+            assertFailsWith<IllegalArgumentException>("$scopes") { providerAsking(scopes) }
+        }
     }
 
     @Test

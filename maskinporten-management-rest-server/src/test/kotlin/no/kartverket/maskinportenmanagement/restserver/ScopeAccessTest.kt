@@ -21,6 +21,7 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -42,7 +43,7 @@ class ScopeAccessTest {
             configureSerialization()
             configureErrorHandling()
             configureMaskinportenManagement(
-                MaskinportenManagementClient("https://digdir.test", digdir) { "test-token" },
+                MaskinportenManagementClient(URI("https://digdir.test"), digdir) { "test-token" },
                 ExternalFiltering(null),
             )
             configureRouting()

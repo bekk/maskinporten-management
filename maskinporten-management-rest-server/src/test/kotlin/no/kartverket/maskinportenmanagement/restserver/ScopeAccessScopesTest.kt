@@ -20,6 +20,7 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -49,7 +50,7 @@ class ScopeAccessScopesTest {
     ) = testApplication {
         val externalFiltering = filtering?.let { answer ->
             ExternalFilteringClient(
-                "https://filtering.test/scopes",
+                URI("https://filtering.test/scopes"),
                 OutgoingHttpClient { request ->
                     filteringRequests += request
                     answer(request)
@@ -61,7 +62,7 @@ class ScopeAccessScopesTest {
             configureErrorHandling()
             configureMaskinportenManagement(
                 MaskinportenManagementClient(
-                    "https://digdir.test",
+                    URI("https://digdir.test"),
                     OutgoingHttpClient { request ->
                         digdirRequests += request
                         digdir(request)

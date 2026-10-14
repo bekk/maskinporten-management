@@ -34,7 +34,7 @@ class ScopeAccessScopesTest {
 
     private fun scopeAccessTest(
         filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
-            json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}""")
+            json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}}""")
         },
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testServer(recording(digdirRequests) { json(200, scopeAccess) }, filtering?.let { recording(filteringRequests, it) }, block)
@@ -57,11 +57,11 @@ class ScopeAccessScopesTest {
     }
 
     @Test
-    fun `sends the calling app's certificate header to the filtering service, and asks Digdir for the organisation's access`() =
+    fun `sends the calling app's certificate as OPA input to the filtering service, and asks Digdir for the organisation's access`() =
         scopeAccessTest {
             listScopes()
 
-            assertEquals(CLIENT_CERTIFICATE, filteringRequests.single().headers["X-Forwarded-Client-Cert"])
+            assertEquals(CLIENT_CERTIFICATE, filteringRequests.single().certificateSentToFiltering())
             assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", digdirRequests.single().url.toString())
         }
 

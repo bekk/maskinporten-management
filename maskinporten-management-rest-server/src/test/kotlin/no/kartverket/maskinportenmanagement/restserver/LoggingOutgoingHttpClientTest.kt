@@ -42,7 +42,7 @@ class LoggingOutgoingHttpClientTest {
     fun `logs the call before it is sent and its status after, but not its headers`() = runBlocking {
         val client = LoggingOutgoingHttpClient {
             assertEquals(listOf("Calling POST https://filtering.test/filter"), lines)
-            OutgoingResponse(200, "application/json", """{"exact":[],"prefix":[]}""".toByteArray())
+            OutgoingResponse(200, "application/json", """{"result":{"exact":[],"prefix":[]}}""".toByteArray())
         }
 
         ExternalFilteringClient(URI("https://filtering.test/filter"), client).filterFor(ClientCertificate.of("URI=spiffe://cluster.local/ns/a/sa/b"))

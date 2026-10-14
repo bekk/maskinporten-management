@@ -1,0 +1,67 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-management
+  title: Maskinporten Management
+  description: Kotlin-klient og server for administrasjon av Maskinporten. I
+    første omgang opprettelse og administrasjon av scopes.
+spec:
+  type: ops
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/maskinporten-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: maskinporten-plattformfunksjonalitet
+  title: Maskinporten Plattformfunksjonalitet
+  description: Støttefunksjonalitet for bruk av Maskinporten i Kartverket, levert
+    av Team Tilgangsstyring
+spec:
+  type: service
+  owner: group:default/tilgangsstyring
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-managemen-client
+  title: Maskinporten Management - Klientbibliotek
+  description: Klientbibliotek for administrasjon av Maskinporten-scopes
+spec:
+  type: library
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/maskinporten-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-management-rest-server
+  title: Maskinporten Management - REST Server
+  description: Ktor-applikasjon med REST-API for administrasjon av Maskinporten-scopes.
+spec:
+  type: service
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/maskinporten-plattformfunksjonalitet
+  providesApis:
+    - api:default/maskinporten-management-rest-server-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: maskinporten-management-rest-server-api
+  title: Maskinporten Management - REST Server API
+  description: API definition for Maskinporten Management - REST Server
+spec:
+  type: openapi
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/maskinporten-plattformfunksjonalitet
+  definition:
+    $text: https://github.com/kartverket/maskinporten-management/blob/main/altinn-pdp-rest-server/openapi.json

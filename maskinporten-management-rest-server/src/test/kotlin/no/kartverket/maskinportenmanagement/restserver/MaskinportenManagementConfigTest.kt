@@ -1,16 +1,22 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.testApplication
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFails
+import kotlin.test.assertTrue
 
 class MaskinportenManagementConfigTest {
 
@@ -60,12 +66,31 @@ class MaskinportenManagementConfigTest {
     }
 
     @Test
-    fun `filtering is on unless turned off, and then the server does not start without its URL`() {
-        assertContains(startupFailure(complete - "externalFiltering.url"), "externalFiltering.url")
+    fun `filtering is off unless turned on, and then needs no URL`() = start(complete - "externalFiltering.url")
+
+    @Test
+    fun `turned on, filtering stops the server without its URL`() {
+        val settings = complete - "externalFiltering.url" + ("externalFiltering.enabled" to "true")
+
+        assertContains(startupFailure(settings), "externalFiltering.url")
     }
 
     @Test
-    fun `turned off, filtering needs no URL`() = start(complete - "externalFiltering.url" + ("externalFiltering.enabled" to "false"))
+    fun `the server warns at startup when filtering is off`() {
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        val root = LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as Logger
+        root.addAppender(appender)
+        try {
+            start(complete)
+        } finally {
+            root.detachAppender(appender)
+        }
+
+        assertTrue(
+            appender.list.any { it.level == Level.WARN && "External filtering is off" in it.formattedMessage },
+            "expected a warning, got: ${appender.list.map { it.formattedMessage }}",
+        )
+    }
 
     @Test
     fun `the server does not start unless exactly one KMS is set`() {

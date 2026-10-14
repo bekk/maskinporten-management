@@ -4,6 +4,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
@@ -50,3 +51,13 @@ internal fun testServer(
 
 internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
+
+@Serializable
+private data class FilteringInput(val headers: Map<String, String>)
+
+@Serializable
+private data class FilteringRequestBody(val input: FilteringInput)
+
+// Reads the certificate the app relayed to the filtering service, out of the request body it sent it in.
+internal fun OutgoingRequest.certificateSentToFiltering(): String =
+    Json.decodeFromString(FilteringRequestBody.serializer(), body!!.decodeToString()).input.headers.getValue("x-forwarded-client-cert")

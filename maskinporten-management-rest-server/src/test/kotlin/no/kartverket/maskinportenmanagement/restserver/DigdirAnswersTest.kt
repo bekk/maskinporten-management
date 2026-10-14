@@ -39,7 +39,7 @@ class DigdirAnswersTest {
     private fun digdirAnswering(answer: (OutgoingRequest) -> OutgoingResponse, block: suspend ApplicationTestBuilder.() -> Unit) =
         testServer(
             digdir = OutgoingHttpClient { answer(it) },
-            filtering = OutgoingHttpClient { json(200, """{"exact":[],"prefix":["kartverk:"]}""") },
+            filtering = OutgoingHttpClient { json(200, """{"result":{"exact":[],"prefix":["kartverk:"]}}""") },
             block = block,
         )
 

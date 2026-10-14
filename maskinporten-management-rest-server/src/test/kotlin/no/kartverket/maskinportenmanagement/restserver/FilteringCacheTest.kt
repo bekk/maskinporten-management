@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
 class FilteringCacheTest {
 
     private val filteringRequests = mutableListOf<OutgoingRequest>()
-    private var filteringAnswer = json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":[]}""")
+    private var filteringAnswer = json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":[]}}""")
 
     private fun cachingTest(block: suspend ApplicationTestBuilder.() -> Unit) = testServer(
         digdir = { json(200, """[{"name":"kartverk:nrl.rapportering","active":true}]""") },
@@ -44,7 +44,7 @@ class FilteringCacheTest {
         filteringAnswer = OutgoingResponse(503, "text/plain", "unavailable".toByteArray())
         assertEquals(HttpStatusCode.BadGateway, listScopes())
 
-        filteringAnswer = json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":[]}""")
+        filteringAnswer = json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":[]}}""")
         assertEquals(HttpStatusCode.OK, listScopes())
         assertEquals(2, filteringRequests.size)
     }

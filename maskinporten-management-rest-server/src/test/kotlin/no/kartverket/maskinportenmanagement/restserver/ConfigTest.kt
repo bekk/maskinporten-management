@@ -3,6 +3,7 @@ package no.kartverket.maskinportenmanagement.restserver
 import io.ktor.server.config.MapApplicationConfig
 import java.io.File
 import java.net.URI
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -28,6 +29,17 @@ class ConfigTest {
         val e = assertFailsWith<IllegalStateException> { MapApplicationConfig("flag" to "yes").boolean("flag", default = true) }
 
         assertContains(e.message!!, "must be true or false")
+    }
+
+    @Test
+    fun `seconds must be a whole number, 0 or more, and default when unset`() {
+        assertEquals(Duration.ofSeconds(30), MapApplicationConfig("key" to "30").seconds("key", default = Duration.ZERO))
+        assertEquals(Duration.ZERO, MapApplicationConfig("key" to "0").seconds("key", default = Duration.ofMinutes(1)))
+        assertEquals(Duration.ofMinutes(1), MapApplicationConfig().seconds("key", default = Duration.ofMinutes(1)))
+        for (raw in listOf("-1", "1.5", "1m")) {
+            val e = assertFailsWith<IllegalStateException>(raw) { MapApplicationConfig("key" to raw).seconds("key", default = Duration.ZERO) }
+            assertContains(e.message!!, "must be a whole number of seconds", message = raw)
+        }
     }
 
     @Test

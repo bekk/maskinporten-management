@@ -4,6 +4,7 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
 import java.io.File
 import java.net.URI
+import java.time.Duration
 
 internal fun loadApplicationConfig(
     configFile: String? = System.getProperty("APPLICATION_CONFIG_FILE") ?: System.getenv("APPLICATION_CONFIG_FILE"),
@@ -30,6 +31,12 @@ internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean 
     val raw = optional(path) ?: return default
     return raw.toBooleanStrictOrNull()
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
+}
+
+internal fun ApplicationConfig.seconds(path: String, default: Duration): Duration {
+    val raw = optional(path) ?: return default
+    return raw.toLongOrNull()?.takeIf { it >= 0 }?.let(Duration::ofSeconds)
+        ?: error("$path must be a whole number of seconds, 0 or more, but was \"$raw\" (see .env.example)")
 }
 
 internal fun ApplicationConfig.port(path: String): Int {

@@ -1,5 +1,9 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -8,12 +12,30 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import org.slf4j.LoggerFactory
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ErrorHandlingTest {
+
+    private lateinit var appender: ListAppender<ILoggingEvent>
+
+    private val root get() = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+
+    @BeforeTest
+    fun attachAppender() {
+        appender = ListAppender<ILoggingEvent>().apply { start() }
+        root.addAppender(appender)
+    }
+
+    @AfterTest
+    fun detachAppender() {
+        root.detachAppender(appender)
+    }
 
     private fun answerTo(failure: Throwable, check: suspend (HttpResponse) -> Unit) = testApplication {
         application {
@@ -37,6 +59,17 @@ class ErrorHandlingTest {
         answerTo(BadRequestException("Can't transform call to resource")) { response ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
             assertEquals("""{"error":"The request could not be read","code":"INVALID_REQUEST"}""", response.bodyAsText())
+        }
+
+    @Test
+    fun `a failed call to Cloud KMS gives 502 with UPSTREAM_ERROR, and is logged with its stack trace`() =
+        answerTo(CloudKmsException("Call to Cloud KMS failed: PERMISSION_DENIED", RuntimeException("PERMISSION_DENIED"))) { response ->
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            assertEquals("""{"error":"The call to Cloud KMS failed","code":"UPSTREAM_ERROR"}""", response.bodyAsText())
+            val logged = appender.list.single { it.formattedMessage == "Call to Cloud KMS failed" }
+            assertEquals(Level.ERROR, logged.level)
+            assertEquals(CloudKmsException::class.java.name, logged.throwableProxy.className)
+            assertTrue(logged.throwableProxy.stackTraceElementProxyArray.isNotEmpty())
         }
 
     @Test

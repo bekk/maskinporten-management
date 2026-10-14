@@ -13,11 +13,23 @@ import com.google.cloud.kms.v1.KeyManagementServiceSettings
 import com.google.protobuf.ByteString
 import io.grpc.ManagedChannel
 import io.grpc.Server
+import io.grpc.Status
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.stub.StreamObserver
+import io.ktor.client.request.get
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.testing.testApplication
+import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
+import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.Signature
@@ -56,6 +68,41 @@ class CloudKmsTest {
             update(data)
         }
         assertTrue(verifier.verify(signature))
+    }
+
+    @Test
+    fun `a failed signing gives the caller 502 with UPSTREAM_ERROR`() {
+        val fake = FakeKms(keyPair, CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256, signFailure = Status.PERMISSION_DENIED)
+        val maskinporten = OutgoingHttpClient {
+            json(200, """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token"}""")
+        }
+
+        CloudKms(keyName, client(fake)).use { kms ->
+            val tokenProvider = MaskinportenTokenProvider(
+                wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
+                clientId = "client-id",
+                scopes = listOf(Scope.of("idporten:scopes.write")),
+                kms = kms,
+                certificateChainPem = certificateChain(keyPair.public).joinToString("") { pem(it) },
+                httpClient = maskinporten,
+            )
+            testApplication {
+                application {
+                    configureSerialization()
+                    configureErrorHandling()
+                    configureMaskinportenManagement(
+                        MaskinportenManagementClient(URI("https://digdir.test"), maskinporten, tokenProvider),
+                        ExternalFiltering(null),
+                    )
+                    configureRouting()
+                }
+
+                val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
+
+                assertEquals(HttpStatusCode.BadGateway, response.status)
+                assertEquals(ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+            }
+        }
     }
 
     @Test
@@ -104,6 +151,7 @@ class CloudKmsTest {
 private class FakeKms(
     private val keyPair: KeyPair,
     private val algorithm: CryptoKeyVersionAlgorithm,
+    private val signFailure: Status? = null,
 ) : KeyManagementServiceGrpc.KeyManagementServiceImplBase() {
     val signRequests = mutableListOf<AsymmetricSignRequest>()
 
@@ -120,6 +168,7 @@ private class FakeKms(
 
     override fun asymmetricSign(request: AsymmetricSignRequest, response: StreamObserver<AsymmetricSignResponse>) {
         signRequests += request
+        if (signFailure != null) return response.onError(signFailure.asRuntimeException())
         val signature = Signature.getInstance("NONEwithRSA").run {
             initSign(keyPair.private)
             update(SHA256_DIGEST_INFO + request.digest.sha256.toByteArray())

@@ -47,17 +47,6 @@ After changing the API, regenerate it with:
 ./gradlew generateOpenApiSpec
 ```
 
-## Logging
-
-Each line logged during a call shows the calling app's SPIFFE ID, for example
-`access [spiffe://cluster.local/ns/team/sa/app] - 200 OK: GET - /api/scopes in 210ms`. Digdir sees every call as coming
-from this server, so this log is the only place that shows which app made it. A custom `LOGBACK_CONFIG_FILE` needs
-`%X{workload}` in its pattern to keep it.
-
-The SPIFFE ID is the last `URI=spiffe://…` field in the `X-Forwarded-Client-Cert` header, the same one OPA uses for
-access. Istio's sidecar adds the caller it verified after anything the caller sent itself
-(`forwardClientCertDetails: APPEND_FORWARD`), so a caller cannot pass itself off as another app.
-
 ## Environment variables
 
 See [`.env.example`](.env.example).

@@ -1,0 +1,51 @@
+package no.kartverket.maskinportenmanagement.restserver
+
+import io.ktor.server.config.ApplicationConfig
+import io.ktor.server.config.yaml.YamlConfig
+import java.io.File
+import java.net.URI
+
+internal fun loadApplicationConfig(
+    configFile: String? = System.getProperty("APPLICATION_CONFIG_FILE") ?: System.getenv("APPLICATION_CONFIG_FILE"),
+): ApplicationConfig {
+    val path = configFile?.trim()?.takeIf { it.isNotEmpty() }
+        ?: return YamlConfig("application.yaml") ?: error("application.yaml is not on the classpath")
+    val file = File(path)
+    check(file.isFile) { "APPLICATION_CONFIG_FILE must point to a file, but was \"$path\" (see .env.example)" }
+    check(file.extension in setOf("yaml", "yml")) {
+        "APPLICATION_CONFIG_FILE must end in .yaml or .yml, but was \"$path\" (see .env.example)"
+    }
+    return checkNotNull(YamlConfig(file.absolutePath))
+}
+
+internal fun ApplicationConfig.optional(path: String): String? =
+    propertyOrNull(path)?.getString()?.trim()?.takeIf { it.isNotEmpty() }
+
+internal fun ApplicationConfig.required(path: String): String =
+    optional(path) ?: error("Missing required configuration $path (see .env.example)")
+
+internal fun ApplicationConfig.spaceSeparated(path: String): List<String> = required(path).split(Regex("\\s+"))
+
+internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean {
+    val raw = optional(path) ?: return default
+    return raw.toBooleanStrictOrNull()
+        ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
+}
+
+internal fun ApplicationConfig.port(path: String): Int {
+    val raw = required(path)
+    return raw.toIntOrNull()?.takeIf { it in 1..65535 }
+        ?: error("$path must be a port number, but was \"$raw\" (see .env.example)")
+}
+
+internal fun ApplicationConfig.url(path: String): URI {
+    val raw = required(path)
+    val uri = runCatching { URI(raw) }.getOrNull()
+    check(uri != null && uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
+        "$path must be an http or https URL, but was \"$raw\" (see .env.example)"
+    }
+    check(uri.rawQuery == null && uri.rawFragment == null) {
+        "$path must not have a query or fragment, but was \"$raw\" (see .env.example)"
+    }
+    return uri
+}

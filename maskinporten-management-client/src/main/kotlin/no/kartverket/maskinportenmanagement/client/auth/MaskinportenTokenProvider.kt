@@ -1,0 +1,130 @@
+package no.kartverket.maskinportenmanagement.client.auth
+
+import com.nimbusds.jwt.JWTClaimsSet
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.kms.GrantSigner
+import no.kartverket.maskinportenmanagement.client.kms.Kms
+import java.net.URI
+import java.net.URLEncoder
+import java.time.Clock
+import java.time.Instant
+import java.util.Date
+import java.util.UUID
+
+/**
+ * Gets access tokens from Maskinporten with a JWT grant that [kms] signs and that carries the business certificate
+ * chain in `x5c`, and reuses each token until shortly before it expires.
+ *
+ * [certificateChainPem] is the chain in PEM, the business certificate for the KMS key first.
+ */
+public class MaskinportenTokenProvider(
+    private val wellKnownUrl: URI,
+    private val clientId: String,
+    private val scopes: List<Scope>,
+    kms: Kms,
+    certificateChainPem: String,
+    private val httpClient: OutgoingHttpClient,
+    private val clock: Clock = Clock.systemUTC(),
+) : AccessTokenProvider {
+    init {
+        require(scopes.isNotEmpty()) { "scopes must not be empty" }
+    }
+
+    private val grantSigner = GrantSigner(kms, certificateChainPem)
+    private val mutex = Mutex()
+    private var metadata: Metadata? = null
+    private var token: Token? = null
+
+    override suspend fun accessToken(): AccessToken = mutex.withLock {
+        token?.takeIf { clock.instant() < it.refreshAt }?.let { return it.value }
+
+        val metadata = metadata ?: fetchMetadata().also { metadata = it }
+        val requestedAt = clock.instant()
+        val form = "grant_type=${encode(GRANT_TYPE)}&assertion=${encode(grant(metadata.issuer, requestedAt))}"
+        val response = httpClient.send(
+            OutgoingRequest(
+                method = HttpMethod.POST,
+                url = URI.create(metadata.tokenEndpoint),
+                headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
+                body = form.toByteArray(),
+            ),
+        )
+        val tokenResponse = response.decode<TokenResponse>("token request")
+        val accessToken = AccessToken.of(tokenResponse.accessToken)
+        token = Token(accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
+        accessToken
+    }
+
+    override suspend fun refused(token: AccessToken): Unit = mutex.withLock {
+        // Another call may already have fetched a new token
+        if (this.token?.value == token) this.token = null
+    }
+
+    private suspend fun fetchMetadata(): Metadata = httpClient.send(
+        OutgoingRequest(method = HttpMethod.GET, url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
+    ).decode("metadata request")
+
+    private suspend fun grant(audience: String, now: Instant): String {
+        val claims = JWTClaimsSet.Builder()
+            .audience(audience)
+            .issuer(clientId)
+            .claim("scope", scopes.joinToString(" ") { it.value })
+            .issueTime(Date.from(now))
+            .expirationTime(Date.from(now.plusSeconds(GRANT_LIFETIME_SECONDS)))
+            .jwtID(UUID.randomUUID().toString())
+            .build()
+        return withContext(Dispatchers.IO) { grantSigner.sign(claims) }
+    }
+
+    private inline fun <reified T> OutgoingResponse.decode(what: String): T {
+        val text = body.decodeToString()
+        if (statusCode != 200) throw DigdirException("Maskinporten $what failed with HTTP $statusCode: $text")
+        return try {
+            json.decodeFromString(text)
+        } catch (e: SerializationException) {
+            // Neither the text nor e, whose message quotes it: a token response may hold the token
+            throw DigdirException("Maskinporten $what answered HTTP 200 without the expected JSON")
+        }
+    }
+
+    @Serializable
+    private class Metadata(
+        val issuer: String,
+        @SerialName("token_endpoint") val tokenEndpoint: String,
+    )
+
+    @Serializable
+    private class TokenResponse(
+        @SerialName("access_token") val accessToken: String,
+        @SerialName("expires_in") val expiresIn: Long,
+    )
+
+    private class Token(val value: AccessToken, val refreshAt: Instant)
+
+    private companion object {
+        const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+        // Digdir's recommended lifetime
+        const val GRANT_LIFETIME_SECONDS = 120L
+
+        // So a token does not run out on its way to Digdir
+        const val REFRESH_MARGIN_SECONDS = 20L
+
+        val json = Json { ignoreUnknownKeys = true }
+
+        fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
+    }
+}

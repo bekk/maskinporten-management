@@ -1,0 +1,37 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-management
+  title: Maskinporten Management
+  description: Kotlin-klient og server for forvaltning av Maskinporten-scopes.
+spec:
+  type: ops
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/altinn-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-management-client
+  title: Maskinporten Management - Klientbibliotek
+  description: Klientbibliotek for forvaltning av Maskinporten-scopes
+spec:
+  type: library
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/altinn-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-management-rest-server
+  title: Maskinporten Management - REST Server
+  description: Ktor-applikasjon med REST-API for forvaltning av Maskinporten-scopes.
+spec:
+  type: service
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/altinn-plattformfunksjonalitet

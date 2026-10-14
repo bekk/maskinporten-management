@@ -27,6 +27,7 @@ import no.kartverket.maskinportenmanagement.client.kms.CloudKms
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient
+import java.time.Clock
 import java.time.Duration
 
 fun Application.configureMaskinportenManagement(
@@ -66,8 +67,12 @@ private fun pemFile(setting: String, path: String): String {
 
 // On by default, so a missing URL stops the server instead of showing every app all of Kartverket's scopes
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {
-    if (!environment.config.boolean("externalFiltering.enabled", default = true)) return ExternalFiltering(null)
-    return ExternalFiltering(ExternalFilteringClient(environment.config.url("externalFiltering.url"), httpClient()))
+    val config = environment.config
+    if (!config.boolean("externalFiltering.enabled", default = true)) return ExternalFiltering(null)
+    return ExternalFiltering(
+        ExternalFilteringClient(config.url("externalFiltering.url"), httpClient()),
+        cacheDuration = config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1)),
+    )
 }
 
 private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(
@@ -80,12 +85,19 @@ private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(
     ),
 )
 
-class ExternalFiltering(private val client: ExternalFilteringClient?) {
+class ExternalFiltering(
+    private val client: ExternalFilteringClient?,
+    cacheDuration: Duration = Duration.ZERO,
+    clock: Clock = Clock.systemUTC(),
+) {
+    private val cache = ScopeFilterCache(cacheDuration, clock)
+
     suspend fun filterFor(call: ApplicationCall): ScopeFilter? {
         val client = client ?: return null
         val certificate = call.request.headers[CLIENT_CERTIFICATE_HEADER]?.takeIf { it.isNotBlank() }
             ?: throw InvalidRequestException("Header $CLIENT_CERTIFICATE_HEADER is required")
-        return client.filterFor(ClientCertificate.of(certificate))
+        cache.get(certificate)?.let { return it }
+        return client.filterFor(ClientCertificate.of(certificate)).also { cache.put(certificate, it) }
     }
 }
 

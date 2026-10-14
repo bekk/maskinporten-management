@@ -29,13 +29,19 @@ internal fun testServer(
     digdir: OutgoingHttpClient,
     filtering: OutgoingHttpClient?,
     block: suspend ApplicationTestBuilder.() -> Unit,
+) = testServer(digdir, ExternalFiltering(filtering?.let { ExternalFilteringClient(URI("https://filtering.test/scopes"), it) }), block)
+
+internal fun testServer(
+    digdir: OutgoingHttpClient,
+    externalFiltering: ExternalFiltering,
+    block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
     application {
         configureSerialization()
         configureErrorHandling()
         configureMaskinportenManagement(
             MaskinportenManagementClient(URI("https://digdir.test"), digdir) { AccessToken.of("test-token") },
-            ExternalFiltering(filtering?.let { ExternalFilteringClient(URI("https://filtering.test/scopes"), it) }),
+            externalFiltering,
         )
         configureRouting()
     }

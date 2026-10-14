@@ -17,6 +17,7 @@ kms:
 externalFiltering:
   enabled: "$?EXTERNAL_FILTERING_ENABLED"
   url: "$?EXTERNAL_FILTERING_URL"
+  cacheSeconds: "$?EXTERNAL_FILTERING_CACHE_SECONDS"
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"

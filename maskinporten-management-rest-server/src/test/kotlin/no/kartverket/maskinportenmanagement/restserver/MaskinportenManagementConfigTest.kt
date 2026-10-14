@@ -32,7 +32,7 @@ class MaskinportenManagementConfigTest {
         "maskinporten.wellKnownUrl" to "http://localhost:8080/.well-known/oauth-authorization-server",
         "maskinporten.clientId" to "dev-client",
         "maskinporten.scopes" to "idporten:scopes.write",
-        "maskinporten.certificateChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
+        "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
         "kms.localKeyFile" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
@@ -58,7 +58,7 @@ class MaskinportenManagementConfigTest {
             "maskinporten.wellKnownUrl",
             "maskinporten.clientId",
             "maskinporten.scopes",
-            "maskinporten.certificateChain",
+            "digdirAdmin.certChain",
         )
         for (setting in settings) {
             assertContains(startupFailure(complete - setting), setting)
@@ -95,6 +95,14 @@ class MaskinportenManagementConfigTest {
     @Test
     fun `the server does not start unless exactly one KMS is set`() {
         assertContains(startupFailure(complete - "kms.localKeyFile"), "exactly one")
-        assertContains(startupFailure(complete + ("kms.cloudKeyPath" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
+        assertContains(startupFailure(complete + ("digdirAdmin.gcpCloudKmsKeyPath" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
+    }
+
+    @Test
+    fun `the server does not start unless the certificate chain is PEM, and names the setting`() {
+        assertContains(
+            startupFailure(complete + ("digdirAdmin.certChain" to "\$(cat virksomhetssertifikat-chain.pem)")),
+            "digdirAdmin.certChain must be the certificate chain itself in PEM",
+        )
     }
 }

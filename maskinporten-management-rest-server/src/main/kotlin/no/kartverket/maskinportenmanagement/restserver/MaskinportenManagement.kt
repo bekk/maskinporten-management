@@ -43,18 +43,22 @@ fun Application.configureMaskinportenManagement(
 private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val config = environment.config
     val httpClient = httpClient()
-    val cloudKeyPath = config.optional("kms.cloudKeyPath")
+    val cloudKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
     val localKeyFile = config.optional("kms.localKeyFile")
     check((cloudKeyPath == null) != (localKeyFile == null)) {
-        "Set exactly one of kms.cloudKeyPath (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+        "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
     }
     val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
+    val certChain = config.required("digdirAdmin.certChain")
+    check("-----BEGIN CERTIFICATE-----" in certChain) {
+        "digdirAdmin.certChain must be the certificate chain itself in PEM, but was \"$certChain\" (see .env.example)"
+    }
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
         scopes = config.spaceSeparated("maskinporten.scopes").map(Scope::of),
         kms = kms,
-        certificateChainPem = config.required("maskinporten.certificateChain"),
+        certificateChainPem = certChain,
         httpClient = httpClient,
     )
     monitor.subscribe(ApplicationStopped) {

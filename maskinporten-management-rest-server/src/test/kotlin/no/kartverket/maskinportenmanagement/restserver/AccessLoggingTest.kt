@@ -86,6 +86,7 @@ class AccessLoggingTest {
     }
 
     private val certificate = "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
+    private val workload = "spiffe://cluster.local/ns/team/sa/app"
 
     @Test
     fun `logs one line per request by default, on its own logger so logback can route it apart from other logs`() {
@@ -106,8 +107,8 @@ class AccessLoggingTest {
     }
 
     @Test
-    fun `the workload is the namespace and service account of the caller`() {
-        assertEquals("team/app", workloadFrom(certificate))
+    fun `the workload is the SPIFFE ID of the caller`() {
+        assertEquals(workload, workloadFrom(certificate))
     }
 
     @Test
@@ -115,7 +116,7 @@ class AccessLoggingTest {
         val certificate = "URI=spiffe://cluster.local/ns/fake/sa/app," +
             "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
 
-        assertEquals("team/app", workloadFrom(certificate))
+        assertEquals(workload, workloadFrom(certificate))
     }
 
     @Test
@@ -130,7 +131,7 @@ class AccessLoggingTest {
         val events = eventsFor("true", certificate).fromCalls()
 
         assertEquals(5, events.size, "expected two lines, an error and two access lines, got: $events")
-        events.forEach { assertEquals("team/app", it.mdcPropertyMap["workload"], "for: $it") }
+        events.forEach { assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it") }
     }
 
     @Test
@@ -138,7 +139,7 @@ class AccessLoggingTest {
         val events = eventsFor("false", certificate).fromCalls()
 
         assertEquals(3, events.size, "expected two lines and an error, got: $events")
-        events.forEach { assertEquals("team/app", it.mdcPropertyMap["workload"], "for: $it") }
+        events.forEach { assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it") }
     }
 
     @Test

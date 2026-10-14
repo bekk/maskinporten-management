@@ -16,8 +16,6 @@ fun Application.configureAccessLogging() {
     }
 }
 
-private val spiffeUri = Regex("""URI=spiffe://[^/;,"]+/ns/([^/;,"]+)/sa/([^/;,"]+)""")
-
-// The last match, since Istio appends the caller it verified after any header the caller sent itself
+// The last URI field, like OPA, since Istio appends the caller it verified after any header the caller sent itself
 internal fun workloadFrom(clientCertificate: String?): String? =
-    clientCertificate?.let { spiffeUri.findAll(it).lastOrNull() }?.let { "${it.groupValues[1]}/${it.groupValues[2]}" }
+    clientCertificate?.split(',', ';')?.lastOrNull { it.startsWith("URI=spiffe://") }?.removePrefix("URI=")

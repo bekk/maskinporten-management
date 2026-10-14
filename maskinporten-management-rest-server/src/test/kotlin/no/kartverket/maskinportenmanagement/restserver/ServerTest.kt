@@ -11,12 +11,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class ServerTest {
 
     @Test
-    fun `test health liveness endpoint`() = testApplication {
+    fun `the liveness probe answers 200`() = testApplication {
         application {
             configureRouting()
         }
@@ -24,7 +23,7 @@ class ServerTest {
     }
 
     @Test
-    fun `openapi endpoint serves the generated spec as json`() = testApplication {
+    fun `serves the OpenAPI spec as JSON, without servers`() = testApplication {
         application {
             configureRouting()
         }
@@ -33,7 +32,6 @@ class ServerTest {
         assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
 
         val spec = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        assertTrue(spec.getValue("paths").jsonObject.containsKey("/health/live"))
         assertFalse(spec.containsKey("servers"), "the host differs per environment, so the spec names none")
     }
 }

@@ -15,15 +15,14 @@ import java.time.Instant
 import java.util.Base64
 import java.util.Date
 
-internal fun rsaKeyPair(): KeyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+public fun rsaKeyPair(): KeyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
 
-internal fun pem(type: String, der: ByteArray): String =
+public fun pem(type: String, der: ByteArray): String =
     "-----BEGIN $type-----\n${Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(der)}\n-----END $type-----\n"
 
-internal fun pem(certificate: X509Certificate): String = pem("CERTIFICATE", certificate.encoded)
+public fun pem(certificate: X509Certificate): String = pem("CERTIFICATE", certificate.encoded)
 
-// A test certificate for the key, issued by a fake CA, and the CA's own certificate
-internal fun certificateChain(publicKey: PublicKey): List<X509Certificate> {
+public fun certificateChain(publicKey: PublicKey): List<X509Certificate> {
     val ca = rsaKeyPair()
     val caCertificate = certificate("CN=Falsk CA", ca.public, "CN=Falsk CA", ca.private)
     val certificate = certificate("O=STATENS KARTVERK, CN=STATENS KARTVERK TEST", publicKey, "CN=Falsk CA", ca.private)

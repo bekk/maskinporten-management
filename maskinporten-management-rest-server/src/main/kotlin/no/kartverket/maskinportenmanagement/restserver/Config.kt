@@ -24,16 +24,12 @@ internal fun ApplicationConfig.optional(path: String): String? =
 internal fun ApplicationConfig.required(path: String): String =
     optional(path) ?: error("Missing required configuration $path (see .env.example)")
 
+internal fun ApplicationConfig.spaceSeparated(path: String): List<String> = required(path).split(Regex("\\s+"))
+
 internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean {
     val raw = optional(path) ?: return default
     return raw.toBooleanStrictOrNull()
         ?: error("$path must be true or false, but was \"$raw\" (see .env.example)")
-}
-
-internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
-    val raw = required(path)
-    return enumValues<T>().find { it.name == raw }
-        ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
 }
 
 internal fun ApplicationConfig.port(path: String): Int {
@@ -42,7 +38,7 @@ internal fun ApplicationConfig.port(path: String): Int {
         ?: error("$path must be a port number, but was \"$raw\" (see .env.example)")
 }
 
-internal fun ApplicationConfig.url(path: String): String {
+internal fun ApplicationConfig.url(path: String): URI {
     val raw = required(path)
     val uri = runCatching { URI(raw) }.getOrNull()
     check(uri != null && uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrEmpty()) {
@@ -51,5 +47,5 @@ internal fun ApplicationConfig.url(path: String): String {
     check(uri.rawQuery == null && uri.rawFragment == null) {
         "$path must not have a query or fragment, but was \"$raw\" (see .env.example)"
     }
-    return raw
+    return uri
 }

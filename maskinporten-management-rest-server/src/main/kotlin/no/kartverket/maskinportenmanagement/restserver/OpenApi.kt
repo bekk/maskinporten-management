@@ -23,12 +23,13 @@ import io.ktor.server.routing.openapi.plus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.EmptySerializersModule
+import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.IntegrationType
-import no.kartverket.maskinportenmanagement.restserver.models.Scope
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessState
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
 import no.kartverket.maskinportenmanagement.restserver.models.TokenType
 import no.kartverket.maskinportenmanagement.restserver.models.Visibility
 
@@ -44,7 +45,14 @@ private val exampleJson = Json {
 private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "0.1.0",
-    description = "REST API for managing Maskinporten scopes",
+    description = """
+        Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes
+        organisations' access to them.
+
+        A call only reaches this API after the platform has checked that the calling app may make it. When a list
+        holds scopes, it only shows the ones the calling app has access to. Otherwise, this API returns Digdir's
+        answer unchanged: its status, body and content type.
+    """.trimIndent(),
 )
 
 fun Application.openApiSpec(): String =
@@ -77,31 +85,110 @@ private fun JsonSchema.documented(
 private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().documented(
     "scope" to { copy(description = "The scope.") },
     "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
+    "owner_organization_name" to { copy(description = "The name of the organisation that owns the scope.") },
     "consumer_orgno" to { copy(description = "The organisation that was given access.") },
+    "consumer_organization_name" to { copy(description = "The name of the organisation that was given access.") },
     "state" to {
         copy(
-            description = """
-                Where the access stands. Only `APPROVED` means the organisation has access.
-
-                - `REQUESTED`: the organisation has asked for access.
-                - `APPROVED`: the organisation has access.
-                - `DENIED`: the request for access was refused.
-            """.trimIndent(),
+            description = "Where the access stands. Only `APPROVED` means the organisation has access, and giving " +
+                "access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and " +
+                "`DENIED`.",
         )
     },
-    "created" to { copy(format = "date-time") },
-    "last_updated" to { copy(format = "date-time") },
+    "created" to { copy(description = "When the access was given.", format = "date-time") },
+    "last_updated" to { copy(description = "When the access was last changed.", format = "date-time") },
     required = null,
 )
 
-private val scopeSchema = schemaInference.jsonSchema<Scope>().documented(
+// Digdir leaves out a missing value instead of sending null
+private fun JsonSchema.leftOutWhenMissing(description: String): JsonSchema =
+    copy(type = JsonType.STRING, description = description)
+
+private const val PERSONS_ONLY = "Only for logins with ID-porten, not for Maskinporten:"
+
+private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "name" to { copy(description = "The whole scope: the prefix, a colon and the subscope.") },
-    "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
+    "prefix" to {
+        copy(description = "Digdir's prefix for the owner, `kartverk` for Kartverket: only the part before the colon.")
+    },
+    "subscope" to { copy(description = "The part after the colon, which the owner chose. It cannot be changed.") },
+    "description" to { copy(description = "A short description in Norwegian Bokmål.") },
+    "long_description" to {
+        leftOutWhenMissing("A longer description in Norwegian Bokmål. Left out, or empty, if the owner has not written one.")
+    },
+    "description#en" to { leftOutWhenMissing("`description` in English. Left out if the owner has not written one.") },
+    "description#nn" to {
+        leftOutWhenMissing("`description` in Norwegian Nynorsk. Left out if the owner has not written one.")
+    },
+    "long_description#en" to {
+        leftOutWhenMissing("`long_description` in English. Left out if the owner has not written one.")
+    },
+    "long_description#nn" to {
+        leftOutWhenMissing("`long_description` in Norwegian Nynorsk. Left out if the owner has not written one.")
+    },
     "active" to { copy(description = "Always `true` here, since only active scopes are listed.") },
-    "at_max_age" to { copy(description = "The most seconds an access token for the scope can live.") },
-    "authorization_max_lifetime" to { copy(description = "The most seconds an authorization for the scope can live.") },
-    "created" to { copy(format = "date-time") },
-    "last_updated" to { copy(format = "date-time") },
+    "created" to { copy(description = "When the scope was created.", format = "date-time") },
+    "last_updated" to { copy(description = "When the scope was last changed.", format = "date-time") },
+    "allowed_integration_types" to {
+        copy(
+            description = "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or " +
+                "an empty list, which allows every kind.",
+        )
+    },
+    "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
+    "token_type" to {
+        copy(
+            description = """
+                The kind of access token issued for the scope.
+
+                - `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.
+                - `OPAQUE`: a token that the API has to look up with Digdir.
+            """.trimIndent(),
+        )
+    },
+    "visibility" to {
+        copy(
+            description = """
+                Who can see the scope.
+
+                - `PUBLIC`: anyone, in Digdir's list of all scopes.
+                - `PRIVATE`: only the owner and the organisations given access.
+                - `INTERNAL`: Digdir's own use.
+            """.trimIndent(),
+        )
+    },
+    "requires_user_consent" to {
+        copy(description = "$PERSONS_ONLY a person must consent before a client gets a token.")
+    },
+    "requires_user_authentication" to {
+        copy(description = "$PERSONS_ONLY a person must log in again, even with an active session.")
+    },
+    "requires_pseudonymous_tokens" to {
+        copy(description = "$PERSONS_ONLY tokens leave out the person's national identity number.")
+    },
+    "delegation_source" to {
+        leftOutWhenMissing(
+            "Where an organisation with access can delegate it to a supplier, such as `https://www.altinn.no/`. Left " +
+                "out when the scope cannot be delegated.",
+        )
+    },
+    "at_max_age" to {
+        copy(description = "The most seconds an access token for the scope can live. `0` means Digdir's default.")
+    },
+    "authorization_max_lifetime" to {
+        copy(description = "The most seconds an authorization for the scope can live. `0` means Digdir's default.")
+    },
+    "accessible_for_all" to {
+        copy(description = "If `true`, every organisation can get tokens for the scope without being given access.")
+    },
+    "enforced_aud_for_access_token" to { leftOutWhenMissing("Digdir does not document this field.") },
+    "protected" to { copy(description = "Digdir does not document this field.") },
+    "supports_european_businesses" to {
+        copy(
+            description = "Digdir does not document this field. Its name matches Digdir's feature that lets European " +
+                "businesses get tokens with an eIDAS seal, without being given access.",
+        )
+    },
     required = null,
 )
 
@@ -121,7 +208,6 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
             """.trimIndent(),
         )
     },
-    required = listOf("error", "code"),
 )
 
 internal val healthLiveOperation: Operation.Builder.() -> Unit = {
@@ -160,6 +246,14 @@ private fun Parameters.Builder.orgnr() {
         description = "The consumer's organisation number: 9 digits, for example `311718371`. It must be the only " +
             "query parameter, sent once."
         schema = JsonSchema(type = JsonType.STRING, pattern = "^[0-9]{9}$")
+    }
+}
+
+private fun Parameters.Builder.clientCertificate() {
+    header(CLIENT_CERTIFICATE_HEADER) {
+        required = true
+        description = "Says which app is calling. The platform sets it on every call, so the app does not."
+        schema = JsonSchema(type = JsonType.STRING)
     }
 }
 
@@ -223,7 +317,7 @@ private val missingClientCertificateExample = "MissingClientCertificate" to Erro
 private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
     "`scope`, or `scope` is blank or not URL-encoded correctly."
 
-private val exampleScope = Scope(
+private val exampleScope = ScopeDetails(
     name = "kartverk:tilgangsstyring/demo.read",
     prefix = "kartverk",
     subscope = "tilgangsstyring/demo.read",
@@ -249,11 +343,15 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
     summary = "List Kartverket's scopes that the calling app has access to"
     description = """
         Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in
-        its `exact` list, and the ones that start with one of its prefixes. Istio tells this API which app is calling,
-        in the `X-Forwarded-Client-Cert` header.
+        its `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is
+        calling, in the `X-Forwarded-Client-Cert` header.
 
         Each scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
     """.trimIndent()
+
+    parameters {
+        clientCertificate()
+    }
 
     responses {
         HttpStatusCode.OK {
@@ -284,8 +382,7 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     responses {
         HttpStatusCode.OK {
             description = "Digdir's answer: the organisations given access to the scope. Check `state`: only " +
-                "`APPROVED` means access, and an organisation that has only asked for access, or was refused, may " +
-                "be listed too."
+                "`APPROVED` means access."
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
                 example("Consumers", listOf(exampleScopeAccess))
@@ -304,21 +401,21 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
     summary = "List the scopes an organisation has access to"
     description = """
         Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has
-        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. Istio tells this
-        API which app is calling, in the `X-Forwarded-Client-Cert` header.
+        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells
+        this API which app is calling, in the `X-Forwarded-Client-Cert` header.
 
         Each access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
     """.trimIndent()
 
     parameters {
         orgnr()
+        clientCertificate()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The organisation's access to the scopes the calling app has access to. Check `state`: " +
-                "only `APPROVED` means access, and a scope the organisation has only asked for, or was refused, may " +
-                "be listed too. The list is empty if there is none."
+                "only `APPROVED` means access. The list is empty if there is none."
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
                 example("Scopes", listOf(exampleScopeAccess))
@@ -364,8 +461,9 @@ internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
 
 internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
     summary = "Remove an organisation's access to a scope"
-    description = "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir's response is returned " +
-        "unchanged, with its status, body and content type, including when Digdir answers with an error."
+    description = "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as " +
+        "inactive, so it no longer shows up in this API's lists. Digdir's response is returned unchanged, with its " +
+        "status, body and content type, including when Digdir answers with an error."
 
     parameters {
         consumerOrgno()
@@ -377,6 +475,7 @@ internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
             description = "Digdir's answer: the access that was removed."
             ContentType.Application.Json {
                 schema = scopeAccessSchema
+                example("RemovedAccess", exampleScopeAccess)
             }
         }
 

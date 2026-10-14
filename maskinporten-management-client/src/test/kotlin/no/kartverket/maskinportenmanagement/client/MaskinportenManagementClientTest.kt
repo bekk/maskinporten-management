@@ -2,26 +2,28 @@ package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import java.io.IOException
 import java.net.ConnectException
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
-import kotlin.test.assertTrue
 
 class MaskinportenManagementClientTest {
 
     private val sent = mutableListOf<OutgoingRequest>()
 
     private fun clientAnswering(
-        baseUrl: String = "https://digdir.test",
+        baseUrl: URI = URI("https://digdir.test"),
         answer: (OutgoingRequest) -> OutgoingResponse = { OutgoingResponse(200, "application/json", "[]".toByteArray()) },
     ) = MaskinportenManagementClient(
         baseUrl,
@@ -29,7 +31,7 @@ class MaskinportenManagementClientTest {
             sent += request
             answer(request)
         },
-        { "test-token" },
+        { AccessToken.of("test-token") },
     )
 
     private val scopes = """[
@@ -48,16 +50,9 @@ class MaskinportenManagementClientTest {
         clientAnswering().listScopes()
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
-    }
-
-    @Test
-    fun `without a filter, returns Digdir's scopes as they are`() = runBlocking {
-        val response = OutgoingResponse(200, "application/json", scopes.toByteArray())
-
-        assertSame(response, clientAnswering { response }.listScopes())
     }
 
     @Test
@@ -99,10 +94,10 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `lists scope access with only the scope in the query`() = runBlocking {
-        clientAnswering().listScopeAccess("kartverk:matrikkel.read")
+        clientAnswering().listScopeAccess(Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?scope=kartverk%3Amatrikkel.read", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
         assertEquals("Bearer test-token", request.headers["Authorization"])
@@ -110,10 +105,12 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `a scope cannot add query parameters of its own`() = runBlocking {
-        clientAnswering().listScopeAccess("kartverk:x&consumer_orgno=123")
+        clientAnswering().listScopeAccess(Scope.of("kartverk:x&consumer_orgno=123"))
 
         assertEquals("scope=kartverk%3Ax%26consumer_orgno%3D123", sent.single().url.rawQuery)
     }
+
+    private val consumerOrgno = OrganizationNumber.of("311718371")
 
     private val consumerScopeAccess = """[
         {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
@@ -124,25 +121,18 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `lists a consumer's scope access with only the organisation in the query`() = runBlocking {
-        clientAnswering().listConsumerScopeAccess("311718371")
+        clientAnswering().listConsumerScopeAccess(consumerOrgno)
 
         val request = sent.single()
-        assertEquals("GET", request.method)
+        assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
     }
 
     @Test
-    fun `without a filter, returns a consumer's scope access as it is`() = runBlocking {
-        val response = OutgoingResponse(200, "application/json", consumerScopeAccess.toByteArray())
-
-        assertSame(response, clientAnswering { response }.listConsumerScopeAccess("311718371"))
-    }
-
-    @Test
     fun `with a filter, keeps only the consumer's scope access whose scope it allows`() = runBlocking {
         val response = clientAnswering { OutgoingResponse(200, "application/json", consumerScopeAccess.toByteArray()) }
-            .listConsumerScopeAccess("311718371", filter)
+            .listConsumerScopeAccess(consumerOrgno, filter)
 
         assertEquals(200, response.statusCode)
         assertEquals(
@@ -157,20 +147,11 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `with a filter, passes Digdir's errors for a consumer's scope access on as they are`() = runBlocking {
-        for (status in listOf(400, 403, 500)) {
-            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
-
-            assertSame(response, clientAnswering { response }.listConsumerScopeAccess("311718371", filter), "for $status")
-        }
-    }
-
-    @Test
     fun `removes scope access with the organisation in the path and only the scope in the query`() = runBlocking {
-        clientAnswering().removeScopeAccess("311718371", "kartverk:matrikkel.read")
+        clientAnswering().removeScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("DELETE", request.method)
+        assertEquals(HttpMethod.DELETE, request.method)
         assertEquals(
             "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
             request.url.toString(),
@@ -179,10 +160,10 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `grants scope access with the organisation in the path and only the scope in the query`() = runBlocking {
-        clientAnswering().grantScopeAccess("311718371", "kartverk:matrikkel.read")
+        clientAnswering().grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
-        assertEquals("PUT", request.method)
+        assertEquals(HttpMethod.PUT, request.method)
         assertEquals(
             "https://digdir.test/api/v1/scopes/access/311718371?scope=kartverk%3Amatrikkel.read",
             request.url.toString(),
@@ -190,27 +171,8 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `an organisation number that is not 9 digits never reaches Digdir`() {
-        val calls = mapOf<String, suspend MaskinportenManagementClient.(String) -> Unit>(
-            "grant" to { grantScopeAccess(it, "kartverk:matrikkel.read") },
-            "remove" to { removeScopeAccess(it, "kartverk:matrikkel.read") },
-            "list" to { listConsumerScopeAccess(it) },
-        )
-        for ((name, call) in calls) {
-            for (consumerOrgno in listOf("..", ".", "", "31171837", "3117183710", "31171837a", "311718371/..", " 311718371")) {
-                val e = assertFailsWith<IllegalArgumentException>("$name $consumerOrgno") {
-                    runBlocking { clientAnswering().call(consumerOrgno) }
-                }
-
-                assertContains(e.message!!, "9 digits", message = "$name $consumerOrgno")
-            }
-        }
-        assertTrue(sent.isEmpty())
-    }
-
-    @Test
     fun `a trailing slash on the base URL is ignored`() = runBlocking {
-        clientAnswering(baseUrl = "https://digdir.test/").listScopeAccess("kartverk:x")
+        clientAnswering(baseUrl = URI("https://digdir.test/")).listScopeAccess(Scope.of("kartverk:x"))
 
         assertEquals("/api/v1/scopes/access", sent.single().url.path)
     }
@@ -220,28 +182,28 @@ class MaskinportenManagementClientTest {
         for (status in listOf(200, 400, 403, 404, 500)) {
             val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
 
-            assertSame(response, clientAnswering { response }.listScopeAccess("kartverk:x"), "for $status")
+            assertSame(response, clientAnswering { response }.listScopeAccess(Scope.of("kartverk:x")), "for $status")
         }
     }
 
     @Test
     fun `a 401 from Digdir becomes a DigdirException, and the token is not used again`() {
-        val refused = mutableListOf<String>()
+        val refused = mutableListOf<AccessToken>()
         val client = MaskinportenManagementClient(
-            "https://digdir.test",
+            URI("https://digdir.test"),
             { OutgoingResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
             object : AccessTokenProvider {
-                override suspend fun accessToken() = "test-token"
-                override suspend fun refused(token: String) {
+                override suspend fun accessToken() = AccessToken.of("test-token")
+                override suspend fun refused(token: AccessToken) {
                     refused += token
                 }
             },
         )
 
-        val e = assertFailsWith<DigdirException> { runBlocking { client.listScopeAccess("kartverk:x") } }
+        val e = assertFailsWith<DigdirException> { runBlocking { client.listScopeAccess(Scope.of("kartverk:x")) } }
 
         assertContains(e.message!!, "401")
-        assertEquals(listOf("test-token"), refused)
+        assertEquals(listOf(AccessToken.of("test-token")), refused)
     }
 
     @Test
@@ -249,7 +211,7 @@ class MaskinportenManagementClientTest {
         val failure = IOException("Connection refused")
 
         val e = assertFailsWith<DigdirException> {
-            runBlocking { clientAnswering { throw failure }.listScopeAccess("kartverk:x") }
+            runBlocking { clientAnswering { throw failure }.listScopeAccess(Scope.of("kartverk:x")) }
         }
 
         assertSame(failure, e.cause)
@@ -258,7 +220,7 @@ class MaskinportenManagementClientTest {
     @Test
     fun `the DigdirException names the failure, even when it has no message`() {
         val e = assertFailsWith<DigdirException> {
-            runBlocking { clientAnswering { throw ConnectException() }.listScopeAccess("kartverk:x") }
+            runBlocking { clientAnswering { throw ConnectException() }.listScopeAccess(Scope.of("kartverk:x")) }
         }
 
         assertContains(e.message!!, "ConnectException")

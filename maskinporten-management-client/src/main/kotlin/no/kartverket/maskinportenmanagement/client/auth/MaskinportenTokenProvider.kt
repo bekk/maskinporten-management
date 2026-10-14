@@ -10,6 +10,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -31,18 +33,22 @@ import java.util.UUID
 public class MaskinportenTokenProvider(
     private val wellKnownUrl: URI,
     private val clientId: String,
-    private val scopes: String,
+    private val scopes: List<Scope>,
     kms: Kms,
     certificateChainPem: String,
     private val httpClient: OutgoingHttpClient,
     private val clock: Clock = Clock.systemUTC(),
 ) : AccessTokenProvider {
+    init {
+        require(scopes.isNotEmpty()) { "scopes must not be empty" }
+    }
+
     private val grantSigner = GrantSigner(kms, certificateChainPem)
     private val mutex = Mutex()
     private var metadata: Metadata? = null
     private var token: Token? = null
 
-    override suspend fun accessToken(): String = mutex.withLock {
+    override suspend fun accessToken(): AccessToken = mutex.withLock {
         token?.takeIf { clock.instant() < it.refreshAt }?.let { return it.value }
 
         val metadata = metadata ?: fetchMetadata().also { metadata = it }
@@ -50,36 +56,36 @@ public class MaskinportenTokenProvider(
         val form = "grant_type=${encode(GRANT_TYPE)}&assertion=${encode(grant(metadata.issuer, requestedAt))}"
         val response = httpClient.send(
             OutgoingRequest(
-                method = "POST",
+                method = HttpMethod.POST,
                 url = URI.create(metadata.tokenEndpoint),
                 headers = mapOf("Content-Type" to "application/x-www-form-urlencoded", "Accept" to "application/json"),
                 body = form.toByteArray(),
             ),
         )
         val tokenResponse = response.decode<TokenResponse>("token request")
-        token = Token(tokenResponse.accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
-        tokenResponse.accessToken
+        val accessToken = AccessToken.of(tokenResponse.accessToken)
+        token = Token(accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
+        accessToken
     }
 
-    override suspend fun refused(token: String): Unit = mutex.withLock {
-        // Only forget it if no other call has fetched a new one since
+    override suspend fun refused(token: AccessToken): Unit = mutex.withLock {
+        // Another call may already have fetched a new token
         if (this.token?.value == token) this.token = null
     }
 
     private suspend fun fetchMetadata(): Metadata = httpClient.send(
-        OutgoingRequest(method = "GET", url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
+        OutgoingRequest(method = HttpMethod.GET, url = wellKnownUrl, headers = mapOf("Accept" to "application/json")),
     ).decode("metadata request")
 
     private suspend fun grant(audience: String, now: Instant): String {
         val claims = JWTClaimsSet.Builder()
             .audience(audience)
             .issuer(clientId)
-            .claim("scope", scopes)
+            .claim("scope", scopes.joinToString(" ") { it.value })
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plusSeconds(GRANT_LIFETIME_SECONDS)))
             .jwtID(UUID.randomUUID().toString())
             .build()
-        // Cloud KMS signs over the network and blocks
         return withContext(Dispatchers.IO) { grantSigner.sign(claims) }
     }
 
@@ -106,13 +112,15 @@ public class MaskinportenTokenProvider(
         @SerialName("expires_in") val expiresIn: Long,
     )
 
-    private class Token(val value: String, val refreshAt: Instant)
+    private class Token(val value: AccessToken, val refreshAt: Instant)
 
     private companion object {
         const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
-        // Maskinporten accepts grants that live at most 180 seconds, and recommends 120
-        const val GRANT_LIFETIME_SECONDS = 60L
+        // Digdir's recommended lifetime
+        const val GRANT_LIFETIME_SECONDS = 120L
+
+        // So a token does not run out on its way to Digdir
         const val REFRESH_MARGIN_SECONDS = 20L
 
         val json = Json { ignoreUnknownKeys = true }

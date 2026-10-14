@@ -66,6 +66,7 @@ dependencies {
     "toolsImplementation"(libs.kotlinx.coroutines.core)
 
     testImplementation(ktorLibs.server.testHost)
+    testImplementation(testFixtures(project(":maskinporten-management-client")))
 }
 
 jib {

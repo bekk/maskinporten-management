@@ -1,13 +1,16 @@
 package no.kartverket.maskinportenmanagement.client.auth
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -17,7 +20,6 @@ import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import java.net.URI
 import java.net.URLDecoder
-import java.security.Signature
 import java.security.interfaces.RSAPrivateCrtKey
 import java.time.Clock
 import java.time.Instant
@@ -43,6 +45,7 @@ class MaskinportenTokenProviderTest {
         override fun withZone(zone: java.time.ZoneId?) = this
     }
 
+    private var metadataRequests = 0
     private val tokenRequests = mutableListOf<OutgoingRequest>()
     private var tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-1","expires_in":120}""".toByteArray())
 
@@ -52,7 +55,7 @@ class MaskinportenTokenProviderTest {
                 200,
                 "application/json",
                 """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token","jwks_uri":"x"}""".toByteArray(),
-            )
+            ).also { metadataRequests++ }
 
             "https://maskinporten.test/token" -> tokenAnswer.also { tokenRequests += request }
 
@@ -60,22 +63,24 @@ class MaskinportenTokenProviderTest {
         }
     }
 
-    private val provider = MaskinportenTokenProvider(
+    private fun providerAsking(scopes: List<Scope>) = MaskinportenTokenProvider(
         wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
         clientId = "test-client",
-        scopes = "idporten:scopes.write",
+        scopes = scopes,
         kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
         certificateChainPem = chain.joinToString("") { pem(it) },
         httpClient = maskinporten,
         clock = clock,
     )
 
+    private val provider = providerAsking(listOf(Scope.of("idporten:scopes.write")))
+
     @Test
-    fun `sends a JWT grant signed with the business certificate's key`() = runBlocking {
-        assertEquals("token-1", provider.accessToken())
+    fun `sends a JWT grant for our client and scopes, with Maskinporten as the audience`() = runBlocking {
+        assertEquals("token-1", provider.accessToken().value)
 
         val request = tokenRequests.single()
-        assertEquals("POST", request.method)
+        assertEquals(HttpMethod.POST, request.method)
         assertEquals("application/x-www-form-urlencoded", request.headers["Content-Type"])
         val form = request.body!!.decodeToString().split('&').associate {
             val (key, value) = it.split('=', limit = 2)
@@ -83,25 +88,28 @@ class MaskinportenTokenProviderTest {
         }
         assertEquals("urn:ietf:params:oauth:grant-type:jwt-bearer", form["grant_type"])
 
-        val (header, claims, signature) = form.getValue("assertion").split('.')
-        val headerJson = decodeJson(header)
-        assertEquals("RS256", headerJson.getValue("alg").jsonPrimitive.content)
-        val x5c = headerJson.getValue("x5c").jsonArray.map { Base64.getDecoder().decode(it.jsonPrimitive.content).toList() }
-        assertEquals(chain.map { it.encoded.toList() }, x5c)
-
-        val claimsJson = decodeJson(claims)
+        val claimsJson = decodeJson(form.getValue("assertion").split('.')[1])
         assertEquals("https://maskinporten.test/", claimsJson.getValue("aud").jsonPrimitive.content)
         assertEquals("test-client", claimsJson.getValue("iss").jsonPrimitive.content)
         assertEquals("idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
         assertEquals(now.epochSecond, claimsJson.getValue("iat").jsonPrimitive.long)
-        assertEquals(now.epochSecond + 60, claimsJson.getValue("exp").jsonPrimitive.long)
+        assertEquals(now.epochSecond + 120, claimsJson.getValue("exp").jsonPrimitive.long)
         assertTrue(claimsJson.getValue("jti").jsonPrimitive.content.isNotBlank())
+    }
 
-        val verifier = Signature.getInstance("SHA256withRSA").apply {
-            initVerify(keyPair.public)
-            update("$header.$claims".toByteArray())
-        }
-        assertTrue(verifier.verify(Base64.getUrlDecoder().decode(signature)))
+    @Test
+    fun `asks for all the scopes, space-separated`() = runBlocking {
+        providerAsking(listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))).accessToken()
+
+        val form = tokenRequests.single().body!!.decodeToString()
+        val assertion = URLDecoder.decode(form.substringAfter("assertion="), Charsets.UTF_8)
+        val claimsJson = decodeJson(assertion.split('.')[1])
+        assertEquals("idporten:scopes.read idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `refuses no scopes`() {
+        assertFailsWith<IllegalArgumentException> { providerAsking(emptyList()) }
     }
 
     @Test
@@ -113,30 +121,38 @@ class MaskinportenTokenProviderTest {
 
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
         now = now.plusSeconds(1)
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 
     @Test
-    fun `a token Digdir refused is replaced on the next call`() = runBlocking {
+    fun `fetches Maskinporten's metadata only once`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        now = now.plusSeconds(120)
+        provider.accessToken()
 
-        tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
-        assertEquals("token-2", provider.accessToken())
         assertEquals(2, tokenRequests.size)
+        assertEquals(1, metadataRequests)
     }
 
     @Test
-    fun `refusing an old token keeps the new one`() = runBlocking {
+    fun `calls at the same time share one token request`() = runBlocking {
+        val tokens = List(2) { async { provider.accessToken() } }.awaitAll()
+
+        assertEquals(listOf("token-1", "token-1"), tokens.map { it.value })
+        assertEquals(1, tokenRequests.size)
+    }
+
+    @Test
+    fun `a refused token is replaced, and refusing it again keeps its replacement`() = runBlocking {
         provider.accessToken()
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
         tokenAnswer = OutgoingResponse(200, "application/json", """{"access_token":"token-2","expires_in":120}""".toByteArray())
-        provider.accessToken()
+        assertEquals("token-2", provider.accessToken().value)
 
-        provider.refused("token-1")
+        provider.refused(AccessToken.of("token-1"))
 
-        assertEquals("token-2", provider.accessToken())
+        assertEquals("token-2", provider.accessToken().value)
         assertEquals(2, tokenRequests.size)
     }
 

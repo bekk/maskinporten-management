@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.server.config.MapApplicationConfig
 import java.io.File
+import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -9,24 +10,17 @@ import kotlin.test.assertFailsWith
 
 class ConfigTest {
 
-    private enum class Color { RED, GREEN }
-
-    @Test
-    fun `a misspelled enum value names the valid values`() {
-        val e = assertFailsWith<IllegalStateException> {
-            MapApplicationConfig("color" to "red").enum<Color>("color")
-        }
-
-        assertContains(e.message!!, "color")
-        assertContains(e.message!!, "RED, GREEN")
-    }
-
     @Test
     fun `every value is trimmed the same way`() {
         val config = MapApplicationConfig("key" to "  value  ", "flag" to " true ")
 
         assertEquals("value", config.required("key"))
         assertEquals(true, config.boolean("flag", default = false))
+    }
+
+    @Test
+    fun `a space-separated value is split on any whitespace`() {
+        assertEquals(listOf("a", "b", "c"), MapApplicationConfig("key" to " a  b\tc ").spaceSeparated("key"))
     }
 
     @Test
@@ -79,7 +73,7 @@ class ConfigTest {
     @Test
     fun `an http or https URL is accepted as it is`() {
         for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no")) {
-            assertEquals(raw, MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl"))
+            assertEquals(URI(raw), MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl"))
         }
     }
 

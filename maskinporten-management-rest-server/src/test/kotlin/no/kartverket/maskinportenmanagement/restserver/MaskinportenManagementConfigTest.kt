@@ -2,8 +2,10 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.testApplication
-import java.security.KeyPairGenerator
-import java.util.Base64
+import no.kartverket.maskinportenmanagement.client.kms.certificateChain
+import no.kartverket.maskinportenmanagement.client.kms.pem
+import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import java.nio.file.Path
 import kotlin.io.path.createTempFile
 import kotlin.io.path.writeText
 import kotlin.test.Test
@@ -12,9 +14,10 @@ import kotlin.test.assertFails
 
 class MaskinportenManagementConfigTest {
 
-    private val localKeyFile = createTempFile(suffix = ".pem").apply {
-        val key = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair().private
-        writeText("-----BEGIN PRIVATE KEY-----\n${Base64.getMimeEncoder().encodeToString(key.encoded)}\n-----END PRIVATE KEY-----\n")
+    private val keyPair = rsaKeyPair()
+
+    private fun pemFile(contents: String): Path = createTempFile(suffix = ".pem").apply {
+        writeText(contents)
         toFile().deleteOnExit()
     }
 
@@ -23,27 +26,46 @@ class MaskinportenManagementConfigTest {
         "maskinporten.wellKnownUrl" to "http://localhost:8080/.well-known/oauth-authorization-server",
         "maskinporten.clientId" to "dev-client",
         "maskinporten.scopes" to "idporten:scopes.write",
-        "maskinporten.certificateChainFile" to "does-not-exist.pem",
-        "kms.localKeyFile" to localKeyFile.toString(),
+        "maskinporten.certificateChainFile" to pemFile(certificateChain(keyPair.public).joinToString("") { pem(it) }).toString(),
+        "kms.localKeyFile" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
+        "externalFiltering.url" to "http://localhost:8080/filtering",
     )
 
+    private fun start(settings: Map<String, String>) = testApplication {
+        environment { config = MapApplicationConfig(*settings.toList().toTypedArray()) }
+        application { configureMaskinportenManagement() }
+        startApplication()
+    }
+
     private fun startupFailure(settings: Map<String, String>): String {
-        val e = assertFails {
-            testApplication {
-                environment { config = MapApplicationConfig(*settings.toList().toTypedArray()) }
-                application { configureMaskinportenManagement() }
-                startApplication()
-            }
-        }
+        val e = assertFails { start(settings) }
         return generateSequence(e) { it.cause }.joinToString(" / ") { it.message.orEmpty() }
     }
 
     @Test
-    fun `the server does not start without a Maskinporten setting, and names it`() {
-        for (setting in listOf("maskinporten.wellKnownUrl", "maskinporten.clientId", "maskinporten.scopes", "maskinporten.certificateChainFile")) {
+    fun `the server starts with a complete configuration`() = start(complete)
+
+    @Test
+    fun `the server does not start without a Digdir or Maskinporten setting, and names it`() {
+        val settings = listOf(
+            "digdir.baseUrl",
+            "maskinporten.wellKnownUrl",
+            "maskinporten.clientId",
+            "maskinporten.scopes",
+            "maskinporten.certificateChainFile",
+        )
+        for (setting in settings) {
             assertContains(startupFailure(complete - setting), setting)
         }
     }
+
+    @Test
+    fun `filtering is on unless turned off, and then the server does not start without its URL`() {
+        assertContains(startupFailure(complete - "externalFiltering.url"), "externalFiltering.url")
+    }
+
+    @Test
+    fun `turned off, filtering needs no URL`() = start(complete - "externalFiltering.url" + ("externalFiltering.enabled" to "false"))
 
     @Test
     fun `the server does not start unless exactly one KMS is set`() {
@@ -53,6 +75,9 @@ class MaskinportenManagementConfigTest {
 
     @Test
     fun `the server does not start without the certificate chain file`() {
-        assertContains(startupFailure(complete), "maskinporten.certificateChainFile must point to a PEM file")
+        assertContains(
+            startupFailure(complete + ("maskinporten.certificateChainFile" to "does-not-exist.pem")),
+            "maskinporten.certificateChainFile must point to a PEM file",
+        )
     }
 }

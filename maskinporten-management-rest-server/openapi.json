@@ -2,7 +2,7 @@
     "openapi": "3.1.1",
     "info": {
         "title": "Maskinporten Management REST API",
-        "version": "0.1.0",
+        "version": "v0",
         "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes\norganisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Otherwise, this API returns Digdir's\nanswer unchanged: its status, body and content type."
     },
     "paths": {

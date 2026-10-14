@@ -43,18 +43,18 @@ fun Application.configureMaskinportenManagement(
 private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val config = environment.config
     val httpClient = httpClient()
-    val keyVersion = config.optional("kms.keyVersion")
+    val cloudKeyPath = config.optional("kms.cloudKeyPath")
     val localKeyFile = config.optional("kms.localKeyFile")
-    check((keyVersion == null) != (localKeyFile == null)) {
-        "Set exactly one of kms.keyVersion (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+    check((cloudKeyPath == null) != (localKeyFile == null)) {
+        "Set exactly one of kms.cloudKeyPath (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
     }
-    val kms = keyVersion?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
+    val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
         scopes = config.spaceSeparated("maskinporten.scopes").map(Scope::of),
         kms = kms,
-        certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
+        certificateChainPem = config.required("maskinporten.certificateChain"),
         httpClient = httpClient,
     )
     monitor.subscribe(ApplicationStopped) {

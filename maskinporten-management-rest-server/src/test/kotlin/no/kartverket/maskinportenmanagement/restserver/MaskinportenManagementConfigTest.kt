@@ -32,7 +32,7 @@ class MaskinportenManagementConfigTest {
         "maskinporten.wellKnownUrl" to "http://localhost:8080/.well-known/oauth-authorization-server",
         "maskinporten.clientId" to "dev-client",
         "maskinporten.scopes" to "idporten:scopes.write",
-        "maskinporten.certificateChainFile" to pemFile(certificateChain(keyPair.public).joinToString("") { pem(it) }).toString(),
+        "maskinporten.certificateChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
         "kms.localKeyFile" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
@@ -58,7 +58,7 @@ class MaskinportenManagementConfigTest {
             "maskinporten.wellKnownUrl",
             "maskinporten.clientId",
             "maskinporten.scopes",
-            "maskinporten.certificateChainFile",
+            "maskinporten.certificateChain",
         )
         for (setting in settings) {
             assertContains(startupFailure(complete - setting), setting)
@@ -95,14 +95,6 @@ class MaskinportenManagementConfigTest {
     @Test
     fun `the server does not start unless exactly one KMS is set`() {
         assertContains(startupFailure(complete - "kms.localKeyFile"), "exactly one")
-        assertContains(startupFailure(complete + ("kms.keyVersion" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
-    }
-
-    @Test
-    fun `the server does not start without the certificate chain file`() {
-        assertContains(
-            startupFailure(complete + ("maskinporten.certificateChainFile" to "does-not-exist.pem")),
-            "maskinporten.certificateChainFile must point to a PEM file",
-        )
+        assertContains(startupFailure(complete + ("kms.cloudKeyPath" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
     }
 }

@@ -25,7 +25,6 @@ import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
-import no.kartverket.maskinportenmanagement.client.kms.CloudKms
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient

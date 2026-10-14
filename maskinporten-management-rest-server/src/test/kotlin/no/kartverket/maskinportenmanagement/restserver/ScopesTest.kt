@@ -35,7 +35,7 @@ class ScopesTest {
 
     private fun scopesTest(
         filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
-            json(200, """{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}""")
+            json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}}""")
         },
         digdir: (OutgoingRequest) -> OutgoingResponse = { json(200, scopes) },
         block: suspend ApplicationTestBuilder.() -> Unit,
@@ -59,16 +59,16 @@ class ScopesTest {
     }
 
     @Test
-    fun `sends the calling app's certificate header to the filtering service, and asks Digdir for the scopes`() = scopesTest {
+    fun `sends the calling app's certificate as OPA input to the filtering service, and asks Digdir for the scopes`() = scopesTest {
         listScopes()
 
-        assertEquals(CLIENT_CERTIFICATE, filteringRequests.single().headers["X-Forwarded-Client-Cert"])
+        assertEquals(CLIENT_CERTIFICATE, filteringRequests.single().certificateSentToFiltering())
         assertEquals("https://digdir.test/api/v1/scopes", digdirRequests.single().url.toString())
     }
 
     @Test
     fun `an app with access to no scopes gets an empty list`() =
-        scopesTest(filtering = { json(200, """{"exact":[],"prefix":[]}""") }) {
+        scopesTest(filtering = { json(200, """{"result":{"exact":[],"prefix":[]}}""") }) {
             val response = listScopes()
 
             assertEquals(HttpStatusCode.OK, response.status)
@@ -102,7 +102,7 @@ class ScopesTest {
 
     @Test
     fun `a blank prefix from the filtering service gives 502 instead of every scope`() =
-        scopesTest(filtering = { json(200, """{"exact":[],"prefix":[""]}""") }) {
+        scopesTest(filtering = { json(200, """{"result":{"exact":[],"prefix":[""]}}""") }) {
             val response = listScopes()
 
             assertEquals(HttpStatusCode.BadGateway, response.status)

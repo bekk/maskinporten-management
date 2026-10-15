@@ -261,7 +261,7 @@ private fun Parameters.Builder.orgnr() {
 private fun Parameters.Builder.clientCertificate() {
     header(CLIENT_CERTIFICATE_HEADER) {
         required = true
-        description = "Says which app is calling. The platform sets it on every call, so the app does not."
+        description = "Says which app is calling. Istio usually sets it on every call, so the app does not."
         schema = JsonSchema(type = JsonType.STRING)
     }
 }
@@ -354,8 +354,8 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
     summary = "List Kartverket's scopes that the calling app has access to"
     description = """
         Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in
-        its `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is
-        calling, in the `X-Forwarded-Client-Cert` header.
+        its `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from
+        the `X-Forwarded-Client-Cert` header, which Istio usually sets.
 
         $DIGDIR_ERRORS
     """.trimIndent()
@@ -410,8 +410,8 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
     summary = "List the scopes an organisation has access to"
     description = """
         Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has
-        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells
-        this API which app is calling, in the `X-Forwarded-Client-Cert` header.
+        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads
+        which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.
 
         $DIGDIR_ERRORS
     """.trimIndent()

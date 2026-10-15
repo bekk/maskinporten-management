@@ -8,6 +8,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
+import io.ktor.server.application.log
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.queryString
@@ -70,10 +71,12 @@ private fun pemFile(setting: String, path: String): String {
     return file.readText()
 }
 
-// On by default, so a missing URL stops the server instead of showing every app all of Kartverket's scopes
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {
     val config = environment.config
-    if (!config.boolean("externalFiltering.enabled", default = true)) return ExternalFiltering(null)
+    if (!config.boolean("externalFiltering.enabled", default = false)) {
+        log.warn("External filtering is off")
+        return ExternalFiltering(null)
+    }
     return ExternalFiltering(
         ExternalFilteringClient(config.url("externalFiltering.url"), httpClient()),
         cacheDuration = config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1)),

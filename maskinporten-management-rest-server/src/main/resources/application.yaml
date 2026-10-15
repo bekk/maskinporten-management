@@ -2,12 +2,10 @@ server:
   port: "$PORT:8080"
 
 digdir:
-  baseUrl: "$?DIGDIR_BASE_URL"
+  environment: "$?DIGDIR_ENVIRONMENT"
 
 maskinporten:
-  wellKnownUrl: "$?MASKINPORTEN_WELL_KNOWN_URL"
   clientId: "$?MASKINPORTEN_CLIENT_ID"
-  scopes: "$?MASKINPORTEN_SCOPES"
 
 digdirAdmin:
   certChain: "$?DIGDIR_ADMIN_CERT_CHAIN"

@@ -19,12 +19,12 @@ class ApplicationConfigTest {
     }
 
     @Test
-    fun `the Digdir base URL has no default, so a missing one names the variable to set`() {
-        assumeTrue(System.getenv("DIGDIR_BASE_URL") == null, "DIGDIR_BASE_URL is set in this shell")
+    fun `the Digdir environment has no default, so a missing one names the variable to set`() {
+        assumeTrue(System.getenv("DIGDIR_ENVIRONMENT") == null, "DIGDIR_ENVIRONMENT is set in this shell")
         val config = YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
 
-        val e = assertFailsWith<IllegalStateException> { config.url("digdir.baseUrl") }
+        val e = assertFailsWith<IllegalStateException> { config.enum<DigdirEnvironment>("digdir.environment") }
 
-        assertContains(e.message!!, "digdir.baseUrl")
+        assertContains(e.message!!, "digdir.environment")
     }
 }

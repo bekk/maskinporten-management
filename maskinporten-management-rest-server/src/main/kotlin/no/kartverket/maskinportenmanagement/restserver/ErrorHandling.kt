@@ -40,6 +40,10 @@ fun Application.configureErrorHandling() {
                 ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
             )
         }
+        exception<CloudKmsException> { call, cause ->
+            call.application.log.error("Call to Cloud KMS failed", cause)
+            call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR))
+        }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled exception", cause)
             call.respond(

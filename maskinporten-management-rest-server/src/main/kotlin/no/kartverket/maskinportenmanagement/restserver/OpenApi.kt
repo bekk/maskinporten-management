@@ -202,8 +202,9 @@ private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().do
                 What went wrong. These values do not change, so your code can rely on them.
 
                 - `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.
-                - `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, or from the service that says
-                  which scopes the calling app has access to. Your request did not cause it.
+                - `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which
+                  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
+                  Maskinporten tokens. Your request did not cause it.
                 - `INTERNAL_ERROR` (500): an unexpected error in this API.
             """.trimIndent(),
         )
@@ -278,10 +279,12 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
 private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolean = false) {
     HttpStatusCode.BadGateway {
         description = if (filtered) {
-            "This API could not get an answer from Digdir, or from the service that says which scopes the calling " +
-                "app has access to. Your request did not cause it."
+            "This API could not get an answer from Digdir, from the service that says which scopes the calling app " +
+                "has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your " +
+                "request did not cause it."
         } else {
-            "This API could not get an answer from Digdir. Your request did not cause it."
+            "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for " +
+                "Maskinporten tokens. Your request did not cause it."
         }
         ContentType.Application.Json {
             schema = errorResponseSchema
@@ -292,6 +295,7 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
                     ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
                 )
             }
+            example("KmsError", ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR))
         }
     }
 

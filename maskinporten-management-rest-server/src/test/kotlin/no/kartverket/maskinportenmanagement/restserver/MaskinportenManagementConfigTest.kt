@@ -112,5 +112,9 @@ class MaskinportenManagementConfigTest {
             startupFailure(complete + ("digdirAdmin.certChain" to "\$(cat virksomhetssertifikat-chain.pem)")),
             "digdirAdmin.certChain must be the certificate chain itself in PEM",
         )
+        assertContains(
+            startupFailure(complete + ("digdirAdmin.certChain" to "-----BEGIN CERTIFICATE-----\nnot-base64\n-----END CERTIFICATE-----\n")),
+            "digdirAdmin.certChain must be the certificate chain itself in PEM",
+        )
     }
 }

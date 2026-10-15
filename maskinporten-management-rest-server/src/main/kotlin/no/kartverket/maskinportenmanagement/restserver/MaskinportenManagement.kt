@@ -28,6 +28,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient
+import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
 import java.time.Clock
 import java.time.Duration
 
@@ -49,10 +51,7 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
         "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
     }
     val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("digdirAdmin.localKeyPath", localKeyPath!!))
-    val certChain = config.required("digdirAdmin.certChain")
-    check("-----BEGIN CERTIFICATE-----" in certChain) {
-        "digdirAdmin.certChain must be the certificate chain itself in PEM, but was \"$certChain\" (see .env.example)"
-    }
+    val certChain = pemCertificateChain("digdirAdmin.certChain", config.required("digdirAdmin.certChain"))
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
@@ -72,6 +71,18 @@ private fun pemFile(setting: String, path: String): String {
     val file = File(path)
     check(file.isFile) { "$setting must point to a PEM file, but was \"$path\" (see .env.example)" }
     return file.readText()
+}
+
+// The client parses the chain too, but its errors cannot name the setting
+private fun pemCertificateChain(setting: String, pem: String): String {
+    val error = "$setting must be the certificate chain itself in PEM, but was \"$pem\" (see .env.example)"
+    val certificates = try {
+        CertificateFactory.getInstance("X.509").generateCertificates(pem.byteInputStream())
+    } catch (e: CertificateException) {
+        throw IllegalStateException(error, e)
+    }
+    check(certificates.isNotEmpty()) { error }
+    return pem
 }
 
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {

@@ -6,6 +6,7 @@ import io.ktor.http.URLDecodeException
 import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
@@ -55,6 +56,10 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
         certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
         httpClient = httpClient,
     )
+    monitor.subscribe(ApplicationStopped) {
+        tokenProvider.close()
+        (kms as? AutoCloseable)?.close()
+    }
     return MaskinportenManagementClient(config.url("digdir.baseUrl"), httpClient, tokenProvider)
 }
 

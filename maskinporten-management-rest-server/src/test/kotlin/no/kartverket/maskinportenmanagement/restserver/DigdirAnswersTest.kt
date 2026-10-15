@@ -43,6 +43,12 @@ class DigdirAnswersTest {
             digdirScope("kartverk:matrikkel.read"),
             body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
         ),
+        Endpoint(
+            HttpMethod.Put,
+            "/api/scopes?scope=kartverk:matrikkel.read",
+            digdirScope("kartverk:matrikkel.read"),
+            body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
+        ),
         Endpoint(HttpMethod.Delete, "/api/scopes?scope=kartverk:matrikkel.read", digdirScope("kartverk:matrikkel.read")),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),

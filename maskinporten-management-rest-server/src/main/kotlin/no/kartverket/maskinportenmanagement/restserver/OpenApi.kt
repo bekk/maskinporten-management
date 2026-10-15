@@ -54,8 +54,8 @@ private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "v0",
     description = """
-        Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates and deletes the scopes, and
-        lists, gives and removes organisations' access to them.
+        Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,
+        and lists, gives and removes organisations' access to them.
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
@@ -420,6 +420,44 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
         digdirUnreachableAndOtherStatuses()
     }
 }
+
+internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
+    summary = "Update a scope"
+    description = """
+        Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole
+        scope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The
+        scope's name cannot be changed: `scope` in the query decides which scope is updated.
+
+        $DIGDIR_ERRORS
+    """.trimIndent()
+
+    parameters {
+        scope()
+    }
+
+    requestBody {
+        required = true
+        ContentType.Application.Json {
+            schema = scopeSchema
+            example("ScopeUpdate", exampleUpdatedScope)
+        }
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "The scope after the update."
+            ContentType.Application.Json {
+                schema = scopeSchema
+                example("UpdatedScope", exampleUpdatedScope)
+            }
+        }
+
+        badRequest("$INVALID_SCOPE Or the body is not sent with `Content-Type: application/json`.", missingScopeExample)
+        digdirUnreachableAndOtherStatuses()
+    }
+}
+
+private val exampleUpdatedScope = exampleScope.copy(description = "Lesetilgang til demo-API-et, også for leverandører")
 
 internal val scopesListOperation: Operation.Builder.() -> Unit = {
     summary = "List Kartverket's scopes that the calling app has access to"

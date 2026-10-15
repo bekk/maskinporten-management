@@ -13,6 +13,7 @@ import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.contentType
 import io.ktor.server.request.queryString
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveText
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
@@ -160,6 +161,13 @@ internal fun ApplicationCall.scopeQueryParameter(name: String): Scope {
     val value = onlyQueryParameter(name)
     return runCatching { Scope.of(value) }.getOrNull()
         ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
+}
+
+internal suspend fun ApplicationCall.jsonBody(): String {
+    if (request.contentType().withoutParameters() != ContentType.Application.Json) {
+        throw InvalidRequestException("The body must be JSON, sent with Content-Type application/json")
+    }
+    return receiveText()
 }
 
 // Decoded strictly as UTF-8, so the bytes sent on to Digdir are the ones the access check in front of us saw

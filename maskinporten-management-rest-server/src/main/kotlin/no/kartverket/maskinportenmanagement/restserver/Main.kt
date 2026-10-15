@@ -66,6 +66,12 @@ fun Application.configureRouting() {
             call.respond(client.createScope(scope))
         }.describe(scopeCreateOperation)
 
+        put("/api/scopes") {
+            val client: MaskinportenManagementClient by dependencies
+            val scope = call.scopeQueryParameter("scope")
+            call.respond(client.updateScope(scope, call.jsonBody()))
+        }.describe(scopeUpdateOperation)
+
         delete("/api/scopes") {
             val client: MaskinportenManagementClient by dependencies
             val scope = call.scopeQueryParameter("scope")

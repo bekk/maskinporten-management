@@ -16,6 +16,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Instant
 
@@ -55,7 +56,8 @@ class MaskinportenManagementClientTest {
             "name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","subscope":"tilgangsstyring/demo.read",
             "description":"Lesetilgang","long_description":"Lang lesetilgang","description#en":"Read access",
             "description#nn":"Lesetilgang på nynorsk","long_description#en":"Long read access",
-            "long_description#nn":"Lang lesetilgang på nynorsk","description#se":"Lohkanlobi","active":true,
+            "long_description#nn":"Lang lesetilgang på nynorsk","description#se":"Lohkanlobi",
+            "long_description#se":"Lang lesetilgang på samisk","active":true,
             "created":"2026-01-15T09:30:00.123456Z","last_updated":"2026-02-01T10:00:00Z",
             "allowed_integration_types":["maskinporten","api_klient"],"owner_orgno":"971040238","token_type":"OPAQUE",
             "visibility":"PRIVATE","requires_user_consent":true,"requires_user_authentication":true,
@@ -74,8 +76,10 @@ class MaskinportenManagementClientTest {
                     longDescription = "Lang lesetilgang",
                     descriptionEn = "Read access",
                     descriptionNn = "Lesetilgang på nynorsk",
+                    descriptionSe = "Lohkanlobi",
                     longDescriptionEn = "Long read access",
                     longDescriptionNn = "Lang lesetilgang på nynorsk",
+                    longDescriptionSe = "Lang lesetilgang på samisk",
                     active = true,
                     created = Instant.parse("2026-01-15T09:30:00.123456Z"),
                     lastUpdated = Instant.parse("2026-02-01T10:00:00Z"),
@@ -148,6 +152,29 @@ class MaskinportenManagementClientTest {
             ScopeAccessState.UNKNOWN,
             answering(access).grantScopeAccess(OrganizationNumber.of("311718371"), Scope.of("kartverk:matrikkel.read")).state,
         )
+    }
+
+    @Test
+    fun `creates a scope by posting its JSON as it is, and returns it`() = runBlocking {
+        val json = """{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read","description":"Lesetilgang, æøå"}"""
+
+        val created = answering(digdirScope("kartverk:tilgangsstyring/demo.read")).createScope(ScopeJson.of(json))
+
+        val request = sent.single()
+        assertEquals(HttpMethod.POST, request.method)
+        assertEquals("https://digdir.test/api/v1/scopes", request.url.toString())
+        assertEquals("application/json", request.headers["Content-Type"])
+        assertContentEquals(json.toByteArray(Charsets.UTF_8), request.body)
+        assertEquals(Scope.of("kartverk:tilgangsstyring/demo.read"), created.name)
+    }
+
+    @Test
+    fun `a call without a body sends no body and no Content-Type`() = runBlocking {
+        clientAnswering().listScopes()
+
+        val request = sent.single()
+        assertNull(request.body)
+        assertNull(request.headers["Content-Type"])
     }
 
     @Test

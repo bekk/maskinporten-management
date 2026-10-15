@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.client.request.header
 import io.ktor.client.request.request
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
@@ -28,7 +29,7 @@ import kotlin.test.assertNull
 
 class DigdirAnswersTest {
 
-    private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String) {
+    private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String, val body: String? = null) {
         override fun toString() = "${method.value} $pathAndQuery"
     }
 
@@ -36,6 +37,12 @@ class DigdirAnswersTest {
 
     private val endpoints = listOf(
         Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
+        Endpoint(
+            HttpMethod.Post,
+            "/api/scopes",
+            digdirScope("kartverk:matrikkel.read"),
+            body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
+        ),
         Endpoint(HttpMethod.Delete, "/api/scopes?scope=kartverk:matrikkel.read", digdirScope("kartverk:matrikkel.read")),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
@@ -54,6 +61,10 @@ class DigdirAnswersTest {
         client.request(endpoint.pathAndQuery) {
             method = endpoint.method
             header("X-Forwarded-Client-Cert", CLIENT_CERTIFICATE)
+            if (endpoint.body != null) {
+                contentType(ContentType.Application.Json)
+                setBody(endpoint.body)
+            }
         }
 
     @Test

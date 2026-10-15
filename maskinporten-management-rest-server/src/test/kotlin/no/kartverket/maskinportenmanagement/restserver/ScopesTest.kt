@@ -138,7 +138,7 @@ class ScopesTest {
     @Test
     fun `answers with Digdir's fields, but leaves out the ones this API does not know`() {
         val scope = digdirScope("kartverk:nrl.rapportering")
-        val withNewFields = scope.replaceFirst("{", """{"description#se":"Lohkanlobi","new_field":"from Digdir",""")
+        val withNewFields = scope.replaceFirst("{", """{"description#de":"Lesezugriff","new_field":"from Digdir",""")
 
         scopesTest(filtering = null, digdir = { json(200, "[$withNewFields]") }) {
             val response = client.get("/api/scopes")

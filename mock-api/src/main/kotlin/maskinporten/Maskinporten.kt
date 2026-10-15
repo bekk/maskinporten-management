@@ -18,6 +18,7 @@ import org.slf4j.Logger
 import java.io.File
 import java.security.SecureRandom
 import java.security.Signature
+import java.security.SignatureException
 import java.security.cert.CertPathValidator
 import java.security.cert.CertificateFactory
 import java.security.cert.PKIXParameters
@@ -61,10 +62,17 @@ class MaskinportenMock(issuer: String, private val trustedCa: X509Certificate) {
         validateChain(chain)
         val algorithm = header["alg"]?.jsonPrimitive?.content
         val signatureAlgorithm = SIGNATURE_ALGORITHMS[algorithm] ?: invalidGrant("alg must be one of ${SIGNATURE_ALGORITHMS.keys}")
-        val signatureIsValid = Signature.getInstance(signatureAlgorithm).run {
-            initVerify(chain.first().publicKey)
-            update("${parts[0]}.${parts[1]}".toByteArray())
-            verify(Base64.getUrlDecoder().decode(parts[2]))
+        // A signature that is not base64url, or has the wrong length, throws instead of failing to verify
+        val signatureIsValid = try {
+            Signature.getInstance(signatureAlgorithm).run {
+                initVerify(chain.first().publicKey)
+                update("${parts[0]}.${parts[1]}".toByteArray())
+                verify(Base64.getUrlDecoder().decode(parts[2]))
+            }
+        } catch (e: IllegalArgumentException) {
+            false
+        } catch (e: SignatureException) {
+            false
         }
         if (!signatureIsValid) invalidGrant("The signature does not match the business certificate")
         if (claims["aud"]?.jsonPrimitive?.content != issuer) invalidGrant("aud must be $issuer")

@@ -199,6 +199,13 @@ class MaskinportenTest {
     }
 
     @Test
+    fun `refuses a grant whose signature is cut short or not base64url`() = maskinportenTest {
+        val grant = grant()
+        assertRefused(grant.dropLast(8))
+        assertRefused(grant.substringBeforeLast('.') + ".not+base64url")
+    }
+
+    @Test
     fun `accepts RS384 and RS512 too`() = maskinportenTest {
         assertEquals(HttpStatusCode.OK, requestToken(grant(alg = "RS384")).status)
         assertEquals(HttpStatusCode.OK, requestToken(grant(alg = "RS512")).status)

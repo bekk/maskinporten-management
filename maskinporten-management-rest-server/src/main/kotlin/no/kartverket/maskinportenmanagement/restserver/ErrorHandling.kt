@@ -1,11 +1,14 @@
 package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLDecodeException
+import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.uri
 import io.ktor.server.response.respond
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
@@ -14,8 +17,14 @@ import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 
 fun Application.configureErrorHandling() {
     install(StatusPages) {
-        exception<BadRequestException> { call, _ ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse("The URL is not encoded correctly", ErrorCode.INVALID_REQUEST))
+        exception<BadRequestException> { call, cause ->
+            val error = if (isBrokenUrl(call.request.uri)) {
+                "The URL is not encoded correctly"
+            } else {
+                call.application.log.info("Request refused by Ktor: $cause")
+                "The request could not be read"
+            }
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(error, ErrorCode.INVALID_REQUEST))
         }
         exception<InvalidRequestException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message!!, ErrorCode.INVALID_REQUEST))
@@ -39,4 +48,11 @@ fun Application.configureErrorHandling() {
             )
         }
     }
+}
+
+internal fun isBrokenUrl(uri: String): Boolean = try {
+    uri.decodeURLQueryComponent()
+    false
+} catch (e: URLDecodeException) {
+    true
 }

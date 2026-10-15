@@ -10,6 +10,8 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ErrorHandlingTest {
 
@@ -22,12 +24,19 @@ class ErrorHandlingTest {
         check(client.get("/fails"))
     }
 
-    // Netty throws this when the path or query has a broken %-escape, such as %zz
+    // Ktor's client cannot send a broken %-escape, so the check is tested on its own
     @Test
-    fun `a URL Ktor cannot decode gives 400 with INVALID_REQUEST`() =
-        answerTo(BadRequestException("Unable to decode query parameters")) { response ->
+    fun `a URL with a broken escape is told apart from one that decodes`() {
+        assertTrue(isBrokenUrl("/api/scopes?scope=%zz"))
+        assertTrue(isBrokenUrl("/api/scope%zzaccess/orgs"))
+        assertFalse(isBrokenUrl("/api/scopeaccess/orgs?scope=kartverk%3Amatrikkel.read"))
+    }
+
+    @Test
+    fun `a request Ktor refuses for another reason gives 400 with INVALID_REQUEST, without blaming the URL`() =
+        answerTo(BadRequestException("Can't transform call to resource")) { response ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals("""{"error":"The URL is not encoded correctly","code":"INVALID_REQUEST"}""", response.bodyAsText())
+            assertEquals("""{"error":"The request could not be read","code":"INVALID_REQUEST"}""", response.bodyAsText())
         }
 
     @Test

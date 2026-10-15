@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.client.kms
+package no.kartverket.maskinportenmanagement.restserver
 
 import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256
 import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_3072_SHA256
@@ -7,17 +7,19 @@ import com.google.cloud.kms.v1.CryptoKeyVersionName
 import com.google.cloud.kms.v1.Digest
 import com.google.cloud.kms.v1.KeyManagementServiceClient
 import com.google.protobuf.ByteString
+import no.kartverket.maskinportenmanagement.client.kms.Kms
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PublicKey
 import java.security.spec.X509EncodedKeySpec
+import java.util.Base64
 
-public class CloudKms internal constructor(
+internal class CloudKms(
     keyVersionName: String,
     private val client: KeyManagementServiceClient,
 ) : Kms,
     AutoCloseable {
-    public constructor(keyVersionName: String) : this(keyVersionName, KeyManagementServiceClient.create())
+    constructor(keyVersionName: String) : this(keyVersionName, KeyManagementServiceClient.create())
 
     private val name: CryptoKeyVersionName
     override val publicKey: PublicKey
@@ -48,4 +50,11 @@ public class CloudKms internal constructor(
     private companion object {
         val RS256 = setOf(RSA_SIGN_PKCS1_2048_SHA256, RSA_SIGN_PKCS1_3072_SHA256, RSA_SIGN_PKCS1_4096_SHA256)
     }
+}
+
+// A copy of the client's pemContent, which the client keeps internal so its API holds no PEM parser
+private fun pemContent(pem: String, type: String): ByteArray {
+    val body = pem.substringAfter("-----BEGIN $type-----", "").substringBefore("-----END $type-----", "")
+    require(body.isNotBlank()) { "Expected a PEM block of type $type" }
+    return Base64.getMimeDecoder().decode(body)
 }

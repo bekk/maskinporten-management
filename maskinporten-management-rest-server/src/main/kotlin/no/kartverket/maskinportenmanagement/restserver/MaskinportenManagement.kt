@@ -25,10 +25,11 @@ import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
-import no.kartverket.maskinportenmanagement.client.kms.CloudKms
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient
+import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
 import java.time.Clock
 import java.time.Duration
 
@@ -44,18 +45,19 @@ fun Application.configureMaskinportenManagement(
 private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val config = environment.config
     val httpClient = httpClient()
-    val keyVersion = config.optional("kms.keyVersion")
-    val localKeyFile = config.optional("kms.localKeyFile")
-    check((keyVersion == null) != (localKeyFile == null)) {
-        "Set exactly one of kms.keyVersion (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+    val cloudKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
+    val localKeyPath = config.optional("digdirAdmin.localKeyPath")
+    check((cloudKeyPath == null) != (localKeyPath == null)) {
+        "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
     }
-    val kms = keyVersion?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
+    val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("digdirAdmin.localKeyPath", localKeyPath!!))
+    val certChain = pemCertificateChain("digdirAdmin.certChain", config.required("digdirAdmin.certChain"))
     val tokenProvider = MaskinportenTokenProvider(
         wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
         clientId = config.required("maskinporten.clientId"),
         scopes = config.spaceSeparated("maskinporten.scopes").map(Scope::of),
         kms = kms,
-        certificateChainPem = pemFile("maskinporten.certificateChainFile", config.required("maskinporten.certificateChainFile")),
+        certificateChainPem = certChain,
         httpClient = httpClient,
     )
     monitor.subscribe(ApplicationStopped) {
@@ -69,6 +71,18 @@ private fun pemFile(setting: String, path: String): String {
     val file = File(path)
     check(file.isFile) { "$setting must point to a PEM file, but was \"$path\" (see .env.example)" }
     return file.readText()
+}
+
+// The client parses the chain too, but its errors cannot name the setting
+private fun pemCertificateChain(setting: String, pem: String): String {
+    val error = "$setting must be the certificate chain itself in PEM, but was \"$pem\" (see .env.example)"
+    val certificates = try {
+        CertificateFactory.getInstance("X.509").generateCertificates(pem.byteInputStream())
+    } catch (e: CertificateException) {
+        throw IllegalStateException(error, e)
+    }
+    check(certificates.isNotEmpty()) { error }
+    return pem
 }
 
 private fun Application.externalFilteringFromConfig(): ExternalFiltering {

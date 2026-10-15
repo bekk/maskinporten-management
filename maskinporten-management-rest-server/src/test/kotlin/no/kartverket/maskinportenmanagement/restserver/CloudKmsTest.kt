@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.client.kms
+package no.kartverket.maskinportenmanagement.restserver
 
 import com.google.api.gax.core.NoCredentialsProvider
 import com.google.api.gax.grpc.GrpcTransportChannel
@@ -16,6 +16,8 @@ import io.grpc.Server
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.stub.StreamObserver
+import no.kartverket.maskinportenmanagement.client.kms.pem
+import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.Signature

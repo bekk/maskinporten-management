@@ -25,8 +25,6 @@ internal fun ApplicationConfig.optional(path: String): String? =
 internal fun ApplicationConfig.required(path: String): String =
     optional(path) ?: error("Missing required configuration $path (see .env.example)")
 
-internal fun ApplicationConfig.spaceSeparated(path: String): List<String> = required(path).split(Regex("\\s+"))
-
 internal fun ApplicationConfig.boolean(path: String, default: Boolean): Boolean {
     val raw = optional(path) ?: return default
     return raw.toBooleanStrictOrNull()
@@ -37,6 +35,12 @@ internal fun ApplicationConfig.seconds(path: String, default: Duration): Duratio
     val raw = optional(path) ?: return default
     return raw.toLongOrNull()?.takeIf { it >= 0 }?.let(Duration::ofSeconds)
         ?: error("$path must be a whole number of seconds, 0 or more, but was \"$raw\" (see .env.example)")
+}
+
+internal inline fun <reified T : Enum<T>> ApplicationConfig.enum(path: String): T {
+    val raw = required(path)
+    return enumValues<T>().find { it.name == raw }
+        ?: error("$path must be one of ${enumValues<T>().joinToString()}, but was \"$raw\" (see .env.example)")
 }
 
 internal fun ApplicationConfig.port(path: String): Int {

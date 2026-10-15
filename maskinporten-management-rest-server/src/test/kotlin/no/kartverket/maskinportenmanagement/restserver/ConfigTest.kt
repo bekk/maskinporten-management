@@ -12,16 +12,21 @@ import kotlin.test.assertFailsWith
 class ConfigTest {
 
     @Test
+    fun `a misspelled environment names the valid values`() {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("digdir.environment" to "test").enum<DigdirEnvironment>("digdir.environment")
+        }
+
+        assertContains(e.message!!, "digdir.environment")
+        assertContains(e.message!!, "TEST, PROD, LOCAL")
+    }
+
+    @Test
     fun `every value is trimmed the same way`() {
         val config = MapApplicationConfig("key" to "  value  ", "flag" to " true ")
 
         assertEquals("value", config.required("key"))
         assertEquals(true, config.boolean("flag", default = false))
-    }
-
-    @Test
-    fun `a space-separated value is split on any whitespace`() {
-        assertEquals(listOf("a", "b", "c"), MapApplicationConfig("key" to " a  b\tc ").spaceSeparated("key"))
     }
 
     @Test
@@ -64,7 +69,7 @@ class ConfigTest {
     fun `a URL must be http or https and have a host`() {
         for (raw in listOf("localhost:8080", "ftp://digdir.test", "https://", "not a url")) {
             val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl")
+                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
             }
 
             assertContains(e.message!!, "http or https URL", message = raw)
@@ -75,7 +80,7 @@ class ConfigTest {
     fun `a URL must not have a query or fragment`() {
         for (raw in listOf("https://digdir.test?x=1", "https://digdir.test#top")) {
             val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl")
+                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
             }
 
             assertContains(e.message!!, "query or fragment", message = raw)
@@ -85,7 +90,7 @@ class ConfigTest {
     @Test
     fun `an http or https URL is accepted as it is`() {
         for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no")) {
-            assertEquals(URI(raw), MapApplicationConfig("digdir.baseUrl" to raw).url("digdir.baseUrl"))
+            assertEquals(URI(raw), MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url"))
         }
     }
 

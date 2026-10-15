@@ -52,10 +52,11 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
     }
     val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("digdirAdmin.localKeyPath", localKeyPath!!))
     val certChain = pemCertificateChain("digdirAdmin.certChain", config.required("digdirAdmin.certChain"))
+    val digdirEnvironment = config.enum<DigdirEnvironment>("digdir.environment")
     val tokenProvider = MaskinportenTokenProvider(
-        wellKnownUrl = config.url("maskinporten.wellKnownUrl"),
+        wellKnownUrl = digdirEnvironment.maskinportenWellKnownUrl,
         clientId = config.required("maskinporten.clientId"),
-        scopes = config.spaceSeparated("maskinporten.scopes").map(Scope::of),
+        scopes = DIGDIR_SCOPES,
         kms = kms,
         certificateChainPem = certChain,
         httpClient = httpClient,
@@ -64,8 +65,11 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
         tokenProvider.close()
         (kms as? AutoCloseable)?.close()
     }
-    return MaskinportenManagementClient(config.url("digdir.baseUrl"), httpClient, tokenProvider)
+    return MaskinportenManagementClient(digdirEnvironment.digdirBaseUrl, httpClient, tokenProvider)
 }
+
+// Digdir's API requires idporten:scopes.read to read scope access and idporten:scopes.write to change it
+private val DIGDIR_SCOPES = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))
 
 private fun pemFile(setting: String, path: String): String {
     val file = File(path)

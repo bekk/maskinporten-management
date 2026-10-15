@@ -25,21 +25,21 @@ scopes (see [`.env.example`](.env.example)).
 ```bash
 ./gradlew build                  # compile, ktlint and tests
 cp .env.example .env
-scripts/dev.sh                   # run the server on http://localhost:8081
-curl -i localhost:8081/health/live
+scripts/dev.sh                   # run the server on http://localhost:8080
+curl -i localhost:8080/health/live
 ```
 
 Before `scripts/dev.sh`, create the local key and fake business certificate, and start the mock API, as its
 [README](https://github.com/bekk/maskinporten-management-frontend-mock/tree/main/mock-api) describes.
 
-The server calls Digdir at `DIGDIR_BASE_URL`, with a token from Maskinporten. It gets the token with a JWT grant that
-carries the business certificate and is signed in Cloud KMS, where the certificate's private key lives. Locally, the
-mock API plays Maskinporten, and the grant is signed with a key from a file (`DIGDIR_ADMIN_LOCAL_KEY_PATH`) instead of
-Cloud KMS (`DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH`). With `EXTERNAL_FILTERING_ENABLED=true`, the mock API also plays the
-filtering service, and lists then need the `X-Forwarded-Client-Cert` header that the platform sets in production; the
-mock's test frontend sets it for you. In `.env.example`, `DIGDIR_BASE_URL` is the mock API from
-[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8080, so
-`.env.example` moves the server to port 8081.
+The server calls Digdir in `DIGDIR_ENVIRONMENT` (`TEST`, `PROD` or `LOCAL`), with a token from Maskinporten in the
+same environment. It gets the token with a JWT grant that carries the business certificate and is signed in Cloud KMS,
+where the certificate's private key lives. Locally, the mock API plays Maskinporten, and the grant is signed with a key
+from a file (`DIGDIR_ADMIN_LOCAL_KEY_PATH`) instead of Cloud KMS (`DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH`). With
+`EXTERNAL_FILTERING_ENABLED=true`, the mock API also plays the filtering service, and lists then need the
+`X-Forwarded-Client-Cert` header that the platform sets in production; the mock's test frontend sets it for you.
+`.env.example` sets `DIGDIR_ENVIRONMENT` to `LOCAL`, the mock API from
+[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8090.
 
 The OpenAPI spec is served at `/openapi` and checked in as
 [`maskinporten-management-rest-server/openapi.json`](maskinporten-management-rest-server/openapi.json).

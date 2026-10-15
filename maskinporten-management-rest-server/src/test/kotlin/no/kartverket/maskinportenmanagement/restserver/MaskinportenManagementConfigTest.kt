@@ -28,10 +28,8 @@ class MaskinportenManagementConfigTest {
     }
 
     private val complete = mapOf(
-        "digdir.baseUrl" to "http://localhost:8080",
-        "maskinporten.wellKnownUrl" to "http://localhost:8080/.well-known/oauth-authorization-server",
+        "digdir.environment" to "LOCAL",
         "maskinporten.clientId" to "dev-client",
-        "maskinporten.scopes" to "idporten:scopes.write",
         "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
         "digdirAdmin.localKeyPath" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
         "externalFiltering.url" to "http://localhost:8080/filtering",
@@ -54,10 +52,8 @@ class MaskinportenManagementConfigTest {
     @Test
     fun `the server does not start without a Digdir or Maskinporten setting, and names it`() {
         val settings = listOf(
-            "digdir.baseUrl",
-            "maskinporten.wellKnownUrl",
+            "digdir.environment",
             "maskinporten.clientId",
-            "maskinporten.scopes",
             "digdirAdmin.certChain",
         )
         for (setting in settings) {

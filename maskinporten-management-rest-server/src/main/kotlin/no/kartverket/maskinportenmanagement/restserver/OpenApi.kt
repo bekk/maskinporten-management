@@ -44,7 +44,7 @@ private val exampleJson = Json {
 
 private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
-    version = "0.1.0",
+    version = "v0",
     description = """
         Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes
         organisations' access to them.

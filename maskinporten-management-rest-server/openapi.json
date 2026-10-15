@@ -20,12 +20,12 @@
         "/api/scopes": {
             "get": {
                 "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is\ncalling, in the `X-Forwarded-Client-Cert` header.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "X-Forwarded-Client-Cert",
                         "in": "header",
-                        "description": "Says which app is calling. The platform sets it on every call, so the app does not.",
+                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not.",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -213,7 +213,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells\nthis API which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -228,7 +228,7 @@
                     {
                         "name": "X-Forwarded-Client-Cert",
                         "in": "header",
-                        "description": "Says which app is calling. The platform sets it on every call, so the app does not.",
+                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not.",
                         "required": true,
                         "schema": {
                             "type": "string"

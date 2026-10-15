@@ -4,19 +4,19 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -25,12 +25,12 @@ class ScopeAccessScopesTest {
     private val digdirRequests = mutableListOf<OutgoingRequest>()
     private val filteringRequests = mutableListOf<OutgoingRequest>()
 
-    private val scopeAccess = """[
-        {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
-        {"scope":"kartverk:tilgangsstyring/demo.write","consumer_orgno":"311718371","state":"DENIED"},
-        {"scope":"kartverk:dokumentbestilling","consumer_orgno":"311718371","state":"APPROVED"},
-        {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371","state":"APPROVED"}
-    ]"""
+    private val scopeAccess = jsonList(
+        digdirScopeAccess("kartverk:tilgangsstyring/demo.read"),
+        digdirScopeAccess("kartverk:tilgangsstyring/demo.write"),
+        digdirScopeAccess("kartverk:dokumentbestilling"),
+        digdirScopeAccess("kartverk:nrl.rapportering"),
+    )
 
     private fun scopeAccessTest(
         filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
@@ -105,6 +105,6 @@ class ScopeAccessScopesTest {
         val response = client.get("/api/scopeaccess/scopes?orgnr=311718371")
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertContentEquals(scopeAccess.toByteArray(), response.readRawBytes())
+        assertEquals(Json.parseToJsonElement(scopeAccess), Json.parseToJsonElement(response.bodyAsText()))
     }
 }

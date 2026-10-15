@@ -4,9 +4,11 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
+import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.jsonList
 import java.net.URI
 import java.time.Duration
 import kotlin.test.Test
@@ -18,7 +20,7 @@ class FilteringCacheTest {
     private var filteringAnswer = json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":[]}}""")
 
     private fun cachingTest(block: suspend ApplicationTestBuilder.() -> Unit) = testServer(
-        digdir = { json(200, """[{"name":"kartverk:nrl.rapportering","active":true}]""") },
+        digdir = { json(200, jsonList(digdirScope("kartverk:nrl.rapportering"))) },
         externalFiltering = ExternalFiltering(
             ExternalFilteringClient(URI("https://filtering.test/scopes"), recording(filteringRequests) { filteringAnswer }),
             cacheDuration = Duration.ofMinutes(1),

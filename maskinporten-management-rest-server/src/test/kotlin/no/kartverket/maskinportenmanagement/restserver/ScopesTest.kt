@@ -4,7 +4,6 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import kotlinx.serialization.json.Json
@@ -12,12 +11,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -26,12 +26,12 @@ class ScopesTest {
     private val digdirRequests = mutableListOf<OutgoingRequest>()
     private val filteringRequests = mutableListOf<OutgoingRequest>()
 
-    private val scopes = """[
-        {"name":"kartverk:tilgangsstyring/demo.read","active":true},
-        {"name":"kartverk:tilgangsstyring/demo.write","active":true},
-        {"name":"kartverk:dokumentbestilling","active":true},
-        {"name":"kartverk:nrl.rapportering","active":true}
-    ]"""
+    private val scopes = jsonList(
+        digdirScope("kartverk:tilgangsstyring/demo.read"),
+        digdirScope("kartverk:tilgangsstyring/demo.write"),
+        digdirScope("kartverk:dokumentbestilling"),
+        digdirScope("kartverk:nrl.rapportering"),
+    )
 
     private fun scopesTest(
         filtering: ((OutgoingRequest) -> OutgoingResponse)? = {
@@ -124,6 +124,27 @@ class ScopesTest {
         val response = client.get("/api/scopes")
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertContentEquals(scopes.toByteArray(), response.readRawBytes())
+        assertEquals(
+            listOf(
+                "kartverk:tilgangsstyring/demo.read",
+                "kartverk:tilgangsstyring/demo.write",
+                "kartverk:dokumentbestilling",
+                "kartverk:nrl.rapportering",
+            ),
+            response.names(),
+        )
+    }
+
+    @Test
+    fun `answers with Digdir's fields, but leaves out the ones this API does not know`() {
+        val scope = digdirScope("kartverk:nrl.rapportering")
+        val withNewFields = scope.replaceFirst("{", """{"description#se":"Lohkanlobi","new_field":"from Digdir",""")
+
+        scopesTest(filtering = null, digdir = { json(200, "[$withNewFields]") }) {
+            val response = client.get("/api/scopes")
+
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(Json.parseToJsonElement("[$scope]"), Json.parseToJsonElement(response.bodyAsText()))
+        }
     }
 }

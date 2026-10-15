@@ -1,6 +1,14 @@
 package no.kartverket.maskinportenmanagement.client
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 @JvmInline
+@Serializable(with = ScopeSerializer::class)
 public value class Scope private constructor(public val value: String) {
     override fun toString(): String = value
 
@@ -13,4 +21,12 @@ public value class Scope private constructor(public val value: String) {
             return Scope(value)
         }
     }
+}
+
+internal object ScopeSerializer : KSerializer<Scope> {
+    override val descriptor = PrimitiveSerialDescriptor("Scope", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Scope): Unit = encoder.encodeString(value.value)
+
+    override fun deserialize(decoder: Decoder): Scope = Scope.of(decoder.decodeString())
 }

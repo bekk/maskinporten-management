@@ -1,6 +1,14 @@
 package no.kartverket.maskinportenmanagement.client
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
 @JvmInline
+@Serializable(with = OrganizationNumberSerializer::class)
 public value class OrganizationNumber private constructor(public val value: String) {
     override fun toString(): String = value
 
@@ -14,4 +22,12 @@ public value class OrganizationNumber private constructor(public val value: Stri
             return OrganizationNumber(value)
         }
     }
+}
+
+internal object OrganizationNumberSerializer : KSerializer<OrganizationNumber> {
+    override val descriptor = PrimitiveSerialDescriptor("OrganizationNumber", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: OrganizationNumber): Unit = encoder.encodeString(value.value)
+
+    override fun deserialize(decoder: Decoder): OrganizationNumber = OrganizationNumber.of(decoder.decodeString())
 }

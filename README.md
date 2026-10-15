@@ -4,10 +4,10 @@ Management of Maskinporten scopes.
 
 A request only reaches the REST server after the platform has checked that the caller may make it. The server
 then calls [Digdir's API](https://api.samarbeid.digdir.no/swagger-ui/index.html) for managing Maskinporten
-scopes and returns Digdir's response unchanged. Lists like `GET /api/scopes` and `GET /api/scopeaccess/scopes` are
-the exception when filtering is on (`EXTERNAL_FILTERING_ENABLED=true`): they only keep the scopes the calling app has
-access to, which the server gets from `EXTERNAL_FILTERING_URL`. Filtering is off by default, and then lists show all
-scopes (see [`.env.example`](.env.example)).
+scopes, and answers with Digdir's data in its own model, or with Digdir's error unchanged. When filtering is on
+(`EXTERNAL_FILTERING_ENABLED=true`), lists like `GET /api/scopes` and `GET /api/scopeaccess/scopes` only keep the
+scopes the calling app has access to, which the server gets from `EXTERNAL_FILTERING_URL`. Filtering is off by
+default, and then lists show all scopes (see [`.env.example`](.env.example)).
 
 ## Modules
 

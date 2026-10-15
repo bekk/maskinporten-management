@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLDecodeException
 import io.ktor.http.decodeURLQueryComponent
@@ -10,6 +11,8 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.uri
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
+import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
@@ -32,6 +35,13 @@ fun Application.configureErrorHandling() {
         exception<DigdirException> { call, cause ->
             call.application.log.error("Call to Digdir failed", cause)
             call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+        }
+        exception<DigdirErrorResponseException> { call, cause ->
+            call.respondBytes(
+                bytes = cause.body,
+                contentType = cause.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
+                status = HttpStatusCode.fromValue(cause.statusCode),
+            )
         }
         exception<ExternalFilteringException> { call, cause ->
             call.application.log.error("Call to the filtering service failed", cause)

@@ -23,15 +23,18 @@ import io.ktor.server.routing.openapi.plus
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.EmptySerializersModule
+import no.kartverket.maskinportenmanagement.client.IntegrationType
+import no.kartverket.maskinportenmanagement.client.OrganizationNumber
+import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.ScopeAccess
+import no.kartverket.maskinportenmanagement.client.ScopeAccessState
+import no.kartverket.maskinportenmanagement.client.ScopeDetails
+import no.kartverket.maskinportenmanagement.client.TokenType
+import no.kartverket.maskinportenmanagement.client.Visibility
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
-import no.kartverket.maskinportenmanagement.restserver.models.IntegrationType
-import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
-import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessState
-import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
-import no.kartverket.maskinportenmanagement.restserver.models.TokenType
-import no.kartverket.maskinportenmanagement.restserver.models.Visibility
+import kotlin.time.Instant
 
 private val openApiJson = Json { prettyPrint = true }
 
@@ -50,8 +53,9 @@ private val apiInfo = OpenApiInfo(
         organisations' access to them.
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
-        holds scopes, it only shows the ones the calling app has access to. Otherwise, this API returns Digdir's
-        answer unchanged: its status, body and content type.
+        holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
+        hold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this
+        API returns that answer unchanged: its status, body and content type.
     """.trimIndent(),
 )
 
@@ -82,27 +86,30 @@ private fun JsonSchema.documented(
     )
 }
 
+// Like Digdir, this API leaves out a missing value instead of sending null
+private fun JsonSchema.leftOutWhenMissing(description: String): JsonSchema =
+    copy(type = JsonType.STRING, description = description)
+
 private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().documented(
     "scope" to { copy(description = "The scope.") },
     "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
-    "owner_organization_name" to { copy(description = "The name of the organisation that owns the scope.") },
+    "owner_organization_name" to {
+        leftOutWhenMissing("The name of the organisation that owns the scope. Left out when Digdir has no name for it.")
+    },
     "consumer_orgno" to { copy(description = "The organisation that was given access.") },
-    "consumer_organization_name" to { copy(description = "The name of the organisation that was given access.") },
+    "consumer_organization_name" to {
+        leftOutWhenMissing("The name of the organisation that was given access. Left out when Digdir has no name for it.")
+    },
     "state" to {
         copy(
             description = "Where the access stands. Only `APPROVED` means the organisation has access, and giving " +
                 "access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and " +
-                "`DENIED`.",
+                "`DENIED`. `UNKNOWN` is a state Digdir has added that this API does not know yet.",
         )
     },
     "created" to { copy(description = "When the access was given.", format = "date-time") },
     "last_updated" to { copy(description = "When the access was last changed.", format = "date-time") },
-    required = null,
 )
-
-// Digdir leaves out a missing value instead of sending null
-private fun JsonSchema.leftOutWhenMissing(description: String): JsonSchema =
-    copy(type = JsonType.STRING, description = description)
 
 private const val PERSONS_ONLY = "Only for logins with ID-porten, not for Maskinporten:"
 
@@ -132,7 +139,8 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "allowed_integration_types" to {
         copy(
             description = "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or " +
-                "an empty list, which allows every kind.",
+                "an empty list, which allows every kind. `unknown` is a kind Digdir has added that this API does not " +
+                "know yet.",
         )
     },
     "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
@@ -143,6 +151,7 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
 
                 - `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.
                 - `OPAQUE`: a token that the API has to look up with Digdir.
+                - `UNKNOWN`: a kind Digdir has added that this API does not know yet.
             """.trimIndent(),
         )
     },
@@ -154,6 +163,7 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
                 - `PUBLIC`: anyone, in Digdir's list of all scopes.
                 - `PRIVATE`: only the owner and the organisations given access.
                 - `INTERNAL`: Digdir's own use.
+                - `UNKNOWN`: a value Digdir has added that this API does not know yet.
             """.trimIndent(),
         )
     },
@@ -189,7 +199,6 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
                 "businesses get tokens with an eIDAS seal, without being given access.",
         )
     },
-    required = null,
 )
 
 private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().documented(
@@ -221,14 +230,14 @@ internal val healthLiveOperation: Operation.Builder.() -> Unit = {
 }
 
 private val exampleScopeAccess = ScopeAccess(
-    scope = "kartverk:matrikkel.read",
-    ownerOrgno = "971040238",
+    scope = Scope.of("kartverk:matrikkel.read"),
+    ownerOrgno = OrganizationNumber.of("971040238"),
     ownerOrganizationName = "STATENS KARTVERK",
-    consumerOrgno = "311718371",
+    consumerOrgno = OrganizationNumber.of("311718371"),
     consumerOrganizationName = "EKSEMPEL AS",
     state = ScopeAccessState.APPROVED,
-    created = "2026-01-15T09:30:00Z",
-    lastUpdated = "2026-01-15T09:30:00Z",
+    created = Instant.parse("2026-01-15T09:30:00Z"),
+    lastUpdated = Instant.parse("2026-01-15T09:30:00Z"),
 )
 
 private fun Parameters.Builder.scope() {
@@ -301,6 +310,8 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
     }
 }
 
+private const val DIGDIR_ERRORS = "When Digdir answers with an error, that answer is returned unchanged."
+
 private val missingScopeExample =
     "MissingScope" to ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST)
 
@@ -318,15 +329,15 @@ private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or 
     "`scope`, or `scope` is blank or not URL-encoded correctly."
 
 private val exampleScope = ScopeDetails(
-    name = "kartverk:tilgangsstyring/demo.read",
+    name = Scope.of("kartverk:tilgangsstyring/demo.read"),
     prefix = "kartverk",
     subscope = "tilgangsstyring/demo.read",
     description = "Lesetilgang til demo-API-et",
     active = true,
-    created = "2026-01-15T09:30:00Z",
-    lastUpdated = "2026-01-15T09:30:00Z",
+    created = Instant.parse("2026-01-15T09:30:00Z"),
+    lastUpdated = Instant.parse("2026-01-15T09:30:00Z"),
     allowedIntegrationTypes = listOf(IntegrationType.MASKINPORTEN),
-    ownerOrgno = "971040238",
+    ownerOrgno = OrganizationNumber.of("971040238"),
     tokenType = TokenType.SELF_CONTAINED,
     visibility = Visibility.PUBLIC,
     requiresUserConsent = false,
@@ -346,7 +357,7 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
         its `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is
         calling, in the `X-Forwarded-Client-Cert` header.
 
-        Each scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
+        $DIGDIR_ERRORS
     """.trimIndent()
 
     parameters {
@@ -372,8 +383,7 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
 
 internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     summary = "List the organisations that have access to a scope"
-    description = "Asks Digdir which organisations Kartverket has given access to `scope`. Digdir's response is " +
-        "returned unchanged, with its status, body and content type, including when Digdir answers with an error."
+    description = "Asks Digdir which organisations Kartverket has given access to `scope`. $DIGDIR_ERRORS"
 
     parameters {
         scope()
@@ -381,8 +391,7 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "Digdir's answer: the organisations given access to the scope. Check `state`: only " +
-                "`APPROVED` means access."
+            description = "The organisations given access to the scope. Check `state`: only `APPROVED` means access."
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
                 example("Consumers", listOf(exampleScopeAccess))
@@ -404,7 +413,7 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
         access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells
         this API which app is calling, in the `X-Forwarded-Client-Cert` header.
 
-        Each access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.
+        $DIGDIR_ERRORS
     """.trimIndent()
 
     parameters {
@@ -437,8 +446,7 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
 
 internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
     summary = "Give an organisation access to a scope"
-    description = "Asks Digdir to give `consumerOrgno` access to `scope`. Digdir's response is returned unchanged, " +
-        "with its status, body and content type, including when Digdir answers with an error."
+    description = "Asks Digdir to give `consumerOrgno` access to `scope`. $DIGDIR_ERRORS"
 
     parameters {
         consumerOrgno()
@@ -447,7 +455,7 @@ internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "Digdir's answer: the access that was given."
+            description = "The access that was given."
             ContentType.Application.Json {
                 schema = scopeAccessSchema
                 example("GivenAccess", exampleScopeAccess)
@@ -462,8 +470,7 @@ internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
 internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
     summary = "Remove an organisation's access to a scope"
     description = "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as " +
-        "inactive, so it no longer shows up in this API's lists. Digdir's response is returned unchanged, with its " +
-        "status, body and content type, including when Digdir answers with an error."
+        "inactive, so it no longer shows up in this API's lists. $DIGDIR_ERRORS"
 
     parameters {
         consumerOrgno()
@@ -472,7 +479,7 @@ internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "Digdir's answer: the access that was removed."
+            description = "The access that was removed."
             ContentType.Application.Json {
                 schema = scopeAccessSchema
                 example("RemovedAccess", exampleScopeAccess)

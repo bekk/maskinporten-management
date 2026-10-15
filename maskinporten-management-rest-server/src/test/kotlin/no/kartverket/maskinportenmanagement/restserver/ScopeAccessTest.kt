@@ -5,6 +5,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
+import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
@@ -17,7 +18,11 @@ class ScopeAccessTest {
     private val sent = mutableListOf<OutgoingRequest>()
 
     private fun scopeAccessTest(block: suspend ApplicationTestBuilder.() -> Unit) =
-        testServer(recording(sent) { json(200, "[]") }, filtering = null, block)
+        testServer(
+            recording(sent) { if (it.method.name == "GET") json(200, "[]") else json(200, digdirScopeAccess("kartverk:matrikkel.read")) },
+            filtering = null,
+            block,
+        )
 
     private val changeMethods = listOf(HttpMethod.Put, HttpMethod.Delete)
 
@@ -47,7 +52,7 @@ class ScopeAccessTest {
         for (method in changeMethods) {
             sent.clear()
             scopeAccessTest {
-                call(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read")
+                assertEquals(HttpStatusCode.OK, call(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read").status)
             }
 
             val request = sent.single()

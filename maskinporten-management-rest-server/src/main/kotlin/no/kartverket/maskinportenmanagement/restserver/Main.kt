@@ -55,13 +55,13 @@ fun Application.configureRouting() {
             val client: MaskinportenManagementClient by dependencies
             val externalFiltering: ExternalFiltering by dependencies
             val filter = externalFiltering.filterFor(call)
-            call.respondFromDigdir(client.listScopes(filter))
+            call.respond(client.listScopes(filter))
         }.describe(scopesListOperation)
 
         get("/api/scopeaccess/orgs") {
             val client: MaskinportenManagementClient by dependencies
             val scope = call.scopeQueryParameter("scope")
-            call.respondFromDigdir(client.listScopeAccess(scope))
+            call.respond(client.listScopeAccess(scope))
         }.describe(scopeAccessOrgsOperation)
 
         get("/api/scopeaccess/scopes") {
@@ -69,21 +69,21 @@ fun Application.configureRouting() {
             val externalFiltering: ExternalFiltering by dependencies
             val orgnr = call.organizationNumberQueryParameter("orgnr")
             val filter = externalFiltering.filterFor(call)
-            call.respondFromDigdir(client.listConsumerScopeAccess(orgnr, filter))
+            call.respond(client.listConsumerScopeAccess(orgnr, filter))
         }.describe(scopeAccessScopesOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
             val scope = call.scopeQueryParameter("scope")
-            call.respondFromDigdir(client.grantScopeAccess(consumerOrgno, scope))
+            call.respond(client.grantScopeAccess(consumerOrgno, scope))
         }.describe(scopeAccessGrantOperation)
 
         delete("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
             val scope = call.scopeQueryParameter("scope")
-            call.respondFromDigdir(client.removeScopeAccess(consumerOrgno, scope))
+            call.respond(client.removeScopeAccess(consumerOrgno, scope))
         }.describe(scopeAccessRemoveOperation)
     }
 }

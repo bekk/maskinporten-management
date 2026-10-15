@@ -1,7 +1,5 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLDecodeException
 import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
@@ -12,7 +10,6 @@ import io.ktor.server.application.log
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.queryString
-import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
@@ -24,7 +21,6 @@ import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringCl
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
-import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient
@@ -165,12 +161,4 @@ internal fun ApplicationCall.organizationNumberQueryParameter(name: String): Org
     val value = onlyQueryParameter(name)
     return runCatching { OrganizationNumber.of(value) }.getOrNull()
         ?: throw InvalidRequestException("Query parameter $name must be an organisation number of 9 digits")
-}
-
-internal suspend fun ApplicationCall.respondFromDigdir(response: OutgoingResponse) {
-    respondBytes(
-        bytes = response.body,
-        contentType = response.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
-        status = HttpStatusCode.fromValue(response.statusCode),
-    )
 }

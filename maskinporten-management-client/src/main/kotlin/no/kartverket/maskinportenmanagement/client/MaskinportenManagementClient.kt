@@ -1,10 +1,6 @@
 package no.kartverket.maskinportenmanagement.client
 
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
@@ -15,6 +11,10 @@ import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
 
+/**
+ * When Digdir answers with an error, a call throws a [DigdirErrorResponseException] that holds Digdir's answer. A
+ * [DigdirException] means Digdir could not be called, or gave an answer this client cannot read.
+ */
 public class MaskinportenManagementClient(
     baseUrl: URI,
     private val httpClient: OutgoingHttpClient,
@@ -22,24 +22,24 @@ public class MaskinportenManagementClient(
 ) {
     private val baseUrl = baseUrl.toString().trimEnd('/')
 
-    public suspend fun listScopes(filter: ScopeFilter? = null): OutgoingResponse {
-        val response = send(HttpMethod.GET, SCOPES_PATH)
-        return if (filter == null) response else response.keepingOnly("name", filter)
+    public suspend fun listScopes(filter: ScopeFilter? = null): List<ScopeDetails> {
+        val scopes = send(HttpMethod.GET, SCOPES_PATH).decode<List<ScopeDetails>>()
+        return if (filter == null) scopes else scopes.filter { filter.allows(it.name) }
     }
 
-    public suspend fun listScopeAccess(scope: Scope): OutgoingResponse =
-        send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}")
+    public suspend fun listScopeAccess(scope: Scope): List<ScopeAccess> =
+        send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}").decode()
 
-    public suspend fun listConsumerScopeAccess(consumerOrgno: OrganizationNumber, filter: ScopeFilter? = null): OutgoingResponse {
-        val response = send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno")
-        return if (filter == null) response else response.keepingOnly("scope", filter)
+    public suspend fun listConsumerScopeAccess(consumerOrgno: OrganizationNumber, filter: ScopeFilter? = null): List<ScopeAccess> {
+        val access = send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?consumer_orgno=$consumerOrgno").decode<List<ScopeAccess>>()
+        return if (filter == null) access else access.filter { filter.allows(it.scope) }
     }
 
-    public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
-        send(HttpMethod.PUT, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
+    public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): ScopeAccess =
+        send(HttpMethod.PUT, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}").decode()
 
-    public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): OutgoingResponse =
-        send(HttpMethod.DELETE, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}")
+    public suspend fun removeScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): ScopeAccess =
+        send(HttpMethod.DELETE, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}").decode()
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
@@ -56,6 +56,9 @@ public class MaskinportenManagementClient(
             accessTokenProvider.refused(token)
             throw DigdirException("Digdir refused our Maskinporten token with HTTP 401: ${response.body.decodeToString()}")
         }
+        if (response.statusCode !in 200..299) {
+            throw DigdirErrorResponseException(response.statusCode, response.contentType, response.body)
+        }
         return response
     }
 
@@ -65,25 +68,17 @@ public class MaskinportenManagementClient(
         throw DigdirException("Call to Digdir failed: $e", e)
     }
 
-    // Anything but a JSON list in a 2xx answer is an error, so nothing unfiltered gets through
-    private fun OutgoingResponse.keepingOnly(field: String, filter: ScopeFilter): OutgoingResponse {
-        if (statusCode !in 200..299) return this
-        val items = try {
-            Json.parseToJsonElement(body.decodeToString()) as? JsonArray
-        } catch (e: SerializationException) {
-            null
-        } ?: throw DigdirException("Digdir answered $statusCode with something other than a JSON list")
-        val kept = items.filter { item ->
-            val value = (item as? JsonObject)?.get(field) as? JsonPrimitive
-            val scope = value?.takeIf { it.isString }?.let { runCatching { Scope.of(it.content) }.getOrNull() }
-            scope != null && filter.allows(scope)
-        }
-        return OutgoingResponse(statusCode, contentType, Json.encodeToString(JsonArray(kept)).toByteArray())
+    private inline fun <reified T> OutgoingResponse.decode(): T = try {
+        json.decodeFromString<T>(body.decodeToString())
+    } catch (e: IllegalArgumentException) {
+        throw DigdirException("Digdir answered $statusCode with something this client cannot read: ${e.message}", e)
     }
 
     internal companion object {
         const val SCOPES_PATH = "/api/v1/scopes"
 
         const val SCOPE_ACCESS_PATH = "/api/v1/scopes/access"
+
+        val json = Json { ignoreUnknownKeys = true }
     }
 }

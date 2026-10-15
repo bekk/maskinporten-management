@@ -3,7 +3,7 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "v0",
-        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes\norganisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Otherwise, this API returns Digdir's\nanswer unchanged: its status, body and content type."
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes\norganisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
     },
     "paths": {
         "/health/live": {
@@ -20,7 +20,7 @@
         "/api/scopes": {
             "get": {
                 "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is\ncalling, in the `X-Forwarded-Client-Cert` header.\n\nEach scope is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. The platform tells this API which app is\ncalling, in the `X-Forwarded-Client-Cert` header.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "X-Forwarded-Client-Cert",
@@ -126,7 +126,7 @@
         "/api/scopeaccess/orgs": {
             "get": {
                 "summary": "List the organisations that have access to a scope",
-                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -143,7 +143,7 @@
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
                     },
                     "200": {
-                        "description": "Digdir's answer: the organisations given access to the scope. Check `state`: only `APPROVED` means access.",
+                        "description": "The organisations given access to the scope. Check `state`: only `APPROVED` means access.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -213,7 +213,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells\nthis API which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nEach access is Digdir's, unchanged. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. The platform tells\nthis API which app is calling, in the `X-Forwarded-Client-Cert` header.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -322,7 +322,7 @@
         "/api/scopeaccess/{consumerOrgno}": {
             "put": {
                 "summary": "Give an organisation access to a scope",
-                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -349,7 +349,7 @@
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
                     },
                     "200": {
-                        "description": "Digdir's answer: the access that was given.",
+                        "description": "The access that was given.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -418,7 +418,7 @@
             },
             "delete": {
                 "summary": "Remove an organisation's access to a scope",
-                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. Digdir's response is returned unchanged, with its status, body and content type, including when Digdir answers with an error.",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -445,7 +445,7 @@
                         "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
                     },
                     "200": {
-                        "description": "Digdir's answer: the access that was removed.",
+                        "description": "The access that was removed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -519,6 +519,27 @@
             "ScopeDetails": {
                 "type": "object",
                 "title": "ScopeDetails",
+                "required": [
+                    "name",
+                    "prefix",
+                    "subscope",
+                    "description",
+                    "active",
+                    "created",
+                    "last_updated",
+                    "allowed_integration_types",
+                    "owner_orgno",
+                    "token_type",
+                    "visibility",
+                    "requires_user_consent",
+                    "requires_user_authentication",
+                    "requires_pseudonymous_tokens",
+                    "at_max_age",
+                    "authorization_max_lifetime",
+                    "accessible_for_all",
+                    "protected",
+                    "supports_european_businesses"
+                ],
                 "properties": {
                     "name": {
                         "type": "string",
@@ -572,7 +593,7 @@
                     },
                     "allowed_integration_types": {
                         "type": "array",
-                        "description": "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or an empty list, which allows every kind.",
+                        "description": "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or an empty list, which allows every kind. `unknown` is a kind Digdir has added that this API does not know yet.",
                         "items": {
                             "type": "string",
                             "enum": [
@@ -582,7 +603,8 @@
                                 "idporten",
                                 "idporten_saml2",
                                 "krr",
-                                "maskinporten"
+                                "maskinporten",
+                                "unknown"
                             ]
                         }
                     },
@@ -592,19 +614,21 @@
                     },
                     "token_type": {
                         "type": "string",
-                        "description": "The kind of access token issued for the scope.\n\n- `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.\n- `OPAQUE`: a token that the API has to look up with Digdir.",
+                        "description": "The kind of access token issued for the scope.\n\n- `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.\n- `OPAQUE`: a token that the API has to look up with Digdir.\n- `UNKNOWN`: a kind Digdir has added that this API does not know yet.",
                         "enum": [
                             "SELF_CONTAINED",
-                            "OPAQUE"
+                            "OPAQUE",
+                            "UNKNOWN"
                         ]
                     },
                     "visibility": {
                         "type": "string",
-                        "description": "Who can see the scope.\n\n- `PUBLIC`: anyone, in Digdir's list of all scopes.\n- `PRIVATE`: only the owner and the organisations given access.\n- `INTERNAL`: Digdir's own use.",
+                        "description": "Who can see the scope.\n\n- `PUBLIC`: anyone, in Digdir's list of all scopes.\n- `PRIVATE`: only the owner and the organisations given access.\n- `INTERNAL`: Digdir's own use.\n- `UNKNOWN`: a value Digdir has added that this API does not know yet.",
                         "enum": [
                             "INTERNAL",
                             "PRIVATE",
-                            "PUBLIC"
+                            "PUBLIC",
+                            "UNKNOWN"
                         ]
                     },
                     "requires_user_consent": {
@@ -675,6 +699,14 @@
             "ScopeAccess": {
                 "type": "object",
                 "title": "ScopeAccess",
+                "required": [
+                    "scope",
+                    "owner_orgno",
+                    "consumer_orgno",
+                    "state",
+                    "created",
+                    "last_updated"
+                ],
                 "properties": {
                     "scope": {
                         "type": "string",
@@ -686,7 +718,7 @@
                     },
                     "owner_organization_name": {
                         "type": "string",
-                        "description": "The name of the organisation that owns the scope."
+                        "description": "The name of the organisation that owns the scope. Left out when Digdir has no name for it."
                     },
                     "consumer_orgno": {
                         "type": "string",
@@ -694,15 +726,16 @@
                     },
                     "consumer_organization_name": {
                         "type": "string",
-                        "description": "The name of the organisation that was given access."
+                        "description": "The name of the organisation that was given access. Left out when Digdir has no name for it."
                     },
                     "state": {
                         "type": "string",
-                        "description": "Where the access stands. Only `APPROVED` means the organisation has access, and giving access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and `DENIED`.",
+                        "description": "Where the access stands. Only `APPROVED` means the organisation has access, and giving access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and `DENIED`. `UNKNOWN` is a state Digdir has added that this API does not know yet.",
                         "enum": [
                             "REQUESTED",
                             "APPROVED",
-                            "DENIED"
+                            "DENIED",
+                            "UNKNOWN"
                         ]
                     },
                     "created": {

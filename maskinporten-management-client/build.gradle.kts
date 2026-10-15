@@ -12,6 +12,7 @@ extensions.configure<KotlinJvmProjectExtension> {
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.slf4j.api)
     implementation(libs.nimbus.jose.jwt)
     testFixturesImplementation(libs.bouncycastle.pkix)
 }

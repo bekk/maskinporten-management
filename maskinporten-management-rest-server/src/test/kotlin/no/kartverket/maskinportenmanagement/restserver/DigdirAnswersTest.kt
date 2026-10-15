@@ -11,9 +11,13 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
+import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.digdirScope
+import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
@@ -24,16 +28,18 @@ import kotlin.test.assertNull
 
 class DigdirAnswersTest {
 
-    private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val filtered: Boolean = false) {
+    private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String) {
         override fun toString() = "${method.value} $pathAndQuery"
     }
 
+    private val access = digdirScopeAccess("kartverk:matrikkel.read")
+
     private val endpoints = listOf(
-        Endpoint(HttpMethod.Get, "/api/scopes", filtered = true),
-        Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read"),
-        Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", filtered = true),
-        Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read"),
-        Endpoint(HttpMethod.Delete, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read"),
+        Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
+        Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
+        Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
+        Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
+        Endpoint(HttpMethod.Delete, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
     )
 
     private fun digdirAnswering(answer: (OutgoingRequest) -> OutgoingResponse, block: suspend ApplicationTestBuilder.() -> Unit) =
@@ -50,17 +56,28 @@ class DigdirAnswersTest {
         }
 
     @Test
-    fun `passes Digdir's answer on with its status, content type and body unchanged`() {
+    fun `answers with Digdir's data in this API's model`() {
+        var answer = json(200, "[]")
+        digdirAnswering({ answer }) {
+            for (endpoint in endpoints) {
+                answer = json(200, endpoint.digdirSuccess)
+                val response = call(endpoint)
+
+                assertEquals(HttpStatusCode.OK, response.status, "$endpoint")
+                assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters(), "$endpoint")
+                assertEquals(Json.parseToJsonElement(endpoint.digdirSuccess), Json.parseToJsonElement(response.bodyAsText()), "$endpoint")
+            }
+        }
+    }
+
+    @Test
+    fun `passes Digdir's errors on with their status, content type and body unchanged`() {
         val error = """{"status":404,"error":"ikke funnet: æøå"}""".toByteArray(Charsets.ISO_8859_1)
         val errors = listOf(400, 403, 404, 409, 500, 503).map { OutgoingResponse(it, "application/json;charset=ISO-8859-1", error) }
-        val successes = listOf(
-            json(200, """{"scope":"kartverk:matrikkel.read","consumer_orgno":"311718371","state":"APPROVED"}"""),
-            OutgoingResponse(204, null, ByteArray(0)),
-        )
         var answer = errors.first()
         digdirAnswering({ answer }) {
             for (endpoint in endpoints) {
-                for (digdirAnswer in if (endpoint.filtered) errors else errors + successes) {
+                for (digdirAnswer in errors) {
                     answer = digdirAnswer
                     val response = call(endpoint)
 
@@ -92,6 +109,19 @@ class DigdirAnswersTest {
                 assertDigdirFailed(call(endpoint), endpoint)
             }
         }
+
+    @Test
+    fun `gives 502 when Digdir answers with something this API cannot read`() {
+        var answer = json(200, "[]")
+        digdirAnswering({ answer }) {
+            for (endpoint in endpoints) {
+                for (unreadable in listOf(json(200, """{"unexpected":true}"""), OutgoingResponse(204, null, ByteArray(0)))) {
+                    answer = unreadable
+                    assertDigdirFailed(call(endpoint), endpoint)
+                }
+            }
+        }
+    }
 
     @Test
     fun `gives 502 when Digdir cannot be reached`() =

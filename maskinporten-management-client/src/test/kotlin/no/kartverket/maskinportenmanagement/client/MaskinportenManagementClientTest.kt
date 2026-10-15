@@ -1,7 +1,6 @@
 package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
@@ -14,9 +13,11 @@ import java.net.ConnectException
 import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
+import kotlin.time.Instant
 
 class MaskinportenManagementClientTest {
 
@@ -34,14 +35,7 @@ class MaskinportenManagementClientTest {
         { AccessToken.of("test-token") },
     )
 
-    private val scopes = """[
-        {"name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","active":true,"at_max_age":120},
-        {"name":"kartverk:dokumentbestilling","prefix":"kartverk"},
-        {"name":"kartverk:nrl.rapportering"},
-        {"prefix":"kartverk","subscope":"uten.navn"},
-        {"name":["kartverk:nrl.rapportering"]},
-        "kartverk:nrl.rapportering"
-    ]"""
+    private fun answering(body: String) = clientAnswering { OutgoingResponse(200, "application/json", body.toByteArray()) }
 
     private val filter = ScopeFilter(exact = listOf("kartverk:nrl.rapportering"), prefix = listOf("kartverk:tilgangsstyring/"))
 
@@ -56,40 +50,104 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `with a filter, keeps only the scopes it allows, each one unchanged`() = runBlocking {
-        val response = clientAnswering { OutgoingResponse(200, "application/json", scopes.toByteArray()) }.listScopes(filter)
+    fun `reads every field of Digdir's scope, and leaves out the fields it does not know`() = runBlocking {
+        val scope = """{
+            "name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","subscope":"tilgangsstyring/demo.read",
+            "description":"Lesetilgang","long_description":"Lang lesetilgang","description#en":"Read access",
+            "description#nn":"Lesetilgang på nynorsk","long_description#en":"Long read access",
+            "long_description#nn":"Lang lesetilgang på nynorsk","description#se":"Lohkanlobi","active":true,
+            "created":"2026-01-15T09:30:00.123456Z","last_updated":"2026-02-01T10:00:00Z",
+            "allowed_integration_types":["maskinporten","api_klient"],"owner_orgno":"971040238","token_type":"OPAQUE",
+            "visibility":"PRIVATE","requires_user_consent":true,"requires_user_authentication":true,
+            "requires_pseudonymous_tokens":true,"delegation_source":"https://www.altinn.no/","at_max_age":120,
+            "authorization_max_lifetime":7200,"accessible_for_all":true,"enforced_aud_for_access_token":"https://api.test",
+            "protected":true,"supports_european_businesses":true,"new_field":"from Digdir"
+        }"""
 
-        assertEquals(200, response.statusCode)
-        assertEquals("application/json", response.contentType)
         assertEquals(
-            Json.parseToJsonElement(
-                """[
-                    {"name":"kartverk:tilgangsstyring/demo.read","prefix":"kartverk","active":true,"at_max_age":120},
-                    {"name":"kartverk:nrl.rapportering"}
-                ]""",
+            listOf(
+                ScopeDetails(
+                    name = Scope.of("kartverk:tilgangsstyring/demo.read"),
+                    prefix = "kartverk",
+                    subscope = "tilgangsstyring/demo.read",
+                    description = "Lesetilgang",
+                    longDescription = "Lang lesetilgang",
+                    descriptionEn = "Read access",
+                    descriptionNn = "Lesetilgang på nynorsk",
+                    longDescriptionEn = "Long read access",
+                    longDescriptionNn = "Lang lesetilgang på nynorsk",
+                    active = true,
+                    created = Instant.parse("2026-01-15T09:30:00.123456Z"),
+                    lastUpdated = Instant.parse("2026-02-01T10:00:00Z"),
+                    allowedIntegrationTypes = listOf(IntegrationType.MASKINPORTEN, IntegrationType.API_KLIENT),
+                    ownerOrgno = OrganizationNumber.of("971040238"),
+                    tokenType = TokenType.OPAQUE,
+                    visibility = Visibility.PRIVATE,
+                    requiresUserConsent = true,
+                    requiresUserAuthentication = true,
+                    requiresPseudonymousTokens = true,
+                    delegationSource = "https://www.altinn.no/",
+                    atMaxAge = 120,
+                    authorizationMaxLifetime = 7200,
+                    accessibleForAll = true,
+                    enforcedAudForAccessToken = "https://api.test",
+                    protected = true,
+                    supportsEuropeanBusinesses = true,
+                ),
             ),
-            Json.parseToJsonElement(response.body.decodeToString()),
+            answering("[$scope]").listScopes(),
         )
     }
 
     @Test
-    fun `with a filter, passes Digdir's errors on as they are`() = runBlocking {
-        for (status in listOf(400, 403, 500)) {
-            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
+    fun `with a filter, keeps only the scopes it allows`() = runBlocking {
+        val scopes = jsonList(
+            digdirScope("kartverk:tilgangsstyring/demo.read"),
+            digdirScope("kartverk:dokumentbestilling"),
+            digdirScope("kartverk:nrl.rapportering"),
+        )
 
-            assertSame(response, clientAnswering { response }.listScopes(filter), "for $status")
+        assertEquals(
+            listOf("kartverk:tilgangsstyring/demo.read", "kartverk:nrl.rapportering"),
+            answering(scopes).listScopes(filter).map { it.name.value },
+        )
+    }
+
+    @Test
+    fun `an answer this client cannot read becomes a DigdirException`() {
+        val answers = listOf(
+            "not json",
+            "",
+            digdirScope("kartverk:nrl.rapportering"),
+            "[" + digdirScope("kartverk:nrl.rapportering").replace(""""description":"Tilgang til kartverk:nrl.rapportering",""", "") + "]",
+            "[" + digdirScope("kartverk:nrl.rapportering").replace("971040238", "97104023") + "]",
+            jsonList(digdirScope("kartverk:nrl rapportering")),
+        )
+        for (answer in answers) {
+            val e = assertFailsWith<DigdirException>(answer) { runBlocking { answering(answer).listScopes(filter) } }
+
+            assertContains(e.message!!, "cannot read", message = answer)
         }
     }
 
     @Test
-    fun `with a filter, an answer that is not a JSON list becomes a DigdirException`() {
-        for (body in listOf("""{"name":"kartverk:nrl.rapportering"}""", "not json", "")) {
-            val e = assertFailsWith<DigdirException>(body) {
-                runBlocking { clientAnswering { OutgoingResponse(200, "application/json", body.toByteArray()) }.listScopes(filter) }
-            }
+    fun `a value Digdir has added is read as UNKNOWN`() = runBlocking {
+        val scope = digdirScope("kartverk:nrl.rapportering")
+            .replace("SELF_CONTAINED", "BRAND_NEW")
+            .replace("PUBLIC", "SECRET")
+            .replace(""""allowed_integration_types":["maskinporten"]""", """"allowed_integration_types":["maskinporten","new_portal"]""")
 
-            assertContains(e.message!!, "JSON list", message = body)
-        }
+        val read = answering("[$scope]").listScopes().single()
+
+        assertEquals(TokenType.UNKNOWN, read.tokenType)
+        assertEquals(Visibility.UNKNOWN, read.visibility)
+        assertEquals(listOf(IntegrationType.MASKINPORTEN, IntegrationType.UNKNOWN), read.allowedIntegrationTypes)
+
+        val access = digdirScopeAccess("kartverk:matrikkel.read").replace("APPROVED", "PENDING")
+        assertEquals(
+            ScopeAccessState.UNKNOWN,
+            answering(access).grantScopeAccess(OrganizationNumber.of("311718371"), Scope.of("kartverk:matrikkel.read")).state,
+        )
     }
 
     @Test
@@ -112,13 +170,6 @@ class MaskinportenManagementClientTest {
 
     private val consumerOrgno = OrganizationNumber.of("311718371")
 
-    private val consumerScopeAccess = """[
-        {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
-        {"scope":"kartverk:dokumentbestilling","consumer_orgno":"311718371"},
-        {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371"},
-        {"name":"kartverk:nrl.rapportering","consumer_orgno":"311718371"}
-    ]"""
-
     @Test
     fun `lists a consumer's scope access with only the organisation in the query`() = runBlocking {
         clientAnswering().listConsumerScopeAccess(consumerOrgno)
@@ -131,24 +182,50 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `with a filter, keeps only the consumer's scope access whose scope it allows`() = runBlocking {
-        val response = clientAnswering { OutgoingResponse(200, "application/json", consumerScopeAccess.toByteArray()) }
-            .listConsumerScopeAccess(consumerOrgno, filter)
+        val access = jsonList(
+            digdirScopeAccess("kartverk:tilgangsstyring/demo.read"),
+            digdirScopeAccess("kartverk:dokumentbestilling"),
+            digdirScopeAccess("kartverk:nrl.rapportering"),
+        )
 
-        assertEquals(200, response.statusCode)
         assertEquals(
-            Json.parseToJsonElement(
-                """[
-                    {"scope":"kartverk:tilgangsstyring/demo.read","consumer_orgno":"311718371","state":"APPROVED"},
-                    {"scope":"kartverk:nrl.rapportering","consumer_orgno":"311718371"}
-                ]""",
-            ),
-            Json.parseToJsonElement(response.body.decodeToString()),
+            listOf("kartverk:tilgangsstyring/demo.read", "kartverk:nrl.rapportering"),
+            answering(access).listConsumerScopeAccess(consumerOrgno, filter).map { it.scope.value },
         )
     }
 
     @Test
+    fun `reads every field of Digdir's scope access`() = runBlocking {
+        assertEquals(
+            ScopeAccess(
+                scope = Scope.of("kartverk:matrikkel.read"),
+                ownerOrgno = OrganizationNumber.of("971040238"),
+                ownerOrganizationName = "STATENS KARTVERK",
+                consumerOrgno = consumerOrgno,
+                consumerOrganizationName = "TESTORGANISASJON",
+                state = ScopeAccessState.APPROVED,
+                created = Instant.parse("2026-01-15T09:30:00Z"),
+                lastUpdated = Instant.parse("2026-01-15T09:30:00Z"),
+            ),
+            answering(digdirScopeAccess("kartverk:matrikkel.read")).grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read")),
+        )
+    }
+
+    @Test
+    fun `reads scope access that has no organisation names`() = runBlocking {
+        val access = digdirScopeAccess("kartverk:matrikkel.read")
+            .replace(""""owner_organization_name":"STATENS KARTVERK",""", "")
+            .replace(""""consumer_organization_name":"TESTORGANISASJON",""", "")
+
+        val read = answering(access).grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
+
+        assertEquals(null, read.ownerOrganizationName)
+        assertEquals(null, read.consumerOrganizationName)
+    }
+
+    @Test
     fun `removes scope access with the organisation in the path and only the scope in the query`() = runBlocking {
-        clientAnswering().removeScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
+        answering(digdirScopeAccess("kartverk:matrikkel.read")).removeScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
         assertEquals(HttpMethod.DELETE, request.method)
@@ -160,7 +237,7 @@ class MaskinportenManagementClientTest {
 
     @Test
     fun `grants scope access with the organisation in the path and only the scope in the query`() = runBlocking {
-        clientAnswering().grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
+        answering(digdirScopeAccess("kartverk:matrikkel.read")).grantScopeAccess(consumerOrgno, Scope.of("kartverk:matrikkel.read"))
 
         val request = sent.single()
         assertEquals(HttpMethod.PUT, request.method)
@@ -178,11 +255,17 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `returns Digdir's response as it is, whatever the status but 401`() = runBlocking {
-        for (status in listOf(200, 400, 403, 404, 500)) {
-            val response = OutgoingResponse(status, "application/json", """{"status":$status}""".toByteArray())
+    fun `an error from Digdir becomes a DigdirErrorResponseException that holds Digdir's answer`() {
+        for (status in listOf(302, 400, 403, 404, 500)) {
+            val answer = OutgoingResponse(status, "application/json;charset=UTF-8", """{"status":$status,"error":"æøå"}""".toByteArray())
 
-            assertSame(response, clientAnswering { response }.listScopeAccess(Scope.of("kartverk:x")), "for $status")
+            val e = assertFailsWith<DigdirErrorResponseException>("for $status") {
+                runBlocking { clientAnswering { answer }.listScopeAccess(Scope.of("kartverk:x")) }
+            }
+
+            assertEquals(status, e.statusCode)
+            assertEquals("application/json;charset=UTF-8", e.contentType)
+            assertContentEquals(answer.body, e.body)
         }
     }
 

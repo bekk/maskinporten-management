@@ -49,8 +49,8 @@ private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "v0",
     description = """
-        Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes
-        organisations' access to them.
+        Manages Kartverket's Maskinporten scopes through Digdir's API: lists and deletes the scopes, and lists, gives
+        and removes organisations' access to them.
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
@@ -133,7 +133,9 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "long_description#nn" to {
         leftOutWhenMissing("`long_description` in Norwegian Nynorsk. Left out if the owner has not written one.")
     },
-    "active" to { copy(description = "Always `true` here, since only active scopes are listed.") },
+    "active" to {
+        copy(description = "Always `true` in `GET /api/scopes`, which lists only active scopes, and `false` once the scope is deleted.")
+    },
     "created" to { copy(description = "When the scope was created.", format = "date-time") },
     "last_updated" to { copy(description = "When the scope was last changed.", format = "date-time") },
     "allowed_integration_types" to {
@@ -329,8 +331,12 @@ private val missingClientCertificateExample = "MissingClientCertificate" to Erro
     ErrorCode.INVALID_REQUEST,
 )
 
-private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query is not exactly one " +
-    "`scope`, or `scope` is blank or not URL-encoded correctly."
+private const val INVALID_SCOPE_REASON =
+    "is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly."
+
+private const val INVALID_SCOPE = "The query $INVALID_SCOPE_REASON"
+
+private const val INVALID_ORGNO_OR_SCOPE = "`consumerOrgno` is not 9 digits, or the query $INVALID_SCOPE_REASON"
 
 private val exampleScope = ScopeDetails(
     name = Scope.of("kartverk:tilgangsstyring/demo.read"),
@@ -385,6 +391,29 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
     }
 }
 
+internal val scopeDeleteOperation: Operation.Builder.() -> Unit = {
+    summary = "Delete a scope"
+    description = "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer " +
+        "shows up in `GET /api/scopes`. $DIGDIR_ERRORS"
+
+    parameters {
+        scope()
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "The scope that was deleted."
+            ContentType.Application.Json {
+                schema = scopeSchema
+                example("DeletedScope", exampleScope.copy(active = false))
+            }
+        }
+
+        badRequest(INVALID_SCOPE, missingScopeExample)
+        digdirUnreachableAndOtherStatuses()
+    }
+}
+
 internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
     summary = "List the organisations that have access to a scope"
     description = "Asks Digdir which organisations Kartverket has given access to `scope`. $DIGDIR_ERRORS"
@@ -402,10 +431,7 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
             }
         }
 
-        badRequest(
-            "The query is not exactly one `scope`, or `scope` is blank or not URL-encoded correctly.",
-            missingScopeExample,
-        )
+        badRequest(INVALID_SCOPE, missingScopeExample)
         digdirUnreachableAndOtherStatuses()
     }
 }

@@ -27,6 +27,9 @@ public class MaskinportenManagementClient(
         return if (filter == null) scopes else scopes.filter { filter.allows(it.name) }
     }
 
+    public suspend fun deleteScope(scope: Scope): ScopeDetails =
+        send(HttpMethod.DELETE, "$SCOPES_PATH?scope=${encode(scope.value)}").decode()
+
     public suspend fun listScopeAccess(scope: Scope): List<ScopeAccess> =
         send(HttpMethod.GET, "$SCOPE_ACCESS_PATH?scope=${encode(scope.value)}").decode()
 

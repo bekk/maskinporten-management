@@ -44,11 +44,11 @@ private fun Application.clientFromConfig(): MaskinportenManagementClient {
     val config = environment.config
     val httpClient = httpClient()
     val cloudKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
-    val localKeyFile = config.optional("kms.localKeyFile")
-    check((cloudKeyPath == null) != (localKeyFile == null)) {
-        "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and kms.localKeyFile (a local key) (see .env.example)"
+    val localKeyPath = config.optional("digdirAdmin.localKeyPath")
+    check((cloudKeyPath == null) != (localKeyPath == null)) {
+        "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
     }
-    val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("kms.localKeyFile", localKeyFile!!))
+    val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("digdirAdmin.localKeyPath", localKeyPath!!))
     val certChain = config.required("digdirAdmin.certChain")
     check("-----BEGIN CERTIFICATE-----" in certChain) {
         "digdirAdmin.certChain must be the certificate chain itself in PEM, but was \"$certChain\" (see .env.example)"

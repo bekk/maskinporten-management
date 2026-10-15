@@ -33,7 +33,7 @@ class MaskinportenManagementConfigTest {
         "maskinporten.clientId" to "dev-client",
         "maskinporten.scopes" to "idporten:scopes.write",
         "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
-        "kms.localKeyFile" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
+        "digdirAdmin.localKeyPath" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
 
@@ -94,8 +94,16 @@ class MaskinportenManagementConfigTest {
 
     @Test
     fun `the server does not start unless exactly one KMS is set`() {
-        assertContains(startupFailure(complete - "kms.localKeyFile"), "exactly one")
+        assertContains(startupFailure(complete - "digdirAdmin.localKeyPath"), "exactly one")
         assertContains(startupFailure(complete + ("digdirAdmin.gcpCloudKmsKeyPath" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
+    }
+
+    @Test
+    fun `the server does not start without the local key file, and names the setting`() {
+        assertContains(
+            startupFailure(complete + ("digdirAdmin.localKeyPath" to "does-not-exist.key")),
+            "digdirAdmin.localKeyPath must point to a PEM file",
+        )
     }
 
     @Test

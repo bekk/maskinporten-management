@@ -12,9 +12,7 @@ maskinporten:
 digdirAdmin:
   certChain: "$?DIGDIR_ADMIN_CERT_CHAIN"
   gcpCloudKmsKeyPath: "$?DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH"
-
-kms:
-  localKeyFile: "$?LOCAL_KMS_KEY_FILE"
+  localKeyPath: "$?DIGDIR_ADMIN_LOCAL_KEY_PATH"
 
 externalFiltering:
   enabled: "$?EXTERNAL_FILTERING_ENABLED"

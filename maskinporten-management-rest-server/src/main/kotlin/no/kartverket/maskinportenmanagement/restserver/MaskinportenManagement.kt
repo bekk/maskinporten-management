@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import io.ktor.http.ContentType
 import io.ktor.http.URLDecodeException
 import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
@@ -9,11 +10,14 @@ import io.ktor.server.application.install
 import io.ktor.server.application.log
 import io.ktor.server.plugins.di.DI
 import io.ktor.server.plugins.di.dependencies
+import io.ktor.server.request.contentType
 import io.ktor.server.request.queryString
+import io.ktor.server.request.receive
 import io.ktor.server.routing.RoutingCall
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.client.ScopeJson
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ClientCertificate
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
@@ -24,6 +28,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.io.File
 import java.net.http.HttpClient
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.time.Clock
@@ -145,10 +151,32 @@ internal fun onlyQueryParameter(query: String, name: String): String {
     return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
 }
 
+// A query the server ignores could still be read by the access check in front of us, as a different scope
+internal fun ApplicationCall.noQuery() {
+    if (request.queryString().isNotEmpty()) throw InvalidRequestException("The query must be empty")
+}
+
 internal fun ApplicationCall.scopeQueryParameter(name: String): Scope {
     val value = onlyQueryParameter(name)
     return runCatching { Scope.of(value) }.getOrNull()
         ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
+}
+
+// Decoded strictly as UTF-8, so the bytes sent on to Digdir are the ones the access check in front of us saw
+internal suspend fun ApplicationCall.scopeJsonBody(): ScopeJson {
+    if (request.contentType().withoutParameters() != ContentType.Application.Json) {
+        throw InvalidRequestException("The body must be JSON, sent with Content-Type application/json")
+    }
+    val text = try {
+        Charsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(receive<ByteArray>())).toString()
+    } catch (e: CharacterCodingException) {
+        throw InvalidRequestException("The body must be UTF-8")
+    }
+    return try {
+        ScopeJson.of(text)
+    } catch (e: IllegalArgumentException) {
+        throw InvalidRequestException(e.message!!)
+    }
 }
 
 internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {

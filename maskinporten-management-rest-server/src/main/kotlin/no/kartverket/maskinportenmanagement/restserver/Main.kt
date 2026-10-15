@@ -14,6 +14,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.openapi.describe
 import io.ktor.server.routing.openapi.hide
+import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
@@ -57,6 +58,13 @@ fun Application.configureRouting() {
             val filter = externalFiltering.filterFor(call)
             call.respond(client.listScopes(filter))
         }.describe(scopesListOperation)
+
+        post("/api/scopes") {
+            val client: MaskinportenManagementClient by dependencies
+            call.noQuery()
+            val scope = call.scopeJsonBody()
+            call.respond(client.createScope(scope))
+        }.describe(scopeCreateOperation)
 
         delete("/api/scopes") {
             val client: MaskinportenManagementClient by dependencies

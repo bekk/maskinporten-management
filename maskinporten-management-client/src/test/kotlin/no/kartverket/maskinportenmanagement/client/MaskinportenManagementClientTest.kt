@@ -16,6 +16,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Instant
 
@@ -148,6 +149,29 @@ class MaskinportenManagementClientTest {
             ScopeAccessState.UNKNOWN,
             answering(access).grantScopeAccess(OrganizationNumber.of("311718371"), Scope.of("kartverk:matrikkel.read")).state,
         )
+    }
+
+    @Test
+    fun `creates a scope by posting its JSON as it is, and returns it`() = runBlocking {
+        val json = """{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read","description":"Lesetilgang, æøå"}"""
+
+        val created = answering(digdirScope("kartverk:tilgangsstyring/demo.read")).createScope(ScopeJson.of(json))
+
+        val request = sent.single()
+        assertEquals(HttpMethod.POST, request.method)
+        assertEquals("https://digdir.test/api/v1/scopes", request.url.toString())
+        assertEquals("application/json", request.headers["Content-Type"])
+        assertContentEquals(json.toByteArray(Charsets.UTF_8), request.body)
+        assertEquals(Scope.of("kartverk:tilgangsstyring/demo.read"), created.name)
+    }
+
+    @Test
+    fun `a call without a body sends no body and no Content-Type`() = runBlocking {
+        clientAnswering().listScopes()
+
+        val request = sent.single()
+        assertNull(request.body)
+        assertNull(request.headers["Content-Type"])
     }
 
     @Test

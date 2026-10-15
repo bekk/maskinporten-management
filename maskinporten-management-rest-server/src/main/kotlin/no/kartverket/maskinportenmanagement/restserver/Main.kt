@@ -20,6 +20,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.ScopeUpdateJson
 
 fun main() {
     val config = loadApplicationConfig()
@@ -66,6 +67,12 @@ fun Application.configureRouting() {
             val scope = call.scopeJsonBody()
             call.respond(client.createScope(scope))
         }.describe(scopeCreateOperation)
+
+        put("/api/scopes") {
+            val client: MaskinportenManagementClient by dependencies
+            val scope = call.scopeQueryParameter("scope")
+            call.respond(client.updateScope(scope, ScopeUpdateJson.of(call.jsonBody())))
+        }.describe(scopeUpdateOperation)
 
         delete("/api/scopes") {
             val client: MaskinportenManagementClient by dependencies

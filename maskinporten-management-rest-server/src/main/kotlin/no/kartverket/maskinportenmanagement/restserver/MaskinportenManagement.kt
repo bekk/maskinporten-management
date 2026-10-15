@@ -179,19 +179,20 @@ internal fun scopeParameter(name: String, value: String): Scope = runCatching { 
 internal fun wholeNumberParameter(name: String, value: String, min: Int): Int = value.toIntOrNull()?.takeIf { it >= min }
     ?: throw InvalidRequestException("Query parameter $name must be a whole number of $min or more")
 
-// Decoded strictly as UTF-8, so the bytes sent on to Digdir are the ones the access check in front of us saw
-internal suspend fun ApplicationCall.scopeJsonBody(): ScopeJson {
+// Strictly UTF-8, whatever charset the Content-Type names, so Digdir gets the bytes the access check in front of us saw
+internal suspend fun ApplicationCall.jsonBody(): String {
     requireJsonContentType()
-    val text = try {
+    return try {
         Charsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(receive<ByteArray>())).toString()
     } catch (e: CharacterCodingException) {
         throw InvalidRequestException("The body must be UTF-8")
     }
-    return try {
-        ScopeJson.of(text)
-    } catch (e: IllegalArgumentException) {
-        throw InvalidRequestException(e.message!!)
-    }
+}
+
+internal suspend fun ApplicationCall.scopeJsonBody(): ScopeJson = try {
+    ScopeJson.of(jsonBody())
+} catch (e: IllegalArgumentException) {
+    throw InvalidRequestException(e.message!!)
 }
 
 private fun ApplicationCall.requireJsonContentType() {

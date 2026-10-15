@@ -32,8 +32,8 @@ class MaskinportenManagementConfigTest {
         "maskinporten.wellKnownUrl" to "http://localhost:8080/.well-known/oauth-authorization-server",
         "maskinporten.clientId" to "dev-client",
         "maskinporten.scopes" to "idporten:scopes.write",
-        "maskinporten.certificateChainFile" to pemFile(certificateChain(keyPair.public).joinToString("") { pem(it) }).toString(),
-        "kms.localKeyFile" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
+        "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
+        "digdirAdmin.localKeyPath" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
 
@@ -58,7 +58,7 @@ class MaskinportenManagementConfigTest {
             "maskinporten.wellKnownUrl",
             "maskinporten.clientId",
             "maskinporten.scopes",
-            "maskinporten.certificateChainFile",
+            "digdirAdmin.certChain",
         )
         for (setting in settings) {
             assertContains(startupFailure(complete - setting), setting)
@@ -94,15 +94,27 @@ class MaskinportenManagementConfigTest {
 
     @Test
     fun `the server does not start unless exactly one KMS is set`() {
-        assertContains(startupFailure(complete - "kms.localKeyFile"), "exactly one")
-        assertContains(startupFailure(complete + ("kms.keyVersion" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
+        assertContains(startupFailure(complete - "digdirAdmin.localKeyPath"), "exactly one")
+        assertContains(startupFailure(complete + ("digdirAdmin.gcpCloudKmsKeyPath" to "projects/p/locations/l/keyRings/r/cryptoKeys/k/cryptoKeyVersions/1")), "exactly one")
     }
 
     @Test
-    fun `the server does not start without the certificate chain file`() {
+    fun `the server does not start without the local key file, and names the setting`() {
         assertContains(
-            startupFailure(complete + ("maskinporten.certificateChainFile" to "does-not-exist.pem")),
-            "maskinporten.certificateChainFile must point to a PEM file",
+            startupFailure(complete + ("digdirAdmin.localKeyPath" to "does-not-exist.key")),
+            "digdirAdmin.localKeyPath must point to a PEM file",
+        )
+    }
+
+    @Test
+    fun `the server does not start unless the certificate chain is PEM, and names the setting`() {
+        assertContains(
+            startupFailure(complete + ("digdirAdmin.certChain" to "\$(cat virksomhetssertifikat-chain.pem)")),
+            "digdirAdmin.certChain must be the certificate chain itself in PEM",
+        )
+        assertContains(
+            startupFailure(complete + ("digdirAdmin.certChain" to "-----BEGIN CERTIFICATE-----\nnot-base64\n-----END CERTIFICATE-----\n")),
+            "digdirAdmin.certChain must be the certificate chain itself in PEM",
         )
     }
 }

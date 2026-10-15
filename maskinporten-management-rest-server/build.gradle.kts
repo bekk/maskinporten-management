@@ -61,11 +61,13 @@ dependencies {
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
+    implementation(libs.google.cloud.kms)
 
     "toolsImplementation"(sourceSets.main.get().output)
     "toolsImplementation"(libs.kotlinx.coroutines.core)
 
     testImplementation(ktorLibs.server.testHost)
+    testImplementation(libs.google.cloud.kms.grpc)
     testImplementation(testFixtures(project(":maskinporten-management-client")))
 }
 

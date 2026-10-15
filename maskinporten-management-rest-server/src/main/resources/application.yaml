@@ -8,11 +8,11 @@ maskinporten:
   wellKnownUrl: "$?MASKINPORTEN_WELL_KNOWN_URL"
   clientId: "$?MASKINPORTEN_CLIENT_ID"
   scopes: "$?MASKINPORTEN_SCOPES"
-  certificateChainFile: "$?MASKINPORTEN_CERTIFICATE_CHAIN_FILE"
 
-kms:
-  keyVersion: "$?KMS_KEY_VERSION"
-  localKeyFile: "$?LOCAL_KMS_KEY_FILE"
+digdirAdmin:
+  certChain: "$?DIGDIR_ADMIN_CERT_CHAIN"
+  gcpCloudKmsKeyPath: "$?DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH"
+  localKeyPath: "$?DIGDIR_ADMIN_LOCAL_KEY_PATH"
 
 externalFiltering:
   enabled: "$?EXTERNAL_FILTERING_ENABLED"

@@ -1,7 +1,13 @@
 package no.kartverket.maskinportenmanagement.client.auth
 
 import com.nimbusds.jwt.JWTClaimsSet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -23,10 +29,12 @@ import java.time.Clock
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Gets access tokens from Maskinporten with a JWT grant that [kms] signs and that carries the business certificate
- * chain in `x5c`, and reuses each token until shortly before it expires.
+ * chain in `x5c`, and reuses each token until shortly before it expires. It fetches the next token in the background
+ * while the current one still works, so most calls never wait for Maskinporten.
  *
  * [certificateChainPem] is the chain in PEM, the business certificate for the KMS key first.
  */
@@ -38,19 +46,54 @@ public class MaskinportenTokenProvider(
     certificateChainPem: String,
     private val httpClient: OutgoingHttpClient,
     private val clock: Clock = Clock.systemUTC(),
-) : AccessTokenProvider {
+    context: CoroutineContext = Dispatchers.Default,
+) : AccessTokenProvider,
+    AutoCloseable {
     init {
         require(scopes.isNotEmpty()) { "scopes must not be empty" }
     }
 
     private val grantSigner = GrantSigner(kms, certificateChainPem)
+
+    private val scope = CoroutineScope(context + SupervisorJob(context[Job]))
     private val mutex = Mutex()
+
     private var metadata: Metadata? = null
+
     private var token: Token? = null
+    private var inFlight: Deferred<AccessToken>? = null
 
-    override suspend fun accessToken(): AccessToken = mutex.withLock {
-        token?.takeIf { clock.instant() < it.refreshAt }?.let { return it.value }
+    override suspend fun accessToken(): AccessToken {
+        val fetch = mutex.withLock {
+            val now = clock.instant()
+            val current = token
+            if (current != null && now < current.refreshAt) return current.value
+            val fetch = inFlight ?: scope.async { fetchToken() }.also { inFlight = it }
+            if (current != null && now < current.expiresAt) return current.value
+            fetch
+        }
+        return fetch.await()
+    }
 
+    override fun close(): Unit = scope.cancel()
+
+    override suspend fun refused(token: AccessToken): Unit = mutex.withLock {
+        if (this.token?.value == token) this.token = null
+    }
+
+    private suspend fun fetchToken(): AccessToken {
+        var fetched: Token? = null
+        try {
+            return requestToken().also { fetched = it }.value
+        } finally {
+            mutex.withLock {
+                fetched?.let { token = it }
+                inFlight = null
+            }
+        }
+    }
+
+    private suspend fun requestToken(): Token {
         val metadata = metadata ?: fetchMetadata().also { metadata = it }
         val requestedAt = clock.instant()
         val form = "grant_type=${encode(GRANT_TYPE)}&assertion=${encode(grant(metadata.issuer, requestedAt))}"
@@ -63,14 +106,12 @@ public class MaskinportenTokenProvider(
             ),
         )
         val tokenResponse = response.decode<TokenResponse>("token request")
-        val accessToken = AccessToken.of(tokenResponse.accessToken)
-        token = Token(accessToken, requestedAt.plusSeconds(tokenResponse.expiresIn - REFRESH_MARGIN_SECONDS))
-        accessToken
-    }
-
-    override suspend fun refused(token: AccessToken): Unit = mutex.withLock {
-        // Another call may already have fetched a new token
-        if (this.token?.value == token) this.token = null
+        val expiry = requestedAt.plusSeconds(tokenResponse.expiresIn)
+        return Token(
+            value = AccessToken.of(tokenResponse.accessToken),
+            refreshAt = expiry.minusSeconds(REFRESH_MARGIN_SECONDS),
+            expiresAt = expiry.minusSeconds(EXPIRY_MARGIN_SECONDS),
+        )
     }
 
     private suspend fun fetchMetadata(): Metadata = httpClient.send(
@@ -112,7 +153,7 @@ public class MaskinportenTokenProvider(
         @SerialName("expires_in") val expiresIn: Long,
     )
 
-    private class Token(val value: AccessToken, val refreshAt: Instant)
+    private class Token(val value: AccessToken, val refreshAt: Instant, val expiresAt: Instant)
 
     private companion object {
         const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
@@ -120,8 +161,11 @@ public class MaskinportenTokenProvider(
         // Digdir's recommended lifetime
         const val GRANT_LIFETIME_SECONDS = 120L
 
+        // From here, calls get the current token while the next one is fetched in the background
+        const val REFRESH_MARGIN_SECONDS = 60L
+
         // So a token does not run out on its way to Digdir
-        const val REFRESH_MARGIN_SECONDS = 20L
+        const val EXPIRY_MARGIN_SECONDS = 10L
 
         val json = Json { ignoreUnknownKeys = true }
 

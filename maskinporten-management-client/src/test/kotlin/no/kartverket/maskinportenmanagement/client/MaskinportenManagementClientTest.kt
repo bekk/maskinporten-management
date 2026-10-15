@@ -151,6 +151,18 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
+    fun `deletes a scope with only the scope in the query, and returns it`() = runBlocking {
+        val deleted = answering(digdirScope("kartverk:tilgangsstyring/demo.read").replace("\"active\":true", "\"active\":false"))
+            .deleteScope(Scope.of("kartverk:tilgangsstyring/demo.read"))
+
+        val request = sent.single()
+        assertEquals(HttpMethod.DELETE, request.method)
+        assertEquals("https://digdir.test/api/v1/scopes?scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.toString())
+        assertEquals(Scope.of("kartverk:tilgangsstyring/demo.read"), deleted.name)
+        assertEquals(false, deleted.active)
+    }
+
+    @Test
     fun `lists scope access with only the scope in the query`() = runBlocking {
         clientAnswering().listScopeAccess(Scope.of("kartverk:matrikkel.read"))
 

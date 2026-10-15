@@ -12,7 +12,7 @@ internal enum class DigdirEnvironment(val digdirBaseUrl: URI, val maskinportenWe
         maskinportenWellKnownUrl = URI("https://maskinporten.no/.well-known/oauth-authorization-server"),
     ),
 
-    // The mock API in maskinporten-management-frontend-mock, which plays both Digdir and Maskinporten
+    // The mock API in mock-api, which plays both Digdir and Maskinporten
     LOCAL(
         digdirBaseUrl = URI("http://localhost:8090"),
         maskinportenWellKnownUrl = URI("http://localhost:8090/.well-known/oauth-authorization-server"),

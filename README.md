@@ -15,6 +15,7 @@ default, and then lists show all scopes (see [`.env.example`](.env.example)).
 | :----------------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------- |
 | [`maskinporten-management-client`](maskinporten-management-client)       | Kotlin client library                        | a package, for other services to depend on                                    |
 | [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API      | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
+| [`mock-api`](mock-api)                                                   | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing; it is its own Gradle build, outside `./gradlew build` |
 
 ## Prerequisites
 
@@ -23,23 +24,28 @@ default, and then lists show all scopes (see [`.env.example`](.env.example)).
 ## Getting started
 
 ```bash
-./gradlew build                  # compile, ktlint and tests
+./gradlew build                                       # compile, ktlint and tests
+mock-api/scripts/setup-local-kms.sh                   # create the local key and fake business certificate
+docker compose -f mock-api/docker-compose.yml up -d   # start the mock API on http://localhost:8090
 cp .env.example .env
-scripts/dev.sh                   # run the server on http://localhost:8080
+scripts/dev.sh                                        # run the server on http://localhost:8080
 curl -i localhost:8080/health/live
 ```
 
-Before `scripts/dev.sh`, create the local key and fake business certificate, and start the mock API, as its
-[README](https://github.com/bekk/maskinporten-management-frontend-mock/tree/main/mock-api) describes.
+The mock API and the script need Docker. See the mock's [README](mock-api/README.md) for more.
 
 The server calls Digdir in `DIGDIR_ENVIRONMENT` (`TEST`, `PROD` or `LOCAL`), with a token from Maskinporten in the
 same environment. It gets the token with a JWT grant that carries the business certificate and is signed in Cloud KMS,
-where the certificate's private key lives. Locally, the mock API plays Maskinporten, and the grant is signed with a key
-from a file (`DIGDIR_ADMIN_LOCAL_KEY_PATH`) instead of Cloud KMS (`DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH`). With
+where the certificate's private key lives. `.env.example` sets `DIGDIR_ENVIRONMENT` to `LOCAL`, the mock API on port
+8090, which plays Digdir and Maskinporten, and the grant is then signed with a key from a file
+(`DIGDIR_ADMIN_LOCAL_KEY_PATH`) instead of Cloud KMS (`DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH`). With
 `EXTERNAL_FILTERING_ENABLED=true`, the mock API also plays the filtering service, and lists then need the
-`X-Forwarded-Client-Cert` header that Istio usually sets in production; the mock's test frontend sets it for
-you. `.env.example` sets `DIGDIR_ENVIRONMENT` to `LOCAL`, the mock API from
-[maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8090.
+`X-Forwarded-Client-Cert` header that Istio usually sets in production, so set it yourself, as one of the
+[mock's test apps](mock-api/README.md#filtering):
+
+```bash
+curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/sa/demo' localhost:8080/api/scopes
+```
 
 The OpenAPI spec is served at `/openapi` and checked in as
 [`maskinporten-management-rest-server/openapi.json`](maskinporten-management-rest-server/openapi.json).

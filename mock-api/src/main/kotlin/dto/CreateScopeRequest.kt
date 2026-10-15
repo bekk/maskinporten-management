@@ -4,15 +4,24 @@ import com.maskinporten.models.scopes.IntegrationType
 import com.maskinporten.models.scopes.Scope
 import com.maskinporten.models.scopes.TokenType
 import com.maskinporten.models.scopes.Visibility
+import com.maskinporten.models.scopes.collectTranslations
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlin.time.Clock
 
-@Serializable
+@OptIn(ExperimentalSerializationApi::class)
+@KeepGeneratedSerializer
+@Serializable(with = CreateScopeRequestSerializer::class)
 data class CreateScopeRequest(
     val prefix: String,
     val subscope: String,
     val description: String,
     val long_description: String? = null,
+    /** description#en, long_description#nn and so on */
+    val descriptions: Map<String, String> = emptyMap(),
     val active: Boolean,
     val owner_orgno: String? = null,
     val allowed_integration_types: List<IntegrationType>,
@@ -30,6 +39,11 @@ data class CreateScopeRequest(
     val supports_european_businesses: Boolean? = null
 )
 
+@OptIn(ExperimentalSerializationApi::class)
+object CreateScopeRequestSerializer : JsonTransformingSerializer<CreateScopeRequest>(CreateScopeRequest.generatedSerializer()) {
+    override fun transformDeserialize(element: JsonElement) = collectTranslations(element)
+}
+
 fun CreateScopeRequest.toScope(): Scope {
     val prefix = this.prefix
     val subscope = this.subscope
@@ -40,7 +54,7 @@ fun CreateScopeRequest.toScope(): Scope {
         description = description,
         subscope = subscope,
         long_description = long_description,
-        descriptions = emptyMap(),
+        descriptions = descriptions,
         active = active,
         created = Clock.System.now(),
         last_updated = Clock.System.now(),

@@ -48,6 +48,14 @@ object ScopeSerializer : JsonTransformingSerializer<Scope>(Scope.generatedSerial
     }
 }
 
+private val TRANSLATED_FIELDS = setOf("description", "long_description")
+
+/** The reverse of [ScopeSerializer]: requests send translations as fields like `description#en`, which go into `descriptions`. */
+fun collectTranslations(element: JsonElement): JsonElement {
+    val (translations, fields) = element.jsonObject.entries.partition { it.key.substringBefore('#', "") in TRANSLATED_FIELDS }
+    return JsonObject(fields.associate { it.toPair() } + ("descriptions" to JsonObject(translations.associate { it.toPair() })))
+}
+
 enum class TokenType {
     SELF_CONTAINED,
     OPAQUE

@@ -298,11 +298,10 @@ class MaskinportenTest {
     }
 
     @Test
-    fun `a scope only gets a prefix the organisation owns`() = maskinportenTest {
+    fun `a new scope only gets a prefix the organisation owns`() = maskinportenTest {
         assertEquals(HttpStatusCode.Forbidden, createScope(token(), prefix = "not-registered").status)
-        assertEquals(HttpStatusCode.Forbidden, updateScope(token(), "kartverk:matrikkel.read", """{"prefix": "skatt"}""").status)
-        assertEquals(HttpStatusCode.Forbidden, updateScope(token(), "kartverk:matrikkel.read", """{"prefix": "not-registered"}""").status)
-        assertEquals(HttpStatusCode.OK, updateScope(token(), "kartverk:matrikkel.read", """{"prefix": "kartverk-intern"}""").status)
+        assertEquals(HttpStatusCode.Forbidden, createScope(token(), prefix = "skatt").status)
+        assertEquals(HttpStatusCode.OK, createScope(token(), prefix = "kartverk-intern").status)
     }
 
     @Test

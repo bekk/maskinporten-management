@@ -5,9 +5,11 @@ import com.maskinporten.dto.UpdateScopeRequest
 import com.maskinporten.dto.toScope
 import com.maskinporten.errors.ConflictException
 import com.maskinporten.models.scopes.*
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.json.jsonb
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.time.toKotlinInstant
@@ -18,7 +20,7 @@ object ScopesTable : Table("scopes") {
     val subscope = varchar("subscope", 255)
     val description = text("description")
     val longDescription = text("long_description").nullable()
-    val descriptions = text("descriptions").nullable()
+    val descriptions = jsonb<Map<String, String>>("descriptions", Json).nullable()
     val active = bool("active")
     val created = timestampWithTimeZone("created")
     val lastUpdated = timestampWithTimeZone("last_updated")
@@ -46,7 +48,7 @@ fun ResultRow.toScope(): Scope {
         subscope = this[ScopesTable.subscope],
         description = this[ScopesTable.description],
         long_description = this[ScopesTable.longDescription],
-        descriptions = this[ScopesTable.descriptions]?.let { Json.decodeFromString<Map<String, String>>(it) } ?: emptyMap(),
+        descriptions = this[ScopesTable.descriptions] ?: emptyMap(),
         active = this[ScopesTable.active],
         created = this[ScopesTable.created].toInstant().toKotlinInstant(),
         last_updated = this[ScopesTable.lastUpdated].toInstant().toKotlinInstant(),
@@ -128,6 +130,7 @@ class PostgresScopesRepository : ScopesRepository {
                 it[subscope] = newScope.subscope
                 it[description] = newScope.description
                 it[longDescription] = newScope.long_description
+                it[descriptions] = newScope.descriptions
                 it[active] = newScope.active
                 it[created] = now
                 it[lastUpdated] = now
@@ -167,21 +170,20 @@ class PostgresScopesRepository : ScopesRepository {
                 ?.toScope()
                 ?: throw NotFoundException("Scope not found: $name")
 
-            val newPrefix = scope.prefix ?: existing.prefix
-            val newSubscope = scope.subscope ?: existing.subscope
-            val newName = "$newPrefix:$newSubscope"
-            if (newName != name && ScopesTable.selectAll().where { ScopesTable.name eq newName }.any()) {
-                throw ConflictException("Scope already exists: $newName")
+            // Digdir does not let a scope be renamed
+            if (scope.prefix != null && scope.prefix != existing.prefix) {
+                throw BadRequestException("The prefix of a scope cannot be changed")
+            }
+            if (scope.subscope != null && scope.subscope != existing.subscope) {
+                throw BadRequestException("The subscope of a scope cannot be changed")
             }
 
             val now = java.time.OffsetDateTime.now()
 
             ScopesTable.update({ ScopesTable.name eq name }) {
-                it[ScopesTable.name] = newName
-                it[prefix] = newPrefix
-                it[subscope] = newSubscope
                 it[description] = scope.description ?: existing.description
                 it[longDescription] = scope.long_description ?: existing.long_description
+                it[descriptions] = existing.descriptions.orEmpty() + scope.descriptions
                 it[active] = scope.active ?: existing.active
                 it[ownerOrgno] = scope.owner_orgno ?: existing.owner_orgno
                 it[allowedIntegrationTypes] = (scope.allowed_integration_types ?: existing.allowed_integration_types).map { t -> t.name.lowercase() }
@@ -201,7 +203,7 @@ class PostgresScopesRepository : ScopesRepository {
             }
 
             ScopesTable.selectAll()
-                .where { ScopesTable.name eq newName }
+                .where { ScopesTable.name eq name }
                 .first()
                 .toScope()
         }

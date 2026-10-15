@@ -30,7 +30,6 @@ class ScopesService {
         println("[service] updateScope()")
         if (organization == null) return scopesRepository.updateScope(scope, request)
         requireOwner(scopesRepository.getScopeByName(scope).owner_orgno, organization)
-        request.prefix?.let { requirePrefixOwner(it, organization) }
         return scopesRepository.updateScope(scope, request.copy(owner_orgno = organization))
     }
 

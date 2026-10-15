@@ -174,13 +174,12 @@ class ScopesTest {
     }
 
     @Test
-    fun testScopesPutUpdatesAllFieldsAndRenames() = testApp {
+    fun testScopesPutUpdatesAllFields() = testApp {
         client.put("/api/v1/scopes?scope=kartverk:matrikkel.read") {
             contentType(ContentType.Application.Json)
             setBody(
                 """
                 {
-                  "subscope": "matrikkel.les",
                   "long_description": "Ny lang beskrivelse",
                   "owner_orgno": "991825827",
                   "token_type": "OPAQUE",
@@ -191,21 +190,91 @@ class ScopesTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             val scope = jsonObject()
-            assertEquals("kartverk:matrikkel.les", scope.string("name"))
+            assertEquals("kartverk:matrikkel.read", scope.string("name"))
             assertEquals("Ny lang beskrivelse", scope.string("long_description"))
             assertEquals("991825827", scope.string("owner_orgno"))
             assertEquals("OPAQUE", scope.string("token_type"))
             assertEquals("999", scope.string("authorization_max_lifetime"))
         }
+    }
+
+    // Digdir does not let a scope be renamed
+    @Test
+    fun testScopesPutCannotChangePrefixOrSubscope() = testApp {
+        for (body in listOf("""{ "subscope": "matrikkel.les" }""", """{ "prefix": "statens-kartverk" }""")) {
+            client.put("/api/v1/scopes?scope=kartverk:matrikkel.read") {
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }.apply {
+                assertEquals(HttpStatusCode.BadRequest, status, body)
+            }
+        }
 
         client.get("/api/v1/scopes/scope?scope=kartverk:matrikkel.read").apply {
-            assertEquals(HttpStatusCode.NotFound, status)
-        }
-        // Access and client links follow the renamed scope
-        client.get("/api/v1/scopes/access?scope=kartverk:matrikkel.les").apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertTrue(jsonObjects().isNotEmpty())
         }
+    }
+
+    @Test
+    fun testScopesPutAcceptsUnchangedPrefixAndSubscope() = testApp {
+        client.put("/api/v1/scopes?scope=kartverk:matrikkel.read") {
+            contentType(ContentType.Application.Json)
+            setBody("""{ "prefix": "kartverk", "subscope": "matrikkel.read", "description": "Uendret navn" }""")
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals("kartverk:matrikkel.read", jsonObject().string("name"))
+        }
+    }
+
+    @Test
+    fun testScopesPostKeepsTranslations() = testApp {
+        client.post("/api/v1/scopes") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "prefix": "kartverk",
+                  "subscope": "test.read",
+                  "description": "Testscope",
+                  "description#en": "Test scope",
+                  "long_description#nn": "Lang skildring",
+                  "active": true,
+                  "allowed_integration_types": ["maskinporten"],
+                  "visibility": "PUBLIC",
+                  "token_type": "SELF_CONTAINED",
+                  "at_max_age": 120,
+                  "requires_user_authentication": false,
+                  "requires_pseudonymous_tokens": false,
+                  "requires_user_consent": false,
+                  "accessible_for_all": false
+                }
+                """.trimIndent()
+            )
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+
+        val created = client.get("/api/v1/scopes/scope?scope=kartverk:test.read").jsonObject()
+        assertEquals("Test scope", created.string("description#en"))
+        assertEquals("Lang skildring", created.string("long_description#nn"))
+    }
+
+    @Test
+    fun testScopesPutChangesOnlyTheTranslationsItNames() = testApp {
+        client.put("/api/v1/scopes?scope=kartverk:matrikkel.read") {
+            contentType(ContentType.Application.Json)
+            setBody("""{ "description#en": "Read cadastre data", "description#nn": "Lesetilgang til matrikkelen" }""")
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+
+        val scope = client.get("/api/v1/scopes/scope?scope=kartverk:matrikkel.read").jsonObject()
+        assertEquals("Read cadastre data", scope.string("description#en"))
+        assertEquals("Lesetilgang til matrikkelen", scope.string("description#nn"))
+        assertEquals(
+            "Used for lookup in cadastre data such as property, address and building references.",
+            scope.string("long_description#en"),
+        )
     }
 
     @Test

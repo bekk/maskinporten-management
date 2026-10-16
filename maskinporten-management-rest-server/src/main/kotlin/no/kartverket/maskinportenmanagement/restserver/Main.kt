@@ -31,7 +31,7 @@ fun main() {
 }
 
 fun Application.module() {
-    configureAccessLogging()
+    configureLogging()
     configureSerialization()
     configureErrorHandling()
     configureMaskinportenManagement()

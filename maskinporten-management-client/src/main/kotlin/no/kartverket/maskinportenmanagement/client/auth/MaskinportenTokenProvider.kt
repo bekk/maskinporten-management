@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -29,6 +30,7 @@ import java.time.Clock
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
+import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -64,11 +66,12 @@ public class MaskinportenTokenProvider(
     private var inFlight: Deferred<AccessToken>? = null
 
     override suspend fun accessToken(): AccessToken {
+        val callerContext = currentCoroutineContext().minusKey(Job).minusKey(ContinuationInterceptor)
         val fetch = mutex.withLock {
             val now = clock.instant()
             val current = token
             if (current != null && now < current.refreshAt) return current.value
-            val fetch = inFlight ?: scope.async { fetchToken() }.also { inFlight = it }
+            val fetch = inFlight ?: scope.async(callerContext) { fetchToken() }.also { inFlight = it }
             if (current != null && now < current.expiresAt) return current.value
             fetch
         }

@@ -1,0 +1,2223 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API for administrasjon av ID-porten/Maskinporten klienter",
+    "description": "Dette APIet er sikret med Maskinporten.\u003Cbr /\u003EDu kan finne mer informasjon om API-et og hvordan ta det i bruk på \u003Ca href=\"https://docs.digdir.no/docs/idporten/oidc/oidc_api_admin.html\"\u003Ehttps://docs.digdir.no/docs/idporten/oidc/oidc_api_admin.html\u003C/a\u003E.",
+    "contact": {
+      "name": "Digdir",
+      "url": "https://digdir.no/",
+      "email": "servicedesk@digdir.no"
+    },
+    "version": "2026-09-10-1053-30e47348"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8090"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Integrations",
+      "description": "API for henting av integrasjoner"
+    },
+    {
+      "name": "Scope - Access",
+      "description": "API for tilgangsstyring av scopes"
+    },
+    {
+      "name": "Scopes - Prefix",
+      "description": "API for håndtering av scope prefikser."
+    },
+    {
+      "name": "Scopes",
+      "description": "API for håndtering av scopes"
+    },
+    {
+      "name": "Delegeringskilde",
+      "description": "Eksternt API for å administrere delegeringskilder"
+    },
+    {
+      "name": "Changelog",
+      "description": "API for historikk"
+    },
+    {
+      "name": "API-er",
+      "description": "API for henting av API tilbydere (prefikser)"
+    }
+  ],
+  "paths": {
+    "/api/v1/scopes": {
+      "get": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "List alle scopes for autentisert organisasjon.",
+        "description": "Lister alle scopes for autentisert organisasjon med valgfrie filtre for inaktiv status. Krever scope 'idporten:scopes.read' eller 'idporten:scopes.write'.",
+        "operationId": "listForAuthenticatedOrgno",
+        "parameters": [
+          {
+            "name": "inactive",
+            "in": "query",
+            "description": "Include inactive scopes if set to true.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalScopeResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.read",
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "Oppdater et scope",
+        "description": "Oppdaterer et eksisterende scope. Den autentiserte organisasjonen må være eier av scopet. Krever scope 'idporten:scopes.write'.\nTo felt støtter flere språk. 'description' og 'long_description'. For å oppdatere eller legge til språkspesifikke beskrivelser, bruk egenskaper som 'description#en', 'description#nn', 'long_description#en', etc. i JSON-objektet.Eksempel: { \"description\": \"Norsk bokmål beskrivelse\", \"description#en\": \"English description\", \"description#nn\": \"Nynorsk beskrivelse\", \"long_description#en\": \"Detailed English description\" }",
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalScopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalScopeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "Opprett et nytt scope",
+        "description": "Oppretter et nytt scope. Den autentiserte organisasjonen vil bli eier av scopet. Krever scope 'idporten:scopes.write'.\nTo felt støtter flere språk. 'description' og 'long_description'. For å legge til språkspesifikke beskrivelser, bruk egenskaper som 'description#en', 'description#nn', 'long_description#en', etc. i JSON-objektet.Eksempel: { \"description\": \"Norsk bokmål beskrivelse\", \"description#en\": \"English description\", \"description#nn\": \"Nynorsk beskrivelse\", \"long_description#en\": \"Detailed English description\" }",
+        "operationId": "addScope",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalScopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalScopeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "Slett et scope",
+        "description": "Sletter et eksisterende scope. Den autentiserte organisasjonen må være eier av scopet. Krever scope 'idporten:scopes.write'.",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalScopeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/scopes/access/{consumer_orgno}": {
+      "put": {
+        "tags": [
+          "Scope - Access"
+        ],
+        "summary": "Gi en organisasjon tilgang til et scope eid av den autentiserte organisasjonen.",
+        "description": "Gir en organisasjon tilgang til et scope eid av den autentiserte organisasjonen. Krever scope 'idporten:scopes.write'.",
+        "operationId": "create",
+        "parameters": [
+          {
+            "name": "consumer_orgno",
+            "in": "path",
+            "description": "Consumer organization number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScopeAccessResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Scope - Access"
+        ],
+        "summary": "Fjern tilgang til et scope fra en konsumentorganisasjon.",
+        "description": "Fjerner tilgang til et scope fra en konsumentorganisasjon. Krever scope 'idporten:scopes.write'.",
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "consumer_orgno",
+            "in": "path",
+            "description": "Consumer organization number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScopeAccessResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/scopes/scope": {
+      "get": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "Hent et scope",
+        "description": "Henter et scope med angitt navn. Scopet må tilhøre samme organisasjonsnummer som autentiserings-tokenet, ellers vil det gis 403 feil. Krever scope 'idporten:scopes.read'.",
+        "operationId": "getScope",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExternalScopeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.read"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/scopes/all": {
+      "get": {
+        "tags": [
+          "Scopes"
+        ],
+        "summary": "List alle scopes.",
+        "description": "Lister alle scopes med valgfrie filtre for prefiks, inakiv status, delegerte kilder, tilgjengelighet for alle og klientens integrasjonstype.",
+        "operationId": "listAll",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Filter scopes for prefix if set.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "inactive",
+            "in": "query",
+            "description": "Include inactive scopes if set to true.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "delegated_sources",
+            "in": "query",
+            "description": "Only scopes that have delegation_source set, even when not registered on the client.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "accessible_for_all",
+            "in": "query",
+            "description": "Only scopes that are accessible for all, even when not registered on the client.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "integration_type",
+            "in": "query",
+            "description": "Only scopes that are applicable for the client's integration type.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ANSATTPORTEN",
+                "API_CLIENT",
+                "E_FORMIDLING",
+                "ID_PORTEN",
+                "ID_PORTEN_SAML2",
+                "KRR",
+                "MASKINPORTEN"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalScopeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scopes/access": {
+      "get": {
+        "tags": [
+          "Scope - Access"
+        ],
+        "summary": "List tilganger gitt av den autentiserte organisasjonen til konsumenter.",
+        "description": "Returnerer enten alle scopes gitt til en gitt konsumentorganisasjon eller alle konsumenter for et gitt scope. Krever scope 'idporten:scopes.read'.",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "consumer_orgno",
+            "in": "query",
+            "description": "Consumer organization number",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope name",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "inactive",
+            "in": "query",
+            "description": "Include inactive scope access if set to true.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "List returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScopeAccessResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.read"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/scopes/access/changelog": {
+      "get": {
+        "tags": [
+          "Changelog"
+        ],
+        "summary": "Hente historikk",
+        "description": "Lister ut hendelser for ett scope sine tilganger. Krever scope 'idporten:scopes.read'.",
+        "operationId": "getScopeAccessChangelog",
+        "parameters": [
+          {
+            "name": "scopeName",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelChangelogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": []
+          }
+        ]
+      }
+    },
+    "/api/v1/scopes/access/all": {
+      "get": {
+        "tags": [
+          "Scope - Access"
+        ],
+        "summary": "List alle scope tilganger som er gitt til den autentiserte organisasjonen.",
+        "description": "Returnerer alle scope tilganger som er gitt til den autentiserte organisasjonen. Inkluderer inaktive tilganger hvis 'inactive' er satt til 'true'. Krever scope 'idporten:scopes.read'.",
+        "operationId": "listByOrgno",
+        "parameters": [
+          {
+            "name": "inactive",
+            "in": "query",
+            "description": "Include inactive scope access if set to true.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "List returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScopeAccessResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.read"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/prefix": {
+      "get": {
+        "tags": [
+          "Scopes - Prefix"
+        ],
+        "summary": "List alle scope prefikser for den autentiserte organisasjonen.",
+        "description": "Endepunkt for å liste ut alle registrerte prefikser for den autentiserte organisasjonen. Krever scope 'idporten:scopes.read' eller 'idporten:scopes.write'.",
+        "operationId": "listForOrgno",
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScopePrefixResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Maskinporten Bearer Authentication": [
+              "idporten:scopes.read",
+              "idporten:scopes.write"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/prefix/all": {
+      "get": {
+        "tags": [
+          "Scopes - Prefix"
+        ],
+        "summary": "Liste ut alle scope prefikser.",
+        "description": "Endepunkt for å liste ut alle registrerte prefikser. Krever ingen autentisering",
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "name": "inactive",
+            "in": "query",
+            "description": "Inkluder inaktive prefikser om satt til 'true'.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScopePrefixResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Hent klienter / integrasjoner",
+        "description": "Henter en liste over alle klienter",
+        "operationId": "listIntegrations",
+        "parameters": [
+          {
+            "name": "org_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "updated_since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IntegrationResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delegationsources": {
+      "get": {
+        "tags": [
+          "Delegeringskilde"
+        ],
+        "summary": "Hent delegeringskilder",
+        "description": "Returnerer en liste over alle delegeringskilder.",
+        "operationId": "listAllDelegationSources",
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DelegationSource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/apis": {
+      "get": {
+        "tags": [
+          "API-er"
+        ],
+        "summary": "Hent API-er",
+        "description": "Henter en liste over alle organisasjoner og deres prefikser (API-er), samt antall forbrukere av integrasjonen",
+        "operationId": "listIntegrationAPI",
+        "responses": {
+          "500": {
+            "description": "Uventet feil",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Autentisert bruker/system har ikke korrekte rettigheter til å utføre forespurt operasjon",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nedstrøms tjeneste er ikke tilgjengelig",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Input ikke i korrekt format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ressursen ble ikke funnet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ressursen er ikke i riktig tilstand",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/APIsResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "description": "A single specific error",
+        "properties": {
+          "errorMessage": {
+            "type": "string"
+          },
+          "isFieldError": {
+            "type": "boolean"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "fieldIdentifier": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "description": "A response containing information about errors from the API",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlation_id": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "description": "A list of specific errors",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "uniqueItems": true
+          },
+          "error_description": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ExternalScopeRequest": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "description blir benyttet som consent-form tittel på Norsk Bokmål. For å legge til andre språk, benytt description#en (for engelsk), description#nn (nynorsk) etc."
+          },
+          "subscope": {
+            "type": "string"
+          },
+          "long_description": {
+            "type": "string",
+            "description": "long_description blir benyttet som consent-form description på Norsk Bokmål. For å legge til andre språk, benytt long_description#en (for engelsk), long_description#nn (nynorsk) etc."
+          },
+          "descriptions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "readOnly": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "allowed_integration_types": {
+            "type": "array",
+            "description": "Bare klienter med følgende integrasjonstyper kan bruke dette scopet",
+            "items": {
+              "type": "string",
+              "description": "Integrasjonstype",
+              "enum": [
+                "ansattporten",
+                "api_klient",
+                "eformidling",
+                "idporten",
+                "idporten_saml2",
+                "krr",
+                "maskinporten"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "owner_orgno": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string",
+            "enum": [
+              "SELF_CONTAINED",
+              "OPAQUE"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "INTERNAL",
+              "PRIVATE",
+              "PUBLIC"
+            ]
+          },
+          "requires_user_consent": {
+            "type": "boolean"
+          },
+          "requires_user_authentication": {
+            "type": "boolean"
+          },
+          "requires_pseudonymous_tokens": {
+            "type": "boolean"
+          },
+          "delegation_source": {
+            "type": "string"
+          },
+          "at_max_age": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Maks levetid i sekunder for utstedt access_token"
+          },
+          "authorization_max_lifetime": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Maks levetid i sekunder for autorisasjonen"
+          },
+          "accessible_for_all": {
+            "type": "boolean"
+          },
+          "enforced_aud_for_access_token": {
+            "type": "string"
+          },
+          "protected": {
+            "type": "boolean"
+          },
+          "supports_european_businesses": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExternalScopeResponse": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "description blir benyttet som consent-form tittel på Norsk Bokmål."
+          },
+          "subscope": {
+            "type": "string"
+          },
+          "long_description": {
+            "type": "string",
+            "description": "long_description blir benyttet som consent-form description på Norsk Bokmål."
+          },
+          "descriptions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowed_integration_types": {
+            "type": "array",
+            "description": "Bare klienter med følgende integrasjonstyper kan bruke dette scopet",
+            "items": {
+              "type": "string",
+              "description": "Integrasjonstype",
+              "enum": [
+                "ansattporten",
+                "api_klient",
+                "eformidling",
+                "idporten",
+                "idporten_saml2",
+                "krr",
+                "maskinporten"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "owner_orgno": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string",
+            "enum": [
+              "SELF_CONTAINED",
+              "OPAQUE"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "INTERNAL",
+              "PRIVATE",
+              "PUBLIC"
+            ]
+          },
+          "requires_user_consent": {
+            "type": "boolean"
+          },
+          "requires_user_authentication": {
+            "type": "boolean"
+          },
+          "requires_pseudonymous_tokens": {
+            "type": "boolean"
+          },
+          "delegation_source": {
+            "type": "string"
+          },
+          "at_max_age": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Maks levetid i sekunder for utstedt access_token"
+          },
+          "authorization_max_lifetime": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Maks levetid i sekunder for autorisasjonen"
+          },
+          "accessible_for_all": {
+            "type": "boolean"
+          },
+          "enforced_aud_for_access_token": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "protected": {
+            "type": "boolean"
+          },
+          "supports_european_businesses": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ScopeAccessResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "owner_orgno": {
+            "type": "string"
+          },
+          "owner_organization_name": {
+            "type": "string"
+          },
+          "consumer_orgno": {
+            "type": "string"
+          },
+          "consumer_organization_name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "REQUESTED",
+              "APPROVED",
+              "DENIED"
+            ]
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChangelogResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tidspunkt for hendelsen"
+          },
+          "message": {
+            "type": "string",
+            "description": "En kort oppsummering av endringen, feks \"Customer updated\""
+          },
+          "actor_name": {
+            "type": "string",
+            "description": "Hvem som gjorde endringen"
+          },
+          "channel": {
+            "type": "string",
+            "description": "Hvilken API-kanal endringen ble gjort fra"
+          },
+          "diff": {
+            "type": "string",
+            "description": "En diff som viser hvilke endringer som er gjort i JSON format"
+          }
+        }
+      },
+      "PageMetadata": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PagedModelChangelogResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangelogResponse"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "ScopePrefixResponse": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string"
+          },
+          "owner_orgno": {
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "IntegrationResource": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "customer_organization_number": {
+            "type": "string"
+          },
+          "supplier_organization_number": {
+            "type": "string"
+          },
+          "supplier_integration_id": {
+            "type": "string"
+          },
+          "integration_type": {
+            "type": "string",
+            "enum": [
+              "IDPORTEN_SAML2",
+              "IDPORTEN_SAML2_ONBEHALF",
+              "IDPORTEN_OIDC",
+              "IDPORTEN_OIDC_ONBEHALFOF",
+              "KRR_REST",
+              "KRR_REST_ONBEHALFOF",
+              "KRR_SOAP",
+              "KRR_SOAP_ONBEHALFOF",
+              "EFORMIDLING_DPI",
+              "EFORMIDLING_DPI_ONBEHALFOF",
+              "EFORMIDLING_DPV",
+              "EFORMIDLING_DPV_ONBEHALFOF",
+              "EFORMIDLING_DPO",
+              "EFORMIDLING_DPO_ONBEHALFOF",
+              "EFORMIDLING_DPE",
+              "EFORMIDLING_DPE_ONBEHALFOF",
+              "EFORMIDLING_DPF",
+              "EFORMIDLING_DPF_ONBEHALFOF",
+              "API_KLIENT",
+              "MASKINPORTEN"
+            ]
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DelegationSource": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "description": "Issuer"
+          },
+          "name": {
+            "type": "string",
+            "description": "Navn på issuer"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "APIsResource": {
+        "type": "object",
+        "properties": {
+          "customer_organization_number": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "consumer_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Maskinporten Bearer Authentication": {
+        "type": "http",
+        "description": "Ett maskinporten token er nødvendig for autentisering",
+        "name": "Maskinporten Bearer Authentication",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

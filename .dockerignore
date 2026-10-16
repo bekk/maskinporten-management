@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+**/.gradle
+**/.kotlin
+**/build
+.env
+mock-api/local-kms
+mock-api/.local-kms-work.*

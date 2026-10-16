@@ -21,11 +21,12 @@ app has access to.
 
 ## Modules
 
-| Module                                                                       | What it is                                                                         |
-| :--------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
-| [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin library that talks to Maskinporten and Digdir's API                         |
-| [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server with a REST/JSON API over the client, built as a Docker image          |
-| [`mock-api`](mock-api)                                                       | Mock of Digdir, Maskinporten and the filtering service, for running locally        |
+| Module                                                                       | What it is                                                                  | Published as                                                                  |
+| :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin client library                                                       | a package, for other services to depend on                                    |
+| [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API                                        | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
+| [`mock-api`](mock-api)                                                       | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing, as it is only for local development                                  |
+
 
 ## Prerequisites
 
@@ -37,72 +38,26 @@ app has access to.
 ## Getting started
 
 ```bash
-./gradlew build   # compile, ktlint and tests
-```
-
-`./gradlew build` leaves out the mock API's tests, since they need its Postgres; see its [README](mock-api/README.md).
-
-### Building the client
-
-```kotlin
-val httpClient = JavaOutgoingHttpClient(
-    HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(2))
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .build(),
-    requestTimeout = Duration.ofSeconds(10),
-)
-val tokenProvider = MaskinportenTokenProvider(
-    wellKnownUrl = URI("https://test.maskinporten.no/.well-known/oauth-authorization-server"),
-    clientId = "<client id>",
-    scopes = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write")),
-    kms = LocalKms.fromPem("<private key in PKCS#8 PEM>"),
-    certificateChainPem = "<business certificate chain in PEM, leaf first>",
-    httpClient = httpClient,
-)
-val client = MaskinportenManagementClient(URI("https://api.test.samarbeid.digdir.no"), httpClient, tokenProvider)
-```
-
-`kms` signs the grant for the Maskinporten token: `LocalKms` with a key from a file, or your own `Kms`, as the server's
-`CloudKms` does for Cloud KMS. `httpClient` can also be your own `OutgoingHttpClient`, but it must not follow
-redirects, since the calls carry tokens, and must throw an `IOException` when a call fails.
-
-Build one client and reuse it. The token provider fetches the next token in the background before the current one
-runs out. Close it when you are done.
-
-### Calling Digdir
-
-```kotlin
-val scopes: List<ScopeDetails> = client.listScopes()
-val consumers: List<ScopeAccess> = client.listScopeAccess(Scope.of("<scope>"))
-val access: List<ScopeAccess> = client.listConsumerScopeAccess(OrganizationNumber.of("<organisation number>"))
-val given: ScopeAccess = client.grantScopeAccess(OrganizationNumber.of("<organisation number>"), Scope.of("<scope>"))
-val removed: ScopeAccess = client.removeScopeAccess(OrganizationNumber.of("<organisation number>"), Scope.of("<scope>"))
-```
-
-`listScopes` and `listConsumerScopeAccess` take an optional `ScopeFilter`, and then only keep the scopes it allows.
-
-| Exception                      | When                                                                                                          |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------ |
-| `DigdirErrorResponseException` | Digdir answered with an error. It holds Digdir's `statusCode`, `contentType` and `body`                       |
-| `DigdirException`              | Digdir could not be called, refused the Maskinporten token, or answered with something the client cannot read |
-
-### Running the server
-
-```bash
-mock-api/scripts/setup-local-kms.sh                   # the local key and a fake business certificate
-docker compose -f mock-api/docker-compose.yml up -d   # the mock API, on port 8090
+./gradlew build                                               # compile, ktlint and tests
+mock-api/scripts/setup-local-kms.sh                           # create the local key and fake business certificate
+docker compose -f mock-api/docker-compose.yml up -d --build   # start the mock API on http://localhost:8090
 cp .env.example .env
-scripts/dev.sh                                        # the server, on port 8080
+scripts/dev.sh                                                # run the server on http://localhost:8080
 curl -i localhost:8080/health/live
 ```
 
-`.env.example` points the server at the mock API, which plays Digdir and Maskinporten. `dev.sh` loads `.env` into the
-environment, which is all the server reads.
+`setup-local-kms.sh` and the mock API need Docker. See the mock's [README](mock-api/README.md) for more. The mock's
+tests need its Postgres, so `./gradlew build` skips them; run them with `./gradlew :mock-api:test` while the mock is up.
 
-With `EXTERNAL_FILTERING_ENABLED=true`, `GET /api/scopes` and `GET /api/scopeaccess/scopes` need the
-`X-Forwarded-Client-Cert` header that Istio usually sets in production. Locally, set it yourself, as one of the
-[mock's test apps](mock-api/README.md#filtering):
+The server calls Digdir in `DIGDIR_ENVIRONMENT` (`TEST`, `PROD` or `LOCAL`), with a token from Maskinporten in the
+same environment. It gets the token with a JWT grant that carries the business certificate and is signed in Cloud KMS
+(`DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH`), where the certificate's private key lives. `.env.example` sets
+`DIGDIR_ENVIRONMENT` to `LOCAL`: the mock API on port 8090 then plays both Digdir and Maskinporten, and the server signs
+the grant itself, with a key from a file (`DIGDIR_ADMIN_LOCAL_KEY_PATH`).
+
+The mock API also plays the filtering service. To try filtering, set `EXTERNAL_FILTERING_ENABLED=true` in `.env` and
+restart the server. Lists then need the `X-Forwarded-Client-Cert` header that Istio sets in production, so set it
+yourself, as one of the [mock's test apps](mock-api/README.md#filtering):
 
 ```bash
 curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/sa/demo' localhost:8080/api/scopes
@@ -141,9 +96,9 @@ key paths: `DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH` in SKIP, where the key never le
 
 The server logs to stdout through logback. `LOGBACK_CONFIG_FILE` replaces the bundled `logback.xml`.
 
-| Logger     | What it logs                                                                                                     |
-| :--------- | :--------------------------------------------------------------------------------------------------------------- |
-| `access`   | One line per incoming call, unless `ACCESS_LOG_ENABLED` is `false`                                               |
+| Logger     | What it logs                                                                                                       |
+| :--------- | :----------------------------------------------------------------------------------------------------------------- |
+| `access`   | One line per incoming call, unless `ACCESS_LOG_ENABLED` is `false`                                                 |
 | `outgoing` | One line before and one after each call to Digdir, Maskinporten and the filtering service, never headers or bodies |
 
 Each line logged during a call shows the calling app's SPIFFE ID, in the MDC field `workload`. A custom

@@ -175,6 +175,21 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
+    fun `updates a scope by putting its JSON as it is, with the scope in the query, and returns it`() = runBlocking {
+        val json = """{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read","description":"Lesetilgang, æøå"}"""
+
+        val updated = answering(digdirScope("kartverk:tilgangsstyring/demo.read"))
+            .updateScope(Scope.of("kartverk:tilgangsstyring/demo.read"), json)
+
+        val request = sent.single()
+        assertEquals(HttpMethod.PUT, request.method)
+        assertEquals("https://digdir.test/api/v1/scopes?scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.toString())
+        assertEquals("application/json", request.headers["Content-Type"])
+        assertContentEquals(json.toByteArray(Charsets.UTF_8), request.body)
+        assertEquals(Scope.of("kartverk:tilgangsstyring/demo.read"), updated.name)
+    }
+
+    @Test
     fun `deletes a scope with only the scope in the query, and returns it`() = runBlocking {
         val deleted = answering(digdirScope("kartverk:tilgangsstyring/demo.read").replace("\"active\":true", "\"active\":false"))
             .deleteScope(Scope.of("kartverk:tilgangsstyring/demo.read"))

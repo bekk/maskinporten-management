@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.client.kms
 
+import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
@@ -24,7 +25,14 @@ internal class GrantSigner(private val kms: Kms, certificateChainPem: String) {
 
     fun sign(claims: JWTClaimsSet): String {
         val header = JWSHeader.Builder(JWSAlgorithm.RS256).x509CertChain(certificateChain).build()
-        return SignedJWT(header, claims).apply { sign(KmsSigner(kms)) }.serialize()
+        val jwt = SignedJWT(header, claims)
+        try {
+            jwt.sign(KmsSigner(kms))
+        } catch (e: JOSEException) {
+            // Nimbus wraps what the KMS throws, so the caller could not tell a failed KMS from any other error
+            throw e.cause ?: e
+        }
+        return jwt.serialize()
     }
 }
 

@@ -1,5 +1,6 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import com.google.api.gax.rpc.ApiException
 import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256
 import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_3072_SHA256
 import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_4096_SHA256
@@ -40,9 +41,12 @@ internal class CloudKms(
 
     override fun sign(data: ByteArray): ByteArray {
         val digest = MessageDigest.getInstance("SHA-256").digest(data)
-        return client.asymmetricSign(name, Digest.newBuilder().setSha256(ByteString.copyFrom(digest)).build())
-            .signature
-            .toByteArray()
+        val response = try {
+            client.asymmetricSign(name, Digest.newBuilder().setSha256(ByteString.copyFrom(digest)).build())
+        } catch (e: ApiException) {
+            throw CloudKmsException("Call to Cloud KMS failed: $e", e)
+        }
+        return response.signature.toByteArray()
     }
 
     override fun close(): Unit = client.close()
@@ -51,6 +55,8 @@ internal class CloudKms(
         val RS256 = setOf(RSA_SIGN_PKCS1_2048_SHA256, RSA_SIGN_PKCS1_3072_SHA256, RSA_SIGN_PKCS1_4096_SHA256)
     }
 }
+
+internal class CloudKmsException(message: String, cause: Throwable) : RuntimeException(message, cause)
 
 // A copy of the client's pemContent, which the client keeps internal so its API holds no PEM parser
 private fun pemContent(pem: String, type: String): ByteArray {

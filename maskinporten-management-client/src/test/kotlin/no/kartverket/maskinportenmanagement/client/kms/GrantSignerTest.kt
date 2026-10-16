@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class GrantSignerTest {
@@ -28,6 +29,21 @@ class GrantSignerTest {
         assertEquals(chain.map { it.encoded.toList() }, grant.header.x509CertChain.map { it.decode().toList() })
         assertTrue(grant.verify(RSASSAVerifier(chain.first().publicKey as RSAPublicKey)))
         assertEquals(claims.toJSONObject(), grant.jwtClaimsSet.toJSONObject())
+    }
+
+    @Test
+    fun `passes on what the KMS throws, unwrapped`() {
+        val failure = IllegalStateException("KMS is down")
+        val failingKms = object : Kms {
+            override val publicKey = kms.publicKey
+
+            override fun sign(data: ByteArray): ByteArray = throw failure
+        }
+        val signer = GrantSigner(failingKms, certificateChain(keyPair.public).joinToString("") { pem(it) })
+
+        val e = assertFailsWith<IllegalStateException> { signer.sign(claims) }
+
+        assertSame(failure, e)
     }
 
     @Test

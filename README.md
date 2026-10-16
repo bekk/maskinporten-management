@@ -76,6 +76,7 @@ runs out. Close it when you are done.
 val scopes: List<ScopeDetails> = client.listScopes()
 val consumers: List<ScopeAccess> = client.listScopeAccess(Scope.of("<scope>"))
 val access: List<ScopeAccess> = client.listConsumerScopeAccess(OrganizationNumber.of("<organisation number>"))
+val changes: ScopeAccessChangelog = client.getScopeAccessChangelog(Scope.of("<scope>"), page = 0, size = 20)
 val given: ScopeAccess = client.grantScopeAccess(OrganizationNumber.of("<organisation number>"), Scope.of("<scope>"))
 val removed: ScopeAccess = client.removeScopeAccess(OrganizationNumber.of("<organisation number>"), Scope.of("<scope>"))
 ```
@@ -115,6 +116,7 @@ curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/
 | `GET /api/scopes`                                | Lists the scopes                                    |
 | `GET /api/scopeaccess/orgs?scope=`               | Lists the organisations that have access to a scope |
 | `GET /api/scopeaccess/scopes?orgnr=`             | Lists the scopes an organisation has access to      |
+| `GET /api/scopeaccess/changelog?scope=`          | Lists the changes to who has access to a scope      |
 | `PUT /api/scopeaccess/{consumerOrgno}?scope=`    | Gives an organisation access to a scope             |
 | `DELETE /api/scopeaccess/{consumerOrgno}?scope=` | Removes an organisation's access to a scope         |
 | `GET /health/live`                               | Liveness probe for the platform                     |

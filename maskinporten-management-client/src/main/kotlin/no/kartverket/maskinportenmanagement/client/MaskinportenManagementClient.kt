@@ -35,6 +35,13 @@ public class MaskinportenManagementClient(
         return if (filter == null) access else access.filter { filter.allows(it.scope) }
     }
 
+    public suspend fun getScopeAccessChangelog(scope: Scope, page: Int? = null, size: Int? = null): ScopeAccessChangelog {
+        require(page == null || page >= 0) { "Expected a page of 0 or more, but was $page" }
+        require(size == null || size >= 1) { "Expected a size of 1 or more, but was $size" }
+        val paging = listOfNotNull(page?.let { "&page=$it" }, size?.let { "&size=$it" }).joinToString("")
+        return send(HttpMethod.GET, "$SCOPE_ACCESS_PATH/changelog?scopeName=${encode(scope.value)}$paging").decode()
+    }
+
     public suspend fun grantScopeAccess(consumerOrgno: OrganizationNumber, scope: Scope): ScopeAccess =
         send(HttpMethod.PUT, "$SCOPE_ACCESS_PATH/$consumerOrgno?scope=${encode(scope.value)}").decode()
 

@@ -14,6 +14,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
+import no.kartverket.maskinportenmanagement.client.digdirScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -38,6 +39,7 @@ class DigdirAnswersTest {
         Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
+        Endpoint(HttpMethod.Get, "/api/scopeaccess/changelog?scope=kartverk:matrikkel.read", digdirScopeAccessChangelog()),
         Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
         Endpoint(HttpMethod.Delete, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
     )

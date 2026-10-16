@@ -15,4 +15,10 @@ public fun digdirScopeAccess(scope: String, consumerOrgno: String = "311718371")
     "created":"2026-01-15T09:30:00Z","last_updated":"2026-01-15T09:30:00Z"}
 """.trimIndent()
 
+public fun digdirScopeAccessChangelog(): String = """
+    {"content":[{"id":7,"created":"2026-01-15T09:30:00Z","message":"Scope access created","actor_name":"Kartverket",
+    "channel":"API","diff":"{\"consumer_orgno\":\"311718371\",\"state\":\"APPROVED\"}"}],
+    "page":{"size":20,"number":0,"totalElements":1,"totalPages":1}}
+""".trimIndent()
+
 public fun jsonList(vararg items: String): String = items.joinToString(",", "[", "]")

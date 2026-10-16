@@ -11,7 +11,7 @@ Maskinporten Management manages Kartverket's Maskinporten scopes through
 
 Kotlin 2.4, Ktor 3, kotlinx.serialization, Gradle with two version catalogs: `gradle/libs.versions.toml`, and Ktor's
 own `ktorLibs`, whose version is set in `settings.gradle.kts`. Code compiles for Java 21 (Gradle toolchain, provisioned
-if missing). Gradle and the image run on Java 25.
+if missing), whatever JDK runs Gradle. CI, `.java-version` and the image use Java 25.
 
 ## Commands
 
@@ -34,29 +34,34 @@ Before you finish a change:
 `scripts/dev.sh` needs a `.env` (`cp .env.example .env`) and the mock API from
 [maskinporten-management-frontend-mock](https://github.com/bekk/maskinporten-management-frontend-mock) on port 8090.
 Clone the mock next to this repo, at `../maskinporten-management-frontend-mock`, since `.env.example` reads the local
-key and certificate chain from there. Set it up as the mock's README describes. With `DIGDIR_ENVIRONMENT=LOCAL`, the
-mock plays Digdir and Maskinporten. Filtering is off by default. With `EXTERNAL_FILTERING_ENABLED=true`, the mock plays
-the filtering service at `EXTERNAL_FILTERING_URL`, and `GET /api/scopes` and `GET /api/scopeaccess/scopes` need the
-`X-Forwarded-Client-Cert` header that Istio sets in production.
+key and certificate chain from there. Set it up as the mock API's
+[README](https://github.com/bekk/maskinporten-management-frontend-mock/tree/main/mock-api) describes. With
+`DIGDIR_ENVIRONMENT=LOCAL`, the mock plays Digdir and Maskinporten. Filtering is off by default. With
+`EXTERNAL_FILTERING_ENABLED=true`, the mock plays the filtering service at `EXTERNAL_FILTERING_URL`, and
+`GET /api/scopes` and `GET /api/scopeaccess/scopes` need the `X-Forwarded-Client-Cert` header that Istio sets in
+production.
 
 ## Conventions
 
-- **Strong types.** A domain value is a `value class` with a private constructor and an `of()` that rejects invalid
-  input with `require`. See `Scope.kt` and `OrganizationNumber.kt`. Parse at the edge; don't pass raw strings on.
+- **Strong types.** A domain value is a `value class` with a private constructor and an `of()`. Where the value has
+  rules, `of()` rejects invalid input with `require`, as in `Scope.kt` and `OrganizationNumber.kt`. `AccessToken.of`
+  and `ClientCertificate.of` check nothing. Parse at the edge; don't pass raw strings on.
 - **Few comments.** Comment only a reason the code cannot show, like the path traversal note in
   `OrganizationNumber.kt`. Don't restate the code, and don't add KDoc to obvious members.
 - **Explicit API in the client.** The client module uses `explicitApi()`, so declarations need an explicit
   visibility. Make `public` only what other services need.
 - **Our model of Digdir's answers.** The server answers with its own model: Digdir's field names, only the fields we
-  describe. A Digdir error passes through unchanged: status, body and content type. A 401 is the exception: Digdir
-  refused our token, not the caller's request, so the server answers 502. An enum value Digdir adds later becomes
-  `UNKNOWN` through `OrUnknownSerializer`.
+  describe. An error status from Digdir's API passes through unchanged: status, body and content type. A 401 is the
+  exception: Digdir refused our token, not the caller's request, so the server answers 502. Every other
+  `DigdirException` is a 502 too: Digdir out of reach, Maskinporten refusing a token, or an answer the client cannot
+  read. An enum value Digdir adds later becomes `UNKNOWN` through `OrUnknownSerializer`.
 - **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
   `/openapi` itself, which uses `.hide()`.
   `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and `OpenApiSpecFileTest` fails
   when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. An
-  error about a setting names it and ends with `(see .env.example)`.
+  error about a setting names its `application.yaml` key, like `digdirAdmin.certChain`, and ends with
+  `(see .env.example)`.
 - **Formatting** is ktlint with the rules in `.editorconfig`. Run `ktlintFormat` instead of formatting by hand.
 
 ## Tests

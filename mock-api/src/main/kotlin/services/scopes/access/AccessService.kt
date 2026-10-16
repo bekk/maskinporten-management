@@ -13,7 +13,6 @@ class AccessService {
     private val changelogRepository = PostgresChangelogRepository()
     private val scopesRepository = PostgresScopesRepository()
 
-
     fun getScopeAccess(consumerOrgNo: String?, scope: String?, includeInactive: Boolean, organization: String?): List<Access> {
         println("[service] getScopesAccess()")
         val scopes = scopesAccessRepository.getScopesAccess(consumerOrgNo, scope, includeInactive)

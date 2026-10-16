@@ -4,14 +4,24 @@ import com.maskinporten.dto.CreateScopeRequest
 import com.maskinporten.dto.UpdateScopeRequest
 import com.maskinporten.dto.toScope
 import com.maskinporten.errors.ConflictException
-import com.maskinporten.models.scopes.*
+import com.maskinporten.models.scopes.IntegrationType
+import com.maskinporten.models.scopes.Scope
+import com.maskinporten.models.scopes.TokenType
+import com.maskinporten.models.scopes.Visibility
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.json.jsonb
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import kotlin.time.toKotlinInstant
 
 object ScopesTable : Table("scopes") {
@@ -41,8 +51,7 @@ object ScopesTable : Table("scopes") {
     override val primaryKey = PrimaryKey(name)
 }
 
-fun ResultRow.toScope(): Scope {
-    return Scope(
+fun ResultRow.toScope(): Scope = Scope(
         name = this[ScopesTable.name],
         prefix = this[ScopesTable.prefix],
         subscope = this[ScopesTable.subscope],
@@ -69,7 +78,6 @@ fun ResultRow.toScope(): Scope {
         protected = this[ScopesTable.protected_],
         supports_european_businesses = this[ScopesTable.supportsEuropeanBusinesses]
     )
-}
 
 class PostgresScopesRepository : ScopesRepository {
 
@@ -79,8 +87,7 @@ class PostgresScopesRepository : ScopesRepository {
         onlyWithDelegationSource: Boolean,
         onlyAccessibleForAll: Boolean,
         integrationType: IntegrationType?
-    ): List<Scope> {
-        return transaction {
+    ): List<Scope> = transaction {
             ScopesTable.selectAll()
                 .apply {
                     prefix?.let { andWhere { ScopesTable.prefix eq it } }
@@ -91,25 +98,20 @@ class PostgresScopesRepository : ScopesRepository {
                 .map { it.toScope() }
                 .filter { integrationType == null || integrationType in it.allowed_integration_types }
         }
-    }
 
-    override fun getScopes(inactive: Boolean): List<Scope> {
-        return transaction {
+    override fun getScopes(inactive: Boolean): List<Scope> = transaction {
             ScopesTable.selectAll()
                 .apply { if (!inactive) andWhere { ScopesTable.active eq true } }
                 .map { it.toScope() }
         }
-    }
 
-    override fun getScopeByName(name: String): Scope {
-        return transaction {
+    override fun getScopeByName(name: String): Scope = transaction {
             ScopesTable.selectAll()
                 .where { ScopesTable.name eq name }
                 .firstOrNull()
                 ?.toScope()
                 ?: throw NotFoundException("Scope not found: $name")
         }
-    }
 
     override fun createScope(scope: CreateScopeRequest): Scope {
         val key = "${scope.prefix}:${scope.subscope}"
@@ -162,8 +164,7 @@ class PostgresScopesRepository : ScopesRepository {
         }
     }
 
-    override fun updateScope(name: String, scope: UpdateScopeRequest): Scope {
-        return transaction {
+    override fun updateScope(name: String, scope: UpdateScopeRequest): Scope = transaction {
             val existing = ScopesTable.selectAll()
                 .where { ScopesTable.name eq name }
                 .firstOrNull()
@@ -207,5 +208,4 @@ class PostgresScopesRepository : ScopesRepository {
                 .first()
                 .toScope()
         }
-    }
 }

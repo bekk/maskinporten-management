@@ -75,4 +75,3 @@ fun CreateScopeRequest.toScope(): Scope {
         supports_european_businesses = supports_european_businesses ?: false
     )
 }
-

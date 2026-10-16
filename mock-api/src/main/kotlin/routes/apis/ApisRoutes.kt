@@ -1,10 +1,11 @@
 package com.maskinporten.routes.apis
 
 import com.maskinporten.controllers.apis.ApisController
-import io.ktor.server.routing.*
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 
 fun Route.apisRoutes() {
-
     val apisController = ApisController()
 
     route("/apis") {
@@ -14,4 +15,3 @@ fun Route.apisRoutes() {
         }
     }
 }
-

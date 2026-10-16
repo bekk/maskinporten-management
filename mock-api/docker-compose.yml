@@ -20,7 +20,9 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: mock-api/Dockerfile
     depends_on:
       db:
         condition: service_healthy

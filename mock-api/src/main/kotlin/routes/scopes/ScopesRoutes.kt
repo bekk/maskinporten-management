@@ -2,10 +2,14 @@ package com.maskinporten.routes.scopes
 
 import com.maskinporten.controllers.scopes.ScopesController
 import com.maskinporten.routes.scopes.access.scopeAccessRoutes
-import io.ktor.server.routing.*
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.put
+import io.ktor.server.routing.route
 
 fun Route.scopesRoutes() {
-
     val scopesController = ScopesController()
 
     route("/scopes") {
@@ -37,4 +41,3 @@ fun Route.scopesRoutes() {
         }
     }
 }
-

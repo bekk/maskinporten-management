@@ -7,8 +7,8 @@ A mock for running maskinporten-management locally. It plays the three services 
 - Maskinporten, which issues the tokens for Digdir's API (see [Maskinporten](#maskinporten))
 - the filtering service (see [Filtering](#filtering))
 
-It is built with Ktor and Exposed on Postgres, as its own Gradle build: run the commands below from `mock-api/`. It is
-only for development, and is not part of what the root build builds or publishes.
+It is built with Ktor and Exposed on Postgres, as a subproject of the root Gradle build: run the commands below from
+`mock-api/`. It is only for development, so nothing publishes it, and `./gradlew build` skips its tests.
 
 ## Running
 
@@ -22,7 +22,7 @@ For local development, run only Postgres in Docker and the app with Gradle:
 
 ```sh
 docker compose up -d db
-./gradlew run
+../gradlew run
 ```
 
 Swagger UI for the API contract is at `http://localhost:8090/swagger`.
@@ -106,7 +106,7 @@ curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/
 ## Tests
 
 ```sh
-./gradlew test
+../gradlew test
 ```
 
 Tests need the compose Postgres running. They use a separate `maskinporten-test` database

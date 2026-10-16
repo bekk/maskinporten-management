@@ -3,8 +3,10 @@ package com.maskinporten.repositories.changelog
 import com.maskinporten.models.changelog.ChangelogContent
 import com.maskinporten.models.changelog.ChangelogPage
 import com.maskinporten.models.changelog.ChangelogResponse
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.time.toKotlinInstant
 
@@ -19,8 +21,7 @@ object ChangelogTable : Table("changelog") {
     override val primaryKey = PrimaryKey(id)
 }
 
-private fun ResultRow.toChangelogContent(): ChangelogContent {
-    return ChangelogContent(
+private fun ResultRow.toChangelogContent(): ChangelogContent = ChangelogContent(
         id = this[ChangelogTable.id],
         created = this[ChangelogTable.created].toInstant().toKotlinInstant(),
         message = this[ChangelogTable.message],
@@ -28,7 +29,6 @@ private fun ResultRow.toChangelogContent(): ChangelogContent {
         channel = this[ChangelogTable.channel],
         diff = this[ChangelogTable.diff]
     )
-}
 
 // Only sorting by created is supported; the direction comes from the first criterion, e.g. "created,desc"
 internal fun isDescending(sort: List<String>): Boolean =
@@ -36,21 +36,20 @@ internal fun isDescending(sort: List<String>): Boolean =
 
 class PostgresChangelogRepository : ChangelogRepository {
 
-    override fun getScopeAccessChangelog(scopeName: String, page: Int, size: Int, sort: List<String>): ChangelogResponse {
-        return transaction {
+    override fun getScopeAccessChangelog(scopeName: String, page: Int, size: Int, sort: List<String>): ChangelogResponse = transaction {
             val entries = ChangelogTable.selectAll()
                 .where { ChangelogTable.scope eq scopeName }
                 .map { it.toChangelogContent() }
             filterChangelogEntries(entries, page, size, sort)
         }
-    }
 
     private fun filterChangelogEntries(entries: List<ChangelogContent>, page: Int, size: Int, sort: List<String>): ChangelogResponse {
         val sortedEntries =
-            if (isDescending(sort))
+            if (isDescending(sort)) {
                 entries.sortedByDescending { it.created }
-            else
+            } else {
                 entries.sortedBy { it.created }
+            }
 
         val pagedEntries = sortedEntries.drop(page * size).take(size)
 
@@ -65,4 +64,3 @@ class PostgresChangelogRepository : ChangelogRepository {
         )
     }
 }
-

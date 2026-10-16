@@ -4,8 +4,8 @@ import com.maskinporten.dto.CreateScopeRequest
 import com.maskinporten.dto.UpdateScopeRequest
 import com.maskinporten.maskinporten.ForbiddenException
 import com.maskinporten.maskinporten.requireOwner
-import com.maskinporten.models.scopes.Scope
 import com.maskinporten.models.scopes.IntegrationType
+import com.maskinporten.models.scopes.Scope
 import com.maskinporten.repositories.prefix.PostgresPrefixRepository
 import com.maskinporten.repositories.scopes.PostgresScopesRepository
 

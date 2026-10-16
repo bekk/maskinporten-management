@@ -3,17 +3,13 @@ package com.maskinporten.utils
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.plugins.BadRequestException
 
-fun requireQueryParam(call: ApplicationCall, name: String): String {
-    return call.request.queryParameters[name]
+fun requireQueryParam(call: ApplicationCall, name: String): String = call.request.queryParameters[name]
         ?.takeIf { it.isNotBlank() }
         ?: throw BadRequestException("Missing query parameter: $name")
-}
 
-fun requirePathParam(call: ApplicationCall, name: String): String {
-    return call.parameters[name]
+fun requirePathParam(call: ApplicationCall, name: String): String = call.parameters[name]
         ?.takeIf { it.isNotBlank() }
         ?: throw BadRequestException("Missing path parameter: $name")
-}
 
 data class PageRequest(val page: Int, val size: Int, val sort: List<String>)
 

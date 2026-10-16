@@ -1,8 +1,11 @@
 package com.maskinporten.repositories.prefix
 
 import com.maskinporten.models.prefix.Prefix
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.time.toKotlinInstant
 
@@ -18,8 +21,7 @@ object PrefixesTable : Table("prefixes") {
 
 class PostgresPrefixRepository : PrefixRepository {
 
-    private fun ResultRow.toPrefix(): Prefix {
-        return Prefix(
+    private fun ResultRow.toPrefix(): Prefix = Prefix(
             prefix = this[PrefixesTable.prefix],
             owner_orgno = this[PrefixesTable.ownerOrgno],
             organization_name = this[PrefixesTable.organizationName],
@@ -27,19 +29,14 @@ class PostgresPrefixRepository : PrefixRepository {
             last_updated = this[PrefixesTable.lastUpdated].toInstant().toKotlinInstant(),
             active = this[PrefixesTable.active]
         )
-    }
 
-    override fun getPrefix(): List<Prefix> {
-        return transaction {
+    override fun getPrefix(): List<Prefix> = transaction {
             PrefixesTable.selectAll().map { it.toPrefix() }
         }
-    }
 
-    override fun getAllPrefix(includeInactive: Boolean): List<Prefix> {
-        return transaction {
+    override fun getAllPrefix(includeInactive: Boolean): List<Prefix> = transaction {
             PrefixesTable.selectAll()
                 .apply { if (!includeInactive) andWhere { PrefixesTable.active eq true } }
                 .map { it.toPrefix() }
         }
-    }
 }

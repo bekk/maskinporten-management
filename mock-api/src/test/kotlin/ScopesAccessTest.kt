@@ -14,11 +14,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ScopeAccessTest {
+class ScopesAccessTest {
 
     @Test
     fun testScopeAccessGet() = testApp {
-
         client.get("/api/v1/scopes/access?consumer_orgno=971032081&scope=kartverk:matrikkel.read").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -26,7 +25,6 @@ class ScopeAccessTest {
 
     @Test
     fun testScopeAccessPut() = testApp {
-
         client.put("/api/v1/scopes/access/971032081?scope=kartverk:matrikkel.read").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -34,7 +32,6 @@ class ScopeAccessTest {
 
     @Test
     fun testScopeAccessDelete() = testApp {
-
         client.put("/api/v1/scopes/access/958935420?scope=kartverk:sefrak.read").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -50,7 +47,6 @@ class ScopeAccessTest {
 
     @Test
     fun testScopeAccessGetWithoutScope() = testApp {
-
         client.get("/api/v1/scopes/access?consumer_orgno=971032081").apply {
             assertEquals(HttpStatusCode.OK, status)
             val access = jsonObjects()
@@ -88,7 +84,6 @@ class ScopeAccessTest {
 
     @Test
     fun testNewAccessGetsOrganizationNames() = testApp {
-
         client.put("/api/v1/scopes/access/958935420?scope=kartverk:adresse.read").apply {
             assertEquals(HttpStatusCode.OK, status)
             val access = jsonObject()
@@ -99,7 +94,6 @@ class ScopeAccessTest {
 
     @Test
     fun testScopeAccessAllGet() = testApp {
-
         client.get("/api/v1/scopes/access/all").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -107,7 +101,6 @@ class ScopeAccessTest {
 
     @Test
     fun testCreatedScopeCanImmediatelyReceiveAccess() = testApp {
-
         client.post("/api/v1/scopes") {
             contentType(ContentType.Application.Json)
             setBody(

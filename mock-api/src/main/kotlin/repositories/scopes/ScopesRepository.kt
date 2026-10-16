@@ -19,4 +19,3 @@ interface ScopesRepository {
     fun updateScope(name: String, scope: UpdateScopeRequest): Scope
     fun deleteScope(name: String): Scope
 }
-

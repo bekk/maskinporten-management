@@ -1,7 +1,8 @@
 package com.maskinporten.repositories.apis
 
 import com.maskinporten.models.apis.ApiResource
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object ApiResourcesTable : Table("api_resources") {
@@ -12,8 +13,7 @@ object ApiResourcesTable : Table("api_resources") {
 }
 
 class PostgresApiResourceRepository : ApiResourceRepository {
-    override fun getAllApiResources(): List<ApiResource> {
-        return transaction {
+    override fun getAllApiResources(): List<ApiResource> = transaction {
             ApiResourcesTable.selectAll().map {
                 ApiResource(
                     customer_organization_number = it[ApiResourcesTable.customerOrganizationNumber],
@@ -22,6 +22,4 @@ class PostgresApiResourceRepository : ApiResourceRepository {
                 )
             }
         }
-    }
 }
-

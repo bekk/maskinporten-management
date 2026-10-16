@@ -1,8 +1,9 @@
 package com.maskinporten.repositories.delegationsources
 
 import com.maskinporten.models.delegationsources.Delegationsource
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.time.toKotlinInstant
 
@@ -15,8 +16,7 @@ object DelegationsourcesTable : Table("delegationsources") {
 }
 
 class PostgresDelegationsourcesRepository : DelegationsourcesRepository {
-    override fun getAllDelegationsources(): List<Delegationsource> {
-        return transaction {
+    override fun getAllDelegationsources(): List<Delegationsource> = transaction {
             DelegationsourcesTable.selectAll().map {
                 Delegationsource(
                     issuer = it[DelegationsourcesTable.id],
@@ -26,5 +26,4 @@ class PostgresDelegationsourcesRepository : DelegationsourcesRepository {
                 )
             }
         }
-    }
 }

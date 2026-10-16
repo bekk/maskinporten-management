@@ -1,20 +1,19 @@
 package com.maskinporten
 
+import com.maskinporten.repositories.changelog.isDescending
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import com.maskinporten.repositories.changelog.isDescending
 
 class ChangelogTest {
 
     @Test
     fun testScopeAccessChangelogGet() = testApp {
-
         client.get("/api/v1/scopes/access/changelog?scopeName=kartverk:matrikkel.read&page=0&size=10&sort=asc").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -22,7 +21,6 @@ class ChangelogTest {
 
     @Test
     fun testScopeAccessChangelogGetDesc() = testApp {
-
         client.get("/api/v1/scopes/access/changelog?scopeName=kartverk:matrikkel.read&page=0&size=10&sort=desc").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -30,7 +28,6 @@ class ChangelogTest {
 
     @Test
     fun testChangelogPagingParamsAreOptional() = testApp {
-
         client.get("/api/v1/scopes/access/changelog?scopeName=kartverk:matrikkel.read").apply {
             assertEquals(HttpStatusCode.OK, status)
             val page = jsonObject()["page"]!!.jsonObject
@@ -45,7 +42,6 @@ class ChangelogTest {
 
     @Test
     fun testChangelogEntriesHaveSpecFields() = testApp {
-
         client.get("/api/v1/scopes/access/changelog?scopeName=kartverk:matrikkel.read").apply {
             val entry = jsonObject()["content"]!!.jsonArray.first().jsonObject
             assertEquals(setOf("id", "created", "message", "actor_name", "channel", "diff"), entry.keys)
@@ -54,7 +50,6 @@ class ChangelogTest {
 
     @Test
     fun testChangelogRejectsInvalidSize() = testApp {
-
         client.get("/api/v1/scopes/access/changelog?scopeName=kartverk:matrikkel.read&size=0").apply {
             assertEquals(HttpStatusCode.BadRequest, status)
         }
@@ -62,7 +57,6 @@ class ChangelogTest {
 
     @Test
     fun testChangelogRequiresScopeNameQueryParam() = testApp {
-
         client.get("/api/v1/scopes/access/changelog").apply {
             assertEquals(HttpStatusCode.BadRequest, status)
         }

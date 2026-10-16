@@ -44,6 +44,7 @@ class MaskinportenMock(issuer: String, private val trustedCa: X509Certificate) {
     /** Ends with `/`, like Maskinporten's `https://maskinporten.no/`, so the token endpoint is `${issuer}token`. */
     val issuer = issuer.removeSuffix("/") + "/"
     private val tokens = ConcurrentHashMap<String, IssuedToken>()
+
     // jti of each grant used (or the whole grant, when it has no jti), until the grant expires, so no grant is used twice
     private val usedGrants = ConcurrentHashMap<String, Instant>()
     private val random = SecureRandom()
@@ -110,6 +111,7 @@ class MaskinportenMock(issuer: String, private val trustedCa: X509Certificate) {
         const val TOKEN_LIFETIME_SECONDS = 120L
         private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
         private val SIGNATURE_ALGORITHMS = mapOf("RS256" to "SHA256withRSA", "RS384" to "SHA384withRSA", "RS512" to "SHA512withRSA")
+
         // Maskinporten's limits, from https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_jwtgrant
         private val MAX_CLOCK_SKEW = Duration.ofSeconds(10)
         private val MAX_GRANT_LIFETIME = Duration.ofSeconds(180)

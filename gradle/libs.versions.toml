@@ -10,6 +10,9 @@ kotlinx-serialization = "1.11.0"
 google-cloud-kms = "2.102.0"
 nimbus-jose-jwt = "10.10"
 bouncycastle = "1.86"
+exposed = "0.61.0"
+hikari = "6.2.1"
+postgresql = "42.7.5"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
@@ -20,6 +23,12 @@ google-cloud-kms = { module = "com.google.cloud:google-cloud-kms", version.ref =
 google-cloud-kms-grpc = { module = "com.google.api.grpc:grpc-google-cloud-kms-v1", version.ref = "google-cloud-kms" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+exposed-json = { module = "org.jetbrains.exposed:exposed-json", version.ref = "exposed" }
+hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

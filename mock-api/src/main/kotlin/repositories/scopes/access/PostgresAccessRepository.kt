@@ -5,9 +5,17 @@ import com.maskinporten.models.scopes.access.Access
 import com.maskinporten.models.scopes.access.State
 import com.maskinporten.repositories.organizations.OrganizationsTable
 import io.ktor.server.plugins.NotFoundException
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import kotlin.time.toKotlinInstant
 
 object ScopeAccessTable : Table("scope_access") {
@@ -23,8 +31,7 @@ object ScopeAccessTable : Table("scope_access") {
     override val primaryKey = PrimaryKey(scope, consumerOrgno)
 }
 
-private fun ResultRow.toAccess(): Access {
-    return Access(
+private fun ResultRow.toAccess(): Access = Access(
         scope = this[ScopeAccessTable.scope],
         owner_orgno = this[ScopeAccessTable.ownerOrgno],
         owner_organization_name = this[ScopeAccessTable.ownerOrganizationName],
@@ -34,7 +41,6 @@ private fun ResultRow.toAccess(): Access {
         created = this[ScopeAccessTable.created].toInstant().toKotlinInstant(),
         last_updated = this[ScopeAccessTable.lastUpdated].toInstant().toKotlinInstant()
     )
-}
 
 private fun organizationName(orgno: String): String? =
     OrganizationsTable.selectAll()
@@ -44,16 +50,13 @@ private fun organizationName(orgno: String): String? =
 
 class PostgresAccessRepository : AccessRepository {
 
-    override fun getAllScopesAccess(includeInactive: Boolean): List<Access> {
-        return transaction {
+    override fun getAllScopesAccess(includeInactive: Boolean): List<Access> = transaction {
             ScopeAccessTable.selectAll()
                 .apply { if (!includeInactive) andWhere { ScopeAccessTable.active eq true } }
                 .map { it.toAccess() }
         }
-    }
 
-    override fun getScopesAccess(consumerOrgNo: String?, scope: String?, includeInactive: Boolean): List<Access> {
-        return transaction {
+    override fun getScopesAccess(consumerOrgNo: String?, scope: String?, includeInactive: Boolean): List<Access> = transaction {
             ScopeAccessTable.selectAll()
                 .apply {
                     consumerOrgNo?.let { andWhere { ScopeAccessTable.consumerOrgno eq it } }
@@ -62,10 +65,8 @@ class PostgresAccessRepository : AccessRepository {
                 }
                 .map { it.toAccess() }
         }
-    }
 
-    override fun updateScopeAccess(consumerOrgNo: String, scope: Scope): Access {
-        return transaction {
+    override fun updateScopeAccess(consumerOrgNo: String, scope: Scope): Access = transaction {
             val now = java.time.OffsetDateTime.now()
 
             // Upsert: insert or update
@@ -100,7 +101,6 @@ class PostgresAccessRepository : AccessRepository {
                 .first()
                 .toAccess()
         }
-    }
 
     override fun deleteScopeAccess(consumerOrgNo: String, scope: String): Access {
         val scopeVal = scope

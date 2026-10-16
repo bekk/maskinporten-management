@@ -1,7 +1,7 @@
 package com.maskinporten.services.integrations
 
-import com.maskinporten.repositories.integrations.PostgresIntegrationsRepository
 import com.maskinporten.models.integrations.Integration
+import com.maskinporten.repositories.integrations.PostgresIntegrationsRepository
 import kotlin.time.Instant
 
 class IntegrationsService {

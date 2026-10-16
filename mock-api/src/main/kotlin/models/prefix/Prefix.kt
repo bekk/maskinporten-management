@@ -12,4 +12,3 @@ data class Prefix(
     val last_updated: Instant,
     val active: Boolean,
 )
-

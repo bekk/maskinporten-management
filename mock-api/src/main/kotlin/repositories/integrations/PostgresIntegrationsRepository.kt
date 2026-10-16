@@ -2,8 +2,11 @@ package com.maskinporten.repositories.integrations
 
 import com.maskinporten.models.integrations.Integration
 import com.maskinporten.models.integrations.IntegrationType
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.ZoneOffset
 import kotlin.time.Instant
@@ -24,8 +27,7 @@ object IntegrationsTable : Table("integrations") {
 }
 
 class PostgresIntegrationsRepository : IntegrationsRepository {
-    override fun getIntegrations(customerOrgNumber: String?, updatedSince: Instant?): List<Integration> {
-        return transaction {
+    override fun getIntegrations(customerOrgNumber: String?, updatedSince: Instant?): List<Integration> = transaction {
             IntegrationsTable.selectAll()
                 .apply {
                     customerOrgNumber?.let { andWhere { IntegrationsTable.customerOrganizationNumber eq it } }
@@ -45,5 +47,4 @@ class PostgresIntegrationsRepository : IntegrationsRepository {
                     )
                 }
         }
-    }
 }

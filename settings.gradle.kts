@@ -22,3 +22,4 @@ rootProject.name = "maskinporten-management"
 
 include(":maskinporten-management-rest-server")
 include(":maskinporten-management-client")
+include(":mock-api")

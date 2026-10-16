@@ -15,7 +15,7 @@ default, and then lists show all scopes (see [`.env.example`](.env.example)).
 | :----------------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------- |
 | [`maskinporten-management-client`](maskinporten-management-client)       | Kotlin client library                        | a package, for other services to depend on                                    |
 | [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API      | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
-| [`mock-api`](mock-api)                                                   | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing; it is its own Gradle build, outside `./gradlew build` |
+| [`mock-api`](mock-api)                                                   | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing; `./gradlew build` skips its tests, which need its Postgres |
 
 ## Prerequisites
 

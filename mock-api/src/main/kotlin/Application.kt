@@ -9,26 +9,32 @@ import com.maskinporten.maskinporten.maskinportenMockFromConfig
 import com.maskinporten.maskinporten.maskinportenRoutes
 import com.maskinporten.maskinporten.requireMaskinportenToken
 import com.maskinporten.models.ApiError
+import com.maskinporten.models.ErrorResponse
 import com.maskinporten.routes.apis.apisRoutes
-import com.maskinporten.routes.integrations.integrationsRoutes
-import com.maskinporten.routes.scopes.scopesRoutes
 import com.maskinporten.routes.delegationsources.delegationsourcesRoutes
+import com.maskinporten.routes.integrations.integrationsRoutes
 import com.maskinporten.routes.prefix.prefixRoutes
-import io.ktor.server.application.*
+import com.maskinporten.routes.scopes.scopesRoutes
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
+import io.ktor.server.application.application
+import io.ktor.server.application.install
+import io.ktor.server.application.log
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.CannotTransformContentToTypeException
+import io.ktor.server.plugins.NotFoundException
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.plugins.swagger.swaggerUI
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.uri
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.statuspages.*
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.http.*
-import io.ktor.server.plugins.*
-import com.maskinporten.models.ErrorResponse
-import io.ktor.server.plugins.swagger.swaggerUI
-import io.ktor.server.request.httpMethod
-import io.ktor.server.request.uri
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
@@ -58,7 +64,7 @@ fun Application.module() {
     val maskinporten = maskinportenMockFromConfig(environment.config, log)
 
     install(ContentNegotiation) {
-        json(Json{
+        json(Json {
             explicitNulls = false
         })
     }
@@ -188,6 +194,24 @@ fun Application.module() {
                     cause.message ?: "Bad Request",
 
                     cause.message ?: "Bad Request"
+                )
+            )
+        }
+        exception<CannotTransformContentToTypeException> { call, _ ->
+            call.respond(
+                HttpStatusCode.UnsupportedMediaType,
+                ErrorResponse(
+                    HttpStatusCode.UnsupportedMediaType.value,
+                    Clock.System.now(),
+                    "example-correlation-id",
+                    listOf(
+                        ApiError(
+                            "Unsupported Media Type",
+                            false,
+                        )
+                    ),
+                    "Unsupported Media Type",
+                    "Unsupported Media Type"
                 )
             )
         }

@@ -10,4 +10,3 @@ data class Delegationsource(
     val created: Instant,
     val lastUpdated: Instant,
 )
-

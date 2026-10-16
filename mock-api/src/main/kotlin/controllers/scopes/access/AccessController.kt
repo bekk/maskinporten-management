@@ -2,8 +2,8 @@ package com.maskinporten.controllers.scopes.access
 
 import com.maskinporten.maskinporten.organization
 import com.maskinporten.services.scopes.access.AccessService
-import com.maskinporten.utils.requirePathParam
 import com.maskinporten.utils.pageRequest
+import com.maskinporten.utils.requirePathParam
 import com.maskinporten.utils.requireQueryParam
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond

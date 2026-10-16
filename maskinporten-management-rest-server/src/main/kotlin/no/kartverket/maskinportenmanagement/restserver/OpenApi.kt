@@ -20,8 +20,13 @@ import io.ktor.server.application.plugin
 import io.ktor.server.routing.RoutingRoot
 import io.ktor.server.routing.getAllRoutes
 import io.ktor.server.routing.openapi.plus
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.maskinportenmanagement.client.IntegrationType
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
@@ -49,8 +54,8 @@ private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "v0",
     description = """
-        Manages Kartverket's Maskinporten scopes through Digdir's API: lists and deletes the scopes, and lists, gives
-        and removes organisations' access to them.
+        Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates and deletes the scopes, and
+        lists, gives and removes organisations' access to them.
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
@@ -113,6 +118,24 @@ private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().docume
 
 private const val PERSONS_ONLY = "Only for logins with ID-porten, not for Maskinporten:"
 
+private const val INTEGRATION_TYPES = "The kinds of client that can use the scope. A Maskinporten client needs " +
+    "`maskinporten`, or an empty list, which allows every kind."
+
+private val TOKEN_TYPES = """
+    The kind of access token issued for the scope.
+
+    - `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.
+    - `OPAQUE`: a token that the API has to look up with Digdir.
+""".trimIndent()
+
+private val VISIBILITIES = """
+    Who can see the scope.
+
+    - `PUBLIC`: anyone, in Digdir's list of all scopes.
+    - `PRIVATE`: only the owner and the organisations given access.
+    - `INTERNAL`: Digdir's own use.
+""".trimIndent()
+
 private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "name" to { copy(description = "The whole scope: the prefix, a colon and the subscope.") },
     "prefix" to {
@@ -139,35 +162,14 @@ private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
     "created" to { copy(description = "When the scope was created.", format = "date-time") },
     "last_updated" to { copy(description = "When the scope was last changed.", format = "date-time") },
     "allowed_integration_types" to {
-        copy(
-            description = "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or " +
-                "an empty list, which allows every kind. `unknown` is a kind Digdir has added that this API does not " +
-                "know yet.",
-        )
+        copy(description = "$INTEGRATION_TYPES `unknown` is a kind Digdir has added that this API does not know yet.")
     },
     "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
     "token_type" to {
-        copy(
-            description = """
-                The kind of access token issued for the scope.
-
-                - `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.
-                - `OPAQUE`: a token that the API has to look up with Digdir.
-                - `UNKNOWN`: a kind Digdir has added that this API does not know yet.
-            """.trimIndent(),
-        )
+        copy(description = "$TOKEN_TYPES\n- `UNKNOWN`: a kind Digdir has added that this API does not know yet.")
     },
     "visibility" to {
-        copy(
-            description = """
-                Who can see the scope.
-
-                - `PUBLIC`: anyone, in Digdir's list of all scopes.
-                - `PRIVATE`: only the owner and the organisations given access.
-                - `INTERNAL`: Digdir's own use.
-                - `UNKNOWN`: a value Digdir has added that this API does not know yet.
-            """.trimIndent(),
-        )
+        copy(description = "$VISIBILITIES\n- `UNKNOWN`: a value Digdir has added that this API does not know yet.")
     },
     "requires_user_consent" to {
         copy(description = "$PERSONS_ONLY a person must consent before a client gets a token.")
@@ -355,6 +357,69 @@ private val exampleScope = ScopeDetails(
     protected = false,
     supportsEuropeanBusinesses = false,
 )
+
+// A new scope cannot hold a value this API does not know, so UNKNOWN is left out of it
+private fun JsonSchema.withoutUnknown(): JsonSchema = copy(
+    enum = enum?.filterNot { it?.deserialize(String.serializer()).equals("unknown", ignoreCase = true) },
+    items = items?.mapValue { it.withoutUnknown() },
+)
+
+private val newScopeSchema = scopeSchema.copy(
+    title = "NewScope",
+    properties = scopeSchema.properties?.filterKeys { it !in setOf("name", "created", "last_updated") },
+    required = listOf("prefix", "subscope"),
+).documented(
+    "active" to { copy(description = "Whether clients can get tokens for the scope.") },
+    "owner_orgno" to { copy(description = "Leave it out: Digdir makes the calling organisation, Kartverket, the owner.") },
+    "allowed_integration_types" to { withoutUnknown().copy(description = INTEGRATION_TYPES) },
+    "token_type" to { withoutUnknown().copy(description = TOKEN_TYPES) },
+    "visibility" to { withoutUnknown().copy(description = VISIBILITIES) },
+)
+
+private val exampleNewScope = buildJsonObject {
+    put("prefix", "kartverk")
+    put("subscope", "tilgangsstyring/demo.read")
+    put("description", "Lesetilgang til demo-API-et")
+    put("description#en", "Read access to the demo API")
+    putJsonArray("allowed_integration_types") { add("maskinporten") }
+    put("visibility", "PRIVATE")
+}
+
+internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
+    summary = "Create a scope"
+    description = """
+        Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is
+        sent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope
+        cannot be read in two ways.
+
+        $DIGDIR_ERRORS
+    """.trimIndent()
+
+    requestBody {
+        required = true
+        ContentType.Application.Json {
+            schema = newScopeSchema
+            example("NewScope", exampleNewScope)
+        }
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "The scope that was created."
+            ContentType.Application.Json {
+                schema = scopeSchema
+                example("CreatedScope", exampleScope)
+            }
+        }
+
+        badRequest(
+            "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or " +
+                "it has a field that is not listed here, or the same field twice.",
+            "UnknownField" to ErrorResponse("Digdir has no field \"Subscope\"", ErrorCode.INVALID_REQUEST),
+        )
+        digdirUnreachableAndOtherStatuses()
+    }
+}
 
 internal val scopesListOperation: Operation.Builder.() -> Unit = {
     summary = "List Kartverket's scopes that the calling app has access to"

@@ -27,6 +27,8 @@ public class MaskinportenManagementClient(
         return if (filter == null) scopes else scopes.filter { filter.allows(it.name) }
     }
 
+    public suspend fun createScope(scope: ScopeJson): ScopeDetails = send(HttpMethod.POST, SCOPES_PATH, scope).decode()
+
     public suspend fun deleteScope(scope: Scope): ScopeDetails =
         send(HttpMethod.DELETE, "$SCOPES_PATH?scope=${encode(scope.value)}").decode()
 
@@ -46,12 +48,14 @@ public class MaskinportenManagementClient(
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)
 
-    private suspend fun send(method: HttpMethod, pathAndQuery: String): OutgoingResponse {
+    private suspend fun send(method: HttpMethod, pathAndQuery: String, body: ScopeJson? = null): OutgoingResponse {
         val token = callingDigdir { accessTokenProvider.accessToken() }
+        val headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer ${token.value}")
         val request = OutgoingRequest(
             method = method,
             url = URI.create(baseUrl + pathAndQuery),
-            headers = mapOf("Accept" to "application/json", "Authorization" to "Bearer ${token.value}"),
+            headers = if (body == null) headers else headers + ("Content-Type" to "application/json"),
+            body = body?.value?.toByteArray(),
         )
         val response = callingDigdir { httpClient.send(request) }
         // Our token is wrong, not the caller's request, so the caller must not get the 401

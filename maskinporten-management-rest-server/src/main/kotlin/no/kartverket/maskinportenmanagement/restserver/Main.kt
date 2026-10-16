@@ -8,6 +8,7 @@ import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.di.dependencies
+import io.ktor.server.request.queryString
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
@@ -71,6 +72,15 @@ fun Application.configureRouting() {
             val filter = externalFiltering.filterFor(call)
             call.respond(client.listConsumerScopeAccess(orgnr, filter))
         }.describe(scopeAccessScopesOperation)
+
+        get("/api/scopeaccess/changelog") {
+            val client: MaskinportenManagementClient by dependencies
+            val query = queryParameters(call.request.queryString(), "scope", "page", "size")
+            val scope = scopeParameter("scope", query.getValue("scope"))
+            val page = query["page"]?.let { wholeNumberParameter("page", it, min = 0) }
+            val size = query["size"]?.let { wholeNumberParameter("size", it, min = 1) }
+            call.respond(client.getScopeAccessChangelog(scope, page, size))
+        }.describe(scopeAccessChangelogOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
             val client: MaskinportenManagementClient by dependencies

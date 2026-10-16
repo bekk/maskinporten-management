@@ -130,26 +130,42 @@ internal class InvalidRequestException(message: String) : RuntimeException(messa
 
 internal fun ApplicationCall.onlyQueryParameter(name: String): String = onlyQueryParameter(request.queryString(), name)
 
-// Read from the raw query, so we act on the same value as the access check in front of the server: Netty drops
+internal fun onlyQueryParameter(query: String, name: String): String = queryParameters(query, name).getValue(name)
+
+// Read from the raw query, so we act on the same values as the access check in front of the server: Netty drops
 // parameters past the 1024th and reads "=scope=x" as scope, which other parsers do not
-internal fun onlyQueryParameter(query: String, name: String): String {
-    if (query.isEmpty()) throw InvalidRequestException("Query parameter $name is required")
-    val (key, raw) = query.split('=', limit = 2).takeIf { it.size == 2 && '&' !in query }
-        ?: throw InvalidRequestException("The query must contain only the parameter $name, sent once")
-    if (key != name) throw InvalidRequestException("The query must contain only the parameter $name, sent once")
-    val value = try {
-        raw.decodeURLQueryComponent(plusIsSpace = true)
-    } catch (e: URLDecodeException) {
-        throw InvalidRequestException("Query parameter $name is not URL-encoded correctly")
+internal fun queryParameters(query: String, required: String, vararg optional: String): Map<String, String> {
+    val names = listOf(required) + optional
+    val onlyThese = if (optional.isEmpty()) {
+        "The query must contain only the parameter $required, sent once"
+    } else {
+        "The query must contain only the parameters ${names.dropLast(1).joinToString()} and ${names.last()}, each sent once"
     }
-    return value.takeIf { it.isNotBlank() } ?: throw InvalidRequestException("Query parameter $name is required")
+    val parameters = if (query.isEmpty()) emptyList() else query.split('&')
+    val raw = parameters.map { parameter ->
+        val (name, value) = parameter.split('=', limit = 2).takeIf { it.size == 2 && it[0] in names }
+            ?: throw InvalidRequestException(onlyThese)
+        name to value
+    }
+    if (raw.distinctBy { it.first }.size != raw.size) throw InvalidRequestException(onlyThese)
+    val values = raw.associate { (name, value) ->
+        name to try {
+            value.decodeURLQueryComponent(plusIsSpace = true)
+        } catch (e: URLDecodeException) {
+            throw InvalidRequestException("Query parameter $name is not URL-encoded correctly")
+        }
+    }
+    if (values[required].isNullOrBlank()) throw InvalidRequestException("Query parameter $required is required")
+    return values
 }
 
-internal fun ApplicationCall.scopeQueryParameter(name: String): Scope {
-    val value = onlyQueryParameter(name)
-    return runCatching { Scope.of(value) }.getOrNull()
-        ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
-}
+internal fun ApplicationCall.scopeQueryParameter(name: String): Scope = scopeParameter(name, onlyQueryParameter(name))
+
+internal fun scopeParameter(name: String, value: String): Scope = runCatching { Scope.of(value) }.getOrNull()
+    ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
+
+internal fun wholeNumberParameter(name: String, value: String, min: Int): Int = value.toIntOrNull()?.takeIf { it >= min }
+    ?: throw InvalidRequestException("Query parameter $name must be a whole number of $min or more")
 
 internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {
     val value = pathParameters[name].orEmpty()

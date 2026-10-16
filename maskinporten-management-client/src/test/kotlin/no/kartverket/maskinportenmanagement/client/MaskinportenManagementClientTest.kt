@@ -248,6 +248,57 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
+    fun `gets a scope's access changelog with the scope, and the page and size only when given`() = runBlocking {
+        val client = answering(digdirScopeAccessChangelog())
+        val scope = Scope.of("kartverk:matrikkel.read")
+
+        client.getScopeAccessChangelog(scope)
+        client.getScopeAccessChangelog(scope, page = 2)
+        client.getScopeAccessChangelog(scope, page = 0, size = 50)
+
+        assertEquals(
+            listOf(
+                "https://digdir.test/api/v1/scopes/access/changelog?scopeName=kartverk%3Amatrikkel.read",
+                "https://digdir.test/api/v1/scopes/access/changelog?scopeName=kartverk%3Amatrikkel.read&page=2",
+                "https://digdir.test/api/v1/scopes/access/changelog?scopeName=kartverk%3Amatrikkel.read&page=0&size=50",
+            ),
+            sent.map { it.url.toString() },
+        )
+        assertEquals(listOf(HttpMethod.GET), sent.map { it.method }.distinct())
+    }
+
+    @Test
+    fun `reads every field of Digdir's access changelog, and an entry without the fields for people to read`() = runBlocking {
+        val change = ScopeAccessChange(
+            id = 7,
+            created = Instant.parse("2026-01-15T09:30:00Z"),
+            message = "Scope access created",
+            actorName = "Kartverket",
+            channel = "API",
+            diff = """{"consumer_orgno":"311718371","state":"APPROVED"}""",
+        )
+        val bare = """{"id":8,"created":"2026-01-16T10:00:00Z","new_field":"from Digdir"}"""
+        val changelog = digdirScopeAccessChangelog().replace("}],", "},$bare],")
+
+        assertEquals(
+            ScopeAccessChangelog(
+                content = listOf(change, ScopeAccessChange(id = 8, created = Instant.parse("2026-01-16T10:00:00Z"))),
+                page = PageMetadata(size = 20, number = 0, totalElements = 1, totalPages = 1),
+            ),
+            answering(changelog).getScopeAccessChangelog(Scope.of("kartverk:matrikkel.read")),
+        )
+    }
+
+    @Test
+    fun `refuses a page below 0 and a size below 1 without calling Digdir`() {
+        val scope = Scope.of("kartverk:matrikkel.read")
+
+        assertFailsWith<IllegalArgumentException> { runBlocking { clientAnswering().getScopeAccessChangelog(scope, page = -1) } }
+        assertFailsWith<IllegalArgumentException> { runBlocking { clientAnswering().getScopeAccessChangelog(scope, size = 0) } }
+        assertEquals(emptyList<OutgoingRequest>(), sent)
+    }
+
+    @Test
     fun `a trailing slash on the base URL is ignored`() = runBlocking {
         clientAnswering(baseUrl = URI("https://digdir.test/")).listScopeAccess(Scope.of("kartverk:x"))
 

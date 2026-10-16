@@ -25,8 +25,11 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.maskinportenmanagement.client.IntegrationType
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
+import no.kartverket.maskinportenmanagement.client.PageMetadata
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeAccess
+import no.kartverket.maskinportenmanagement.client.ScopeAccessChange
+import no.kartverket.maskinportenmanagement.client.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.client.ScopeAccessState
 import no.kartverket.maskinportenmanagement.client.ScopeDetails
 import no.kartverket.maskinportenmanagement.client.TokenType
@@ -49,8 +52,8 @@ private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "v0",
     description = """
-        Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, and lists, gives and removes
-        organisations' access to them.
+        Manages Kartverket's Maskinporten scopes through Digdir's API: lists the scopes, lists, gives and removes
+        organisations' access to them, and shows the changes to that access.
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
@@ -109,6 +112,41 @@ private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().docume
     },
     "created" to { copy(description = "When the access was given.", format = "date-time") },
     "last_updated" to { copy(description = "When the access was last changed.", format = "date-time") },
+)
+
+private val scopeAccessChangeSchema = schemaInference.jsonSchema<ScopeAccessChange>().documented(
+    "id" to { copy(description = "Digdir's id for the change.") },
+    "created" to { copy(description = "When the change was made.", format = "date-time") },
+    "message" to { leftOutWhenMissing("Digdir's short summary of the change. Left out when Digdir sends none.") },
+    "actor_name" to {
+        leftOutWhenMissing(
+            "Who made the change, as Digdir records it. Changes made through this API are made with this API's " +
+                "Maskinporten client, not as the calling app. Left out when Digdir sends none.",
+        )
+    },
+    "channel" to {
+        leftOutWhenMissing(
+            "Where the change was made, as Digdir records it. Digdir does not document the values. Left out when " +
+                "Digdir sends none.",
+        )
+    },
+    "diff" to {
+        leftOutWhenMissing(
+            "What changed, as JSON in a string. Digdir does not document its format. Left out when Digdir sends none.",
+        )
+    },
+)
+
+private val pageMetadataSchema = schemaInference.jsonSchema<PageMetadata>().documented(
+    "size" to { copy(description = "The most changes a page holds.") },
+    "number" to { copy(description = "This page's number, counting from 0.") },
+    "totalElements" to { copy(description = "How many changes there are in all.") },
+    "totalPages" to { copy(description = "How many pages there are in all.") },
+)
+
+private val scopeAccessChangelogSchema = schemaInference.jsonSchema<ScopeAccessChangelog>().documented(
+    "content" to { copy(description = "The changes on this page.", items = ReferenceOr.Value(scopeAccessChangeSchema)) },
+    "page" to { pageMetadataSchema.copy(description = "Where this page is in the whole changelog.") },
 )
 
 private const val PERSONS_ONLY = "Only for logins with ID-porten, not for Maskinporten:"
@@ -240,11 +278,14 @@ private val exampleScopeAccess = ScopeAccess(
     lastUpdated = Instant.parse("2026-01-15T09:30:00Z"),
 )
 
-private fun Parameters.Builder.scope() {
+private fun Parameters.Builder.scope(onlyParameter: Boolean = true) {
     query("scope") {
         required = true
-        description = "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent " +
-            "once."
+        description = if (onlyParameter) {
+            "The scope, for example `kartverk:matrikkel.read`. It must be the only query parameter, sent once."
+        } else {
+            "The scope, for example `kartverk:matrikkel.read`."
+        }
         schema = JsonSchema(type = JsonType.STRING)
     }
 }
@@ -441,6 +482,60 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
             missingClientCertificateExample,
         )
         digdirUnreachableAndOtherStatuses(filtered = true)
+    }
+}
+
+private val exampleScopeAccessChangelog = ScopeAccessChangelog(
+    content = listOf(
+        ScopeAccessChange(
+            id = 1,
+            created = Instant.parse("2026-01-15T09:30:00Z"),
+            message = "Scope access created",
+            actorName = "Kartverket",
+            channel = "API",
+            diff = """{"consumer_orgno":"311718371","state":"APPROVED"}""",
+        ),
+    ),
+    page = PageMetadata(size = 20, number = 0, totalElements = 1, totalPages = 1),
+)
+
+internal val scopeAccessChangelogOperation: Operation.Builder.() -> Unit = {
+    summary = "List the changes to who has access to a scope"
+    description = """
+        Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.
+        Digdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.
+
+        $DIGDIR_ERRORS
+    """.trimIndent()
+
+    parameters {
+        scope(onlyParameter = false)
+        query("page") {
+            description = "Which page to get, counting from 0."
+            schema = JsonSchema(type = JsonType.INTEGER, minimum = 0.0)
+        }
+        query("size") {
+            description = "The most changes a page holds."
+            schema = JsonSchema(type = JsonType.INTEGER, minimum = 1.0)
+        }
+    }
+
+    responses {
+        HttpStatusCode.OK {
+            description = "One page of the changes."
+            ContentType.Application.Json {
+                schema = scopeAccessChangelogSchema
+                example("Changelog", exampleScopeAccessChangelog)
+            }
+        }
+
+        badRequest(
+            "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is " +
+                "missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1.",
+            missingScopeExample,
+            "InvalidPage" to ErrorResponse("Query parameter page must be a whole number of 0 or more", ErrorCode.INVALID_REQUEST),
+        )
+        digdirUnreachableAndOtherStatuses()
     }
 }
 

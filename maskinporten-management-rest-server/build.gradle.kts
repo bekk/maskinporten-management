@@ -1,3 +1,12 @@
+// Jib shells out to Apache Commons Compress to read Zstandard-compressed layers (DHI base images use zstd), but
+// Commons Compress needs the zstd-jni library on jib's own classloader to do so. Adding it as a project dependency
+// is not enough: it must be on the buildscript classpath so jib itself can see it.
+buildscript {
+    dependencies {
+        classpath(libs.zstd.jni)
+    }
+}
+
 plugins {
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)

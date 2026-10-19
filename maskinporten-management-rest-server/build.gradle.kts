@@ -70,6 +70,7 @@ dependencies {
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
+    implementation(libs.logstash.logback.encoder)
     implementation(libs.google.cloud.kms)
 
     "toolsImplementation"(sourceSets.main.get().output)

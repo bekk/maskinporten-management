@@ -62,13 +62,6 @@ private val apiInfo = OpenApiInfo(
 fun Application.openApiSpec(): String =
     openApiJson.encodeToString(OpenApiDoc(info = apiInfo) + plugin(RoutingRoot).getAllRoutes())
 
-object OpenApiSpecFile {
-
-    const val NAME: String = "openapi.json"
-
-    fun contentsFor(servedSpec: String): String = servedSpec + "\n"
-}
-
 private fun JsonSchema.documented(
     vararg fields: Pair<String, JsonSchema.() -> JsonSchema>,
     required: List<String>? = this.required,

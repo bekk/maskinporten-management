@@ -20,31 +20,19 @@ tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
 }
 
-val tools: SourceSet by sourceSets.creating
-
-configurations.named(tools.implementationConfigurationName) {
-    extendsFrom(configurations.implementation.get())
-}
-
-configurations.named(tools.runtimeOnlyConfigurationName) {
-    extendsFrom(configurations.runtimeOnly.get())
-}
-
-tasks.check {
-    dependsOn(tools.classesTaskName)
-}
-
 tasks.test {
     // OpenApiSpecFileTest compares the served spec with this file, so a changed file must rerun the tests
     inputs.file("openapi.json")
 }
 
-tasks.register<JavaExec>("generateOpenApiSpec") {
+tasks.register<Test>("generateOpenApiSpec") {
     group = "build"
     description = "Writes openapi.json from the spec the running server serves."
-    mainClass = "no.kartverket.maskinportenmanagement.restserver.GenerateOpenApiSpecKt"
-    classpath = tools.runtimeClasspath
-    workingDir = projectDir
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter { includeTestsMatching("*.OpenApiSpecFileTest") }
+    systemProperty("openApiSpec.write", "true")
+    outputs.upToDateWhen { false }
 }
 
 dependencies {
@@ -62,9 +50,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
     implementation(libs.google.cloud.kms)
-
-    "toolsImplementation"(sourceSets.main.get().output)
-    "toolsImplementation"(libs.kotlinx.coroutines.core)
 
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.google.cloud.kms.grpc)

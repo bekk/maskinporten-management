@@ -36,6 +36,7 @@ class DigdirAnswersTest {
 
     private val endpoints = listOf(
         Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
+        Endpoint(HttpMethod.Delete, "/api/scopes?scope=kartverk:matrikkel.read", digdirScope("kartverk:matrikkel.read")),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
         Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
         Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),

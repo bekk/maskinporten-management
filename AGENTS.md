@@ -76,6 +76,25 @@ tests, see [its README](mock-api/README.md#tests).
   loading and access logging, so tests of those call `testApplication` directly.
 - Shared test data lives in the client's `src/testFixtures`: `DigdirJson.kt` and `TestKeys.kt`.
 
+## Decisions (ADRs)
+
+Important decisions are recorded as Architecture Decision Records in `docs/adr`. Examples are choosing a library or
+framework, changing the API contract, and security-relevant choices. Read the relevant ADRs before changing what they
+cover. When a change makes a decision like this, suggest an ADR, but don't write one unless asked.
+
+There are two templates. Pick the one that fits how much is at stake, or ask for guidance if unsure:
+
+- **Brief** (`template-brief.md`): the decision is easy to reverse, or the best option is fairly obvious. A few
+  sentences each for the context, the decision and the consequences are enough.
+- **Detailed** (`template-detailed.md`): the decision is costly to reverse, affects callers or other teams, or real
+  alternatives were weighed. It needs the full problem statement, the options considered with their pros and cons,
+  and why the chosen option won. Ask for guidance on the list of deciders (the people or teams who took part).
+
+Name files `YYYY-MM-DD-title.md`, using the date of the decision and a lowercase, hyphenated title. Base an ADR on
+where the decision was made, like a pull request or a card, and link it under References. Never change or rewrite an
+accepted ADR, other than updating its status if it is superseded. Write a new one that supersedes it, and update the
+old one's status.
+
 ## Boundaries
 
 - **Always:** keep `./gradlew build` passing. Update README.md and this file when the behaviour they describe changes.

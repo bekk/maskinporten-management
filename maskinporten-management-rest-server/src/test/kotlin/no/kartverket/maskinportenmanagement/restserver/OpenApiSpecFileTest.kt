@@ -15,12 +15,10 @@ class OpenApiSpecFileTest {
             configureRouting()
         }
 
-        val served = OpenApiSpecFile.contentsFor(client.get("/openapi").bodyAsText())
+        val served = client.get("/openapi").bodyAsText() + "\n"
+        val file = File("openapi.json")
+        if (System.getProperty("openApiSpec.write") == "true") file.writeText(served)
 
-        assertEquals(
-            File(OpenApiSpecFile.NAME).readText(),
-            served,
-            "${OpenApiSpecFile.NAME} is stale - run ./gradlew generateOpenApiSpec",
-        )
+        assertEquals(file.readText(), served, "openapi.json is stale - run ./gradlew generateOpenApiSpec")
     }
 }

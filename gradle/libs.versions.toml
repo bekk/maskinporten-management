@@ -11,7 +11,7 @@ google-cloud-kms = "2.102.0"
 nimbus-jose-jwt = "10.10"
 bouncycastle = "1.86"
 exposed = "1.5.1"
-hikari = "6.2.1"
+hikari = "7.1.0"
 postgresql = "42.7.5"
 
 [libraries]

@@ -8,7 +8,7 @@ metadata:
 spec:
   type: ops
   owner: group:default/tilgangsstyring
-  lifecycle: experimental
+  lifecycle: production
   system: system:default/maskinporten-plattformfunksjonalitet
 
 ---
@@ -33,7 +33,7 @@ metadata:
 spec:
   type: library
   owner: group:default/tilgangsstyring
-  lifecycle: experimental
+  lifecycle: production
   system: system:default/maskinporten-plattformfunksjonalitet
 
 ---
@@ -46,7 +46,7 @@ metadata:
 spec:
   type: service
   owner: group:default/tilgangsstyring
-  lifecycle: experimental
+  lifecycle: production
   system: system:default/maskinporten-plattformfunksjonalitet
   providesApis:
     - api:default/maskinporten-management-rest-server-api
@@ -61,7 +61,7 @@ metadata:
 spec:
   type: openapi
   owner: group:default/tilgangsstyring
-  lifecycle: experimental
+  lifecycle: production
   system: system:default/maskinporten-plattformfunksjonalitet
   definition:
     $text: https://github.com/kartverket/maskinporten-management/blob/main/maskinporten-management-rest-server/openapi.json

@@ -2,12 +2,13 @@ package com.maskinporten.repositories.integrations
 
 import com.maskinporten.models.integrations.Integration
 import com.maskinporten.models.integrations.IntegrationType
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.ZoneOffset
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant

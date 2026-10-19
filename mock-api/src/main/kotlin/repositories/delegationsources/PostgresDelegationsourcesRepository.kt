@@ -1,10 +1,10 @@
 package com.maskinporten.repositories.delegationsources
 
 import com.maskinporten.models.delegationsources.Delegationsource
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.time.toKotlinInstant
 
 object DelegationsourcesTable : Table("delegationsources") {

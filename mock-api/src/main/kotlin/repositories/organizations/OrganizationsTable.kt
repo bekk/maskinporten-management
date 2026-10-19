@@ -1,6 +1,6 @@
 package com.maskinporten.repositories.organizations
 
-import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.v1.core.Table
 
 object OrganizationsTable : Table("organizations") {
     val orgnr = varchar("orgnr", 20)

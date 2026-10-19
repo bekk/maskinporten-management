@@ -5,17 +5,17 @@ import com.maskinporten.models.scopes.access.Access
 import com.maskinporten.models.scopes.access.State
 import com.maskinporten.repositories.organizations.OrganizationsTable
 import io.ktor.server.plugins.NotFoundException
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import kotlin.time.toKotlinInstant
 
 object ScopeAccessTable : Table("scope_access") {
@@ -111,9 +111,7 @@ class PostgresAccessRepository : AccessRepository {
                 .firstOrNull()
                 ?.toAccess()
                 ?: throw NotFoundException("Scope access not found")
-            ScopeAccessTable.deleteWhere {
-                Op.build { (ScopeAccessTable.scope eq scopeVal) and (ScopeAccessTable.consumerOrgno eq consumerVal) }
-            }
+            ScopeAccessTable.deleteWhere { (ScopeAccessTable.scope eq scopeVal) and (ScopeAccessTable.consumerOrgno eq consumerVal) }
             existing
         }
     }

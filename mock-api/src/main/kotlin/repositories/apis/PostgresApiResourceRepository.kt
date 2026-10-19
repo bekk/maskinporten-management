@@ -1,9 +1,9 @@
 package com.maskinporten.repositories.apis
 
 import com.maskinporten.models.apis.ApiResource
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 object ApiResourcesTable : Table("api_resources") {
     val customerOrganizationNumber = varchar("customer_organization_number", 20)

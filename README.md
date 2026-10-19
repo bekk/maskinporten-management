@@ -30,7 +30,7 @@ app has access to.
 
 ## Prerequisites
 
-- JDK 21, or let the Gradle toolchain resolver provision one
+- JDK 25, or let the Gradle toolchain resolver provision one
 - Docker, for the mock API
 - To call Digdir: a Maskinporten client with `idporten:scopes.read` and `idporten:scopes.write`, which Digdir adds by
   hand (servicedesk@digdir.no), and the business certificate, with its private key in Cloud KMS

@@ -73,8 +73,7 @@ dependencies {
 
 jib {
     from {
-        // TODO: DHI
-        image = "eclipse-temurin:25-jre-alpine-3.24@sha256:3c0a9084927a221ccd1d007fcaf614465672c0af37aaa834c5184483afe56d61"
+        image = "dhi.io/eclipse-temurin:25-alpine3.24@sha256:0f947299651eea29537b025c58884ed363265277c9100dcc1b91ccdf9f2d1db3"
     }
     to {
         image = dockerImage.get()

@@ -1,0 +1,68 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: __name__
+  title: __Title__
+  # TODO: What the client and server do, in Norwegian
+  description: Kotlin-klient og server mot __Upstream__.
+spec:
+  type: ops
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/__upstream__-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: __name__-client
+  title: __Title__ - Klientbibliotek
+  description: Klientbibliotek for __Title__
+spec:
+  type: library
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/__upstream__-plattformfunksjonalitet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: __name__-rest-server
+  title: __Title__ - REST Server
+  description: Ktor-applikasjon med REST-API for __Title__.
+spec:
+  type: service
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/__upstream__-plattformfunksjonalitet
+  providesApis:
+    - api:default/__name__-rest-server-api
+
+---
+# TODO: Remove this System if another repo already defines it (altinn-pdp defines altinn-plattformfunksjonalitet)
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: __upstream__-plattformfunksjonalitet
+  title: __Upstream__ Plattformfunksjonalitet
+  description: Støttefunksjonalitet for bruk av __Upstream__ i Kartverket, levert av
+    Team Tilgangsstyring
+spec:
+  type: service
+  owner: group:default/tilgangsstyring
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: __name__-rest-server-api
+  title: __Title__ - REST Server API
+  description: API definition for __Title__ - REST Server
+spec:
+  type: openapi
+  owner: group:default/tilgangsstyring
+  lifecycle: experimental
+  system: system:default/__upstream__-plattformfunksjonalitet
+  definition:
+    $text: https://github.com/kartverket/__name__/blob/main/__name__-rest-server/openapi.json

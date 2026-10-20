@@ -9,6 +9,8 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -113,6 +115,19 @@ class ScopesTest {
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
             assertTrue(bodyAsText().contains("Oppdatert i test"))
+        }
+    }
+
+    @Test
+    fun testScopesPutAcceptsTheScopeAsItWasRead() = testApp {
+        val scope = client.get("/api/v1/scopes/scope?scope=kartverk:matrikkel.read").jsonObject()
+        val changed = JsonObject(scope + ("description" to JsonPrimitive("Endret etter henting")))
+        client.put("/api/v1/scopes?scope=kartverk:matrikkel.read") {
+            contentType(ContentType.Application.Json)
+            setBody(changed.toString())
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals("Endret etter henting", jsonObject().string("description"))
         }
     }
 

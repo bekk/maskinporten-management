@@ -69,6 +69,7 @@ curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/
 | :----------------------------------------------- | :-------------------------------------------------- |
 | `GET /api/scopes`                                | Lists the scopes                                    |
 | `POST /api/scopes`                               | Creates a scope                                     |
+| `PUT /api/scopes?scope=`                         | Updates a scope                                     |
 | `DELETE /api/scopes?scope=`                      | Deletes a scope                                     |
 | `GET /api/scopeaccess/orgs?scope=`               | Lists the organisations that have access to a scope |
 | `GET /api/scopeaccess/scopes?orgnr=`             | Lists the scopes an organisation has access to      |

@@ -26,6 +26,9 @@ import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.ScopeUpdateJson
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
 import org.slf4j.LoggerFactory
 
 fun main() {
@@ -72,34 +75,34 @@ fun Application.module(
 
         get("/api/scopes") {
             val filter = externalFiltering.filterFor(call)
-            call.respond(client.listScopes(filter))
+            call.respond(client.listScopes(filter).map(ScopeDetails::from))
         }.describe(scopesListOperation)
 
         post("/api/scopes") {
             call.noQuery()
             val scope = call.scopeJsonBody()
-            call.respond(client.createScope(scope))
+            call.respond(ScopeDetails.from(client.createScope(scope)))
         }.describe(scopeCreateOperation)
 
         put("/api/scopes") {
             val scope = call.scopeQueryParameter("scope")
-            call.respond(client.updateScope(scope, ScopeUpdateJson.of(call.jsonBody())))
+            call.respond(ScopeDetails.from(client.updateScope(scope, ScopeUpdateJson.of(call.jsonBody()))))
         }.describe(scopeUpdateOperation)
 
         delete("/api/scopes") {
             val scope = call.scopeQueryParameter("scope")
-            call.respond(client.deleteScope(scope))
+            call.respond(ScopeDetails.from(client.deleteScope(scope)))
         }.describe(scopeDeleteOperation)
 
         get("/api/scopeaccess/orgs") {
             val scope = call.scopeQueryParameter("scope")
-            call.respond(client.listScopeAccess(scope))
+            call.respond(client.listScopeAccess(scope).map(ScopeAccess::from))
         }.describe(scopeAccessOrgsOperation)
 
         get("/api/scopeaccess/scopes") {
             val orgnr = call.organizationNumberQueryParameter("orgnr")
             val filter = externalFiltering.filterFor(call)
-            call.respond(client.listConsumerScopeAccess(orgnr, filter))
+            call.respond(client.listConsumerScopeAccess(orgnr, filter).map(ScopeAccess::from))
         }.describe(scopeAccessScopesOperation)
 
         get("/api/scopeaccess/changelog") {
@@ -107,19 +110,19 @@ fun Application.module(
             val scope = scopeParameter("scope", query.getValue("scope"))
             val page = query["page"]?.let { wholeNumberParameter("page", it, min = 0) }
             val size = query["size"]?.let { wholeNumberParameter("size", it, min = 1) }
-            call.respond(client.getScopeAccessChangelog(scope, page, size))
+            call.respond(ScopeAccessChangelog.from(client.getScopeAccessChangelog(scope, page, size)))
         }.describe(scopeAccessChangelogOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
             val scope = call.scopeQueryParameter("scope")
-            call.respond(client.grantScopeAccess(consumerOrgno, scope))
+            call.respond(ScopeAccess.from(client.grantScopeAccess(consumerOrgno, scope)))
         }.describe(scopeAccessGrantOperation)
 
         delete("/api/scopeaccess/{consumerOrgno}") {
             val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
             val scope = call.scopeQueryParameter("scope")
-            call.respond(client.removeScopeAccess(consumerOrgno, scope))
+            call.respond(ScopeAccess.from(client.removeScopeAccess(consumerOrgno, scope)))
         }.describe(scopeAccessRemoveOperation)
     }
 }

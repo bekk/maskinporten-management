@@ -52,16 +52,19 @@ tests, see [its README](mock-api/README.md#tests).
   `OrganizationNumber.kt`. Don't restate the code, and don't add KDoc to obvious members.
 - **Explicit API in the client.** The client module uses `explicitApi()`, so declarations need an explicit
   visibility. Make `public` only what other services need.
-- **Our model of Digdir's answers.** The server answers with its own model: Digdir's field names, only the fields we
-  describe. An error status from Digdir's API passes through unchanged: status, body and content type. A 401 is the
-  exception: Digdir refused our token, not the caller's request, so the server answers 502. Every other
-  `DigdirException` is a 502 too: Digdir out of reach, Maskinporten refusing a token, or an answer the client cannot
-  read. An enum value Digdir adds later becomes `UNKNOWN` through `OrUnknownSerializer`.
+- **Our model of Digdir's answers.** The client models Digdir's API, and the server models its own API. The server
+  answers with the classes in `restserver/models`. They use Digdir's field names, but hold only the fields we describe.
+  The routes make them from the client's classes with `from(...)`, and they reuse the client's enums and value types.
+  To answer with a field Digdir adds, add it to both classes and to `from(...)`. An error status from Digdir's API
+  passes through unchanged: status, body and content type. A 401 is the exception: Digdir refused our token, not the
+  caller's request, so the server answers 502. Every other `DigdirException` is a 502 too: Digdir out of reach,
+  Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later becomes
+  `UNKNOWN` through `OrUnknownSerializer`.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.
 - **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
-  `/openapi` itself, which uses `.hide()`.
+  `/openapi` itself, which uses `.hide()`. Fields are described with `@JsonSchema` annotations on the server's models.
   `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and `OpenApiSpecFileTest` fails
   when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read

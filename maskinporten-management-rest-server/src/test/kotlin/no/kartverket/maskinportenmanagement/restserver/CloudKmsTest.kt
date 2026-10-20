@@ -24,6 +24,7 @@ import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
+import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair

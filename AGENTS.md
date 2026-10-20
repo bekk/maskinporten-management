@@ -77,11 +77,11 @@ tests, see [its README](mock-api/README.md#tests).
 ## Tests
 
 - `kotlin.test` on JUnit 5. Name a test with a sentence in backticks that states the behaviour.
-- No mocking library. Fake an `OutgoingHttpClient` with a lambda. In server tests, `json(...)` and `recording(...)` in
-  `TestServer.kt` help.
+- No mocking library. Fake an `OutgoingHttpClient` with a lambda. `json(...)` and `recording(...)` in the client's
+  `src/testFixtures` help, in the tests of both modules.
 - Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake
   Digdir. Tests of settings call `AppConfig.load(...)`.
-- Shared test data lives in the client's `src/testFixtures`: `DigdirJson.kt` and `TestKeys.kt`.
+- Shared test helpers live in the client's `src/testFixtures`: `DigdirJson.kt`, `TestKeys.kt` and `FakeHttp.kt`.
 
 ## Decisions (ADRs)
 

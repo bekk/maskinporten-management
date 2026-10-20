@@ -11,20 +11,11 @@ import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
-import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.net.URI
 
 internal const val CLIENT_CERTIFICATE =
     "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
-
-internal fun json(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
-
-internal fun recording(requests: MutableList<OutgoingRequest>, answer: (OutgoingRequest) -> OutgoingResponse) =
-    OutgoingHttpClient { request ->
-        requests += request
-        answer(request)
-    }
 
 internal fun testServer(
     digdir: OutgoingHttpClient,

@@ -5,9 +5,10 @@ import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
-import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.http.json
+import no.kartverket.maskinportenmanagement.client.http.recording
 import java.io.IOException
 import java.net.ConnectException
 import java.net.URI
@@ -26,17 +27,10 @@ class MaskinportenManagementClientTest {
 
     private fun clientAnswering(
         baseUrl: URI = URI("https://digdir.test"),
-        answer: (OutgoingRequest) -> OutgoingResponse = { OutgoingResponse(200, "application/json", "[]".toByteArray()) },
-    ) = MaskinportenManagementClient(
-        baseUrl,
-        OutgoingHttpClient { request ->
-            sent += request
-            answer(request)
-        },
-        { AccessToken.of("test-token") },
-    )
+        answer: (OutgoingRequest) -> OutgoingResponse = { json(200, "[]") },
+    ) = MaskinportenManagementClient(baseUrl, recording(sent, answer)) { AccessToken.of("test-token") }
 
-    private fun answering(body: String) = clientAnswering { OutgoingResponse(200, "application/json", body.toByteArray()) }
+    private fun answering(body: String) = clientAnswering { json(200, body) }
 
     private val filter = ScopeFilter(exact = listOf("kartverk:nrl.rapportering"), prefix = listOf("kartverk:tilgangsstyring/"))
 
@@ -44,10 +38,7 @@ class MaskinportenManagementClientTest {
     fun `a client made for an environment calls Digdir in that environment`() = runBlocking {
         for (environment in DigdirEnvironment.entries) {
             sent.clear()
-            val httpClient = OutgoingHttpClient { request ->
-                sent += request
-                OutgoingResponse(200, "application/json", "[]".toByteArray())
-            }
+            val httpClient = recording(sent) { json(200, "[]") }
 
             MaskinportenManagementClient(environment, httpClient) { AccessToken.of("test-token") }.listScopes()
 
@@ -394,7 +385,7 @@ class MaskinportenManagementClientTest {
         val refused = mutableListOf<AccessToken>()
         val client = MaskinportenManagementClient(
             URI("https://digdir.test"),
-            { OutgoingResponse(401, "application/json", """{"error":"invalid_token"}""".toByteArray()) },
+            { json(401, """{"error":"invalid_token"}""") },
             object : AccessTokenProvider {
                 override suspend fun accessToken() = AccessToken.of("test-token")
                 override suspend fun refused(token: AccessToken) {

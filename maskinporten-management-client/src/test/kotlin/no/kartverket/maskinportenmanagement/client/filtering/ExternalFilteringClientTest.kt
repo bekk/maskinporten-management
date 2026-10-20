@@ -4,9 +4,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
-import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.http.json
+import no.kartverket.maskinportenmanagement.client.http.recording
 import java.io.IOException
 import java.net.URI
 import kotlin.test.Test
@@ -23,13 +24,8 @@ class ExternalFilteringClientTest {
     private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
             URI("https://filtering.test/scopes"),
-            OutgoingHttpClient { request ->
-                sent += request
-                answer(request)
-            },
+            recording(sent, answer),
         )
-
-    private fun answer(status: Int, body: String) = OutgoingResponse(status, "application/json", body.toByteArray())
 
     @Serializable
     private data class SentRequest(val input: SentInput)
@@ -40,7 +36,7 @@ class ExternalFilteringClientTest {
     @Test
     fun `posts the client certificate as input headers and reads exact and prefix from the result`() = runBlocking {
         val filtering = filteringAnswering {
-            answer(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}}""")
+            json(200, """{"result":{"exact":["kartverk:nrl.rapportering"],"prefix":["kartverk:tilgangsstyring/"]}}""")
         }
 
         val filter = filtering.filterFor(certificate)
@@ -57,19 +53,19 @@ class ExternalFilteringClientTest {
     @Test
     fun `ignores fields it does not know`() = runBlocking {
         val filtering =
-            filteringAnswering { answer(200, """{"result":{"exact":[],"prefix":[],"actions":["scopes/read"]}}""") }
+            filteringAnswering { json(200, """{"result":{"exact":[],"prefix":[],"actions":["scopes/read"]}}""") }
 
         assertEquals(ScopeFilter(emptyList(), emptyList()), filtering.filterFor(certificate))
 
         val envelopeWithExtras =
-            filteringAnswering { answer(200, """{"result":{"exact":[],"prefix":[]},"decision_id":"abc"}""") }
+            filteringAnswering { json(200, """{"result":{"exact":[],"prefix":[]},"decision_id":"abc"}""") }
 
         assertEquals(ScopeFilter(emptyList(), emptyList()), envelopeWithExtras.filterFor(certificate))
     }
 
     @Test
     fun `treats a missing result as an undefined document, i e no access`() = runBlocking {
-        val filtering = filteringAnswering { answer(200, "{}") }
+        val filtering = filteringAnswering { json(200, "{}") }
 
         assertEquals(ScopeFilter(emptyList(), emptyList()), filtering.filterFor(certificate))
     }
@@ -84,7 +80,7 @@ class ExternalFilteringClientTest {
             "not json",
             "",
         )) {
-            val filtering = filteringAnswering { answer(200, body) }
+            val filtering = filteringAnswering { json(200, body) }
 
             assertFailsWith<ExternalFilteringException>(body) { runBlocking { filtering.filterFor(certificate) } }
         }
@@ -93,7 +89,7 @@ class ExternalFilteringClientTest {
     @Test
     fun `fails when a prefix is blank, since it would allow every scope`() {
         val filtering =
-            filteringAnswering { answer(200, """{"result":{"exact":[],"prefix":["kartverk:tilgangsstyring/",""]}}""") }
+            filteringAnswering { json(200, """{"result":{"exact":[],"prefix":["kartverk:tilgangsstyring/",""]}}""") }
 
         val e = assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
 
@@ -103,7 +99,7 @@ class ExternalFilteringClientTest {
     @Test
     fun `fails when the filtering service answers with an error`() {
         for (status in listOf(400, 403, 404, 500, 503)) {
-            val filtering = filteringAnswering { answer(status, """{"result":{"exact":[],"prefix":[]}}""") }
+            val filtering = filteringAnswering { json(status, """{"result":{"exact":[],"prefix":[]}}""") }
 
             val e = assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
 

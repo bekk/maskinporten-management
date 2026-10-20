@@ -6,17 +6,6 @@
         "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
     },
     "paths": {
-        "/health/live": {
-            "get": {
-                "summary": "Liveness probe",
-                "description": "Returns 200 OK if the server is up. Not part of the stable API.",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/api/scopes": {
             "put": {
                 "summary": "Update a scope",

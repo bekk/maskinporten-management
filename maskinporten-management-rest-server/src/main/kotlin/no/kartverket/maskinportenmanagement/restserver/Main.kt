@@ -75,7 +75,7 @@ fun Application.module(
     routing {
         get("/health/live") {
             call.respond(HttpStatusCode.OK)
-        }.describe(healthLiveOperation)
+        }.hide()
 
         get("/openapi") {
             call.respondText(spec, ContentType.Application.Json)

@@ -27,7 +27,7 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: maskinporten-managemen-client
+  name: maskinporten-management-client
   title: Maskinporten Management - Klientbibliotek
   description: Klientbibliotek for administrasjon av Maskinporten-scopes
 spec:

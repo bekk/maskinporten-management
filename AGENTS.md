@@ -98,7 +98,8 @@ old one's status.
 
 ## Boundaries
 
-- **Always:** keep `./gradlew build` passing. Update README.md and this file when the behaviour they describe changes.
+- **Always:** keep `./gradlew build` passing. Update README.md and this file when the behaviour they describe changes,
+  and keep the environment variable table in README.md in step with `.env.example`.
 - **Ask first:** adding a dependency; changing the REST API's paths or fields, or the client's public API.
 - **Never:** commit `.env`, keys or certificates; point a local run or a test at Digdir `TEST` or `PROD`; or edit
   `openapi.json` or anything under `build/` by hand.

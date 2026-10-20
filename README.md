@@ -72,6 +72,7 @@ curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/
 | `DELETE /api/scopes?scope=`                      | Deletes a scope                                     |
 | `GET /api/scopeaccess/orgs?scope=`               | Lists the organisations that have access to a scope |
 | `GET /api/scopeaccess/scopes?orgnr=`             | Lists the scopes an organisation has access to      |
+| `GET /api/scopeaccess/changelog?scope=`          | Lists the changes to who has access to a scope      |
 | `PUT /api/scopeaccess/{consumerOrgno}?scope=`    | Gives an organisation access to a scope             |
 | `DELETE /api/scopeaccess/{consumerOrgno}?scope=` | Removes an organisation's access to a scope         |
 | `GET /health/live`                               | Liveness probe for the platform                     |

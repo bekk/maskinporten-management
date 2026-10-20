@@ -16,6 +16,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
@@ -51,6 +52,17 @@ public class MaskinportenTokenProvider(
     context: CoroutineContext = Dispatchers.Default,
 ) : AccessTokenProvider,
     AutoCloseable {
+    public constructor(
+        environment: DigdirEnvironment,
+        clientId: String,
+        scopes: List<Scope>,
+        kms: Kms,
+        certificateChainPem: String,
+        httpClient: OutgoingHttpClient,
+        clock: Clock = Clock.systemUTC(),
+        context: CoroutineContext = Dispatchers.Default,
+    ) : this(environment.maskinportenWellKnownUrl, clientId, scopes, kms, certificateChainPem, httpClient, clock, context)
+
     init {
         require(scopes.isNotEmpty()) { "scopes must not be empty" }
     }

@@ -14,7 +14,7 @@ class ConfigTest {
     @Test
     fun `a misspelled environment names the valid values`() {
         val e = assertFailsWith<IllegalStateException> {
-            MapApplicationConfig("digdir.environment" to "test").enum<DigdirEnvironment>("digdir.environment")
+            MapApplicationConfig("digdir.environment" to "test").enum<DigdirEnvironmentSetting>("digdir.environment")
         }
 
         assertContains(e.message!!, "digdir.environment")

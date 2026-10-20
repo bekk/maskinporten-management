@@ -12,7 +12,7 @@ internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
     val logbackConfigFile: String?,
-    val digdirEnvironment: DigdirEnvironment,
+    val digdirEnvironment: DigdirEnvironmentSetting,
     val maskinportenClientId: String,
     val digdirAdminCertChain: String,
     val digdirAdminCloudKmsKeyPath: String?,

@@ -23,7 +23,7 @@ class ApplicationConfigTest {
         assumeTrue(System.getenv("DIGDIR_ENVIRONMENT") == null, "DIGDIR_ENVIRONMENT is set in this shell")
         val config = YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
 
-        val e = assertFailsWith<IllegalStateException> { config.enum<DigdirEnvironment>("digdir.environment") }
+        val e = assertFailsWith<IllegalStateException> { config.enum<DigdirEnvironmentSetting>("digdir.environment") }
 
         assertContains(e.message!!, "digdir.environment")
     }

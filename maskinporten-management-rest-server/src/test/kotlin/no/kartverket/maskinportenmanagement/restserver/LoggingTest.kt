@@ -3,8 +3,10 @@ package no.kartverket.maskinportenmanagement.restserver
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.log
 import io.ktor.server.response.respond
@@ -28,7 +30,10 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class LoggingTest {
 
@@ -62,7 +67,11 @@ class LoggingTest {
     }
 
     // Logs before and after moving to another thread, and fails, as the real routes can
-    private fun eventsFor(accessLog: Boolean, certificate: String?) = run {
+    private fun eventsFor(accessLog: Boolean, certificate: String?, requestId: String? = null) = run {
+        val headers: HttpRequestBuilder.() -> Unit = {
+            certificate?.let { header(CLIENT_CERTIFICATE_HEADER, it) }
+            requestId?.let { header(HttpHeaders.XRequestId, it) }
+        }
         testApplication {
             application {
                 module(testClient(), ExternalFiltering(null), accessLog)
@@ -75,11 +84,13 @@ class LoggingTest {
                     get("/fails") { error("boom") }
                 }
             }
-            client.get("/logs") { certificate?.let { header(CLIENT_CERTIFICATE_HEADER, it) } }
-            client.get("/fails") { certificate?.let { header(CLIENT_CERTIFICATE_HEADER, it) } }
+            client.get("/logs", headers)
+            client.get("/fails", headers)
         }
         appender.list
     }
+
+    private val ILoggingEvent.requestId get() = mdcPropertyMap["request_id"]
 
     private fun List<ILoggingEvent>.fromCalls() = filter {
         it.loggerName == "access" || it.formattedMessage in setOf("before", "on another thread", "Unhandled exception")
@@ -159,7 +170,62 @@ class LoggingTest {
     }
 
     @Test
-    fun `the lines of a token fetch have the workload of the call that waits for it`() {
+    fun `every line logged during a call has the request id the caller sent`() {
+        val events = eventsFor(true, certificate, requestId = "3f2a1c9e-7b4d-4e8f-9a6b-2c1d0e9f8a7b").fromCalls()
+
+        assertEquals(5, events.size, "expected two lines, an error and two access lines, got: $events")
+        events.forEach { assertEquals("3f2a1c9e-7b4d-4e8f-9a6b-2c1d0e9f8a7b", it.requestId, "for: $it") }
+    }
+
+    @Test
+    fun `a call without a request id gets a new one, the same on every line it logs`() {
+        val events = eventsFor(true, certificate).fromCalls()
+
+        val (logs, fails) = events.partition { it.formattedMessage in setOf("before", "on another thread") || "/logs" in it.formattedMessage }
+        val logsId = assertNotNull(logs.map { it.requestId }.distinct().single(), "for: $logs")
+        val failsId = assertNotNull(fails.map { it.requestId }.distinct().single(), "for: $fails")
+        assertNotEquals(logsId, failsId)
+    }
+
+    @Test
+    fun `a request id that is not safe to log is replaced by a new one`() {
+        val events = eventsFor(true, certificate, requestId = "id\" level=ERROR").fromCalls()
+
+        assertEquals(5, events.size, "expected two lines, an error and two access lines, got: $events")
+        events.forEach {
+            assertNotNull(it.requestId, "for: $it")
+            assertNotEquals("id\" level=ERROR", it.requestId, "for: $it")
+        }
+    }
+
+    @Test
+    fun `the response has the request id, so the caller can find the call in our logs`() {
+        val replied = mutableListOf<String?>()
+        testApplication {
+            application { module(testClient(), ExternalFiltering(null)) }
+            replied += client.get("/health/live") { header(HttpHeaders.XRequestId, "abc-123") }.headers[HttpHeaders.XRequestId]
+            replied += client.get("/health/live").headers[HttpHeaders.XRequestId]
+        }
+        val logged = appender.list.filter { it.loggerName == "access" }.map { it.requestId }
+
+        assertEquals("abc-123", replied[0])
+        assertEquals(logged, replied)
+    }
+
+    @Test
+    fun `a request id may only have letters, digits and a few separators, and at most 128 of them`() {
+        assertTrue(isSafeRequestId("3f2a1c9e-7b4d-4e8f-9a6b-2c1d0e9f8a7b"))
+        assertTrue(isSafeRequestId("team.app_1:42"))
+        assertTrue(isSafeRequestId("a".repeat(128)))
+        assertFalse(isSafeRequestId(""))
+        assertFalse(isSafeRequestId("a".repeat(129)))
+        assertFalse(isSafeRequestId("line\nbreak"))
+        assertFalse(isSafeRequestId("with space"))
+        assertFalse(isSafeRequestId("blåbær"))
+    }
+
+    @Test
+    fun `the lines of a token fetch have the workload and request id of the call that waits for it`() {
         val keyPair = rsaKeyPair()
         val maskinporten = LoggingOutgoingHttpClient { request ->
             when (request.url.path) {
@@ -187,13 +253,19 @@ class LoggingTest {
                     }
                 }
             }
-            client.get("/token") { header(CLIENT_CERTIFICATE_HEADER, certificate) }
+            client.get("/token") {
+                header(CLIENT_CERTIFICATE_HEADER, certificate)
+                header(HttpHeaders.XRequestId, "token-call")
+            }
         }
         tokenProvider.close()
 
         val events = appender.list.filter { it.loggerName == "outgoing" }
         assertEquals(4, events.size, "expected a call and an answer for the metadata and for the token, got: $events")
-        events.forEach { assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it") }
+        events.forEach {
+            assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it")
+            assertEquals("token-call", it.requestId, "for: $it")
+        }
     }
 
     // Logback reads the MDC when the event is first asked for it, which here is after the call is over

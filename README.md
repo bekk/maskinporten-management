@@ -125,6 +125,10 @@ The server does no authentication itself: the platform checks the calling app be
 filtering is on, the server sends the caller's `X-Forwarded-Client-Cert` header, which Istio sets, to the filtering
 service, which says which scopes the caller has access to.
 
+Every call gets a request id: the caller's `X-Request-Id` header, or a new UUID when it is missing or not safe to log.
+The server logs it on every line of the call as `request_id`, and sends it back in the response's `X-Request-Id`
+header, so a caller can tell us which call to look for.
+
 The OpenAPI spec documents every field and error. The server serves it at `GET /openapi`, and the same spec is checked
 in as [`openapi.json`](maskinporten-management-rest-server/openapi.json).
 

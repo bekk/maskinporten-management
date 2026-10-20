@@ -17,7 +17,7 @@ class ServerTest {
     @Test
     fun `the liveness probe answers 200`() = testApplication {
         application {
-            configureRouting()
+            module(testClient(), ExternalFiltering(null))
         }
         assertEquals(HttpStatusCode.OK, client.get("/health/live").status)
     }
@@ -25,7 +25,7 @@ class ServerTest {
     @Test
     fun `serves the OpenAPI spec as JSON, without servers`() = testApplication {
         application {
-            configureRouting()
+            module(testClient(), ExternalFiltering(null))
         }
         val response = client.get("/openapi")
         assertEquals(HttpStatusCode.OK, response.status)

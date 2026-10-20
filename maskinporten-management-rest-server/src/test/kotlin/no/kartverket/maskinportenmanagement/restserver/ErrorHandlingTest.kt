@@ -39,8 +39,7 @@ class ErrorHandlingTest {
 
     private fun answerTo(failure: Throwable, check: suspend (HttpResponse) -> Unit) = testApplication {
         application {
-            configureSerialization()
-            configureErrorHandling()
+            module(testClient(), ExternalFiltering(null))
             routing { get("/fails") { throw failure } }
         }
         check(client.get("/fails"))

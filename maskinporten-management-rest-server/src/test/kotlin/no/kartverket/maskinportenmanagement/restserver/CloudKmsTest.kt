@@ -88,13 +88,7 @@ class CloudKmsTest {
             )
             testApplication {
                 application {
-                    configureSerialization()
-                    configureErrorHandling()
-                    configureMaskinportenManagement(
-                        MaskinportenManagementClient(URI("https://digdir.test"), maskinporten, tokenProvider),
-                        ExternalFiltering(null),
-                    )
-                    configureRouting()
+                    module(MaskinportenManagementClient(URI("https://digdir.test"), maskinporten, tokenProvider), ExternalFiltering(null))
                 }
 
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")

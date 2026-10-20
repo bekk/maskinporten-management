@@ -95,6 +95,15 @@ class ConfigTest {
     }
 
     @Test
+    fun `refuses a logback config path that is not a file`() {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("logback.configFile" to "/no/such/logback.xml").file("logback.configFile")
+        }
+
+        assertContains(e.message!!, "/no/such/logback.xml")
+    }
+
+    @Test
     fun `loads the application config from the given file`() {
         val file = File.createTempFile("application", ".yaml").apply { deleteOnExit() }
         file.writeText("server:\n  port: \"9090\"\n")

@@ -12,7 +12,7 @@ class OpenApiSpecFileTest {
     @Test
     fun `the checked-in spec is the one the server serves`() = testApplication {
         application {
-            configureRouting()
+            module(testClient(), ExternalFiltering(null))
         }
 
         val served = client.get("/openapi").bodyAsText() + "\n"

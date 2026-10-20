@@ -16,6 +16,7 @@ import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFails
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MaskinportenManagementConfigTest {
@@ -28,6 +29,7 @@ class MaskinportenManagementConfigTest {
     }
 
     private val complete = mapOf(
+        "server.port" to "8080",
         "digdir.environment" to "LOCAL",
         "maskinporten.clientId" to "dev-client",
         "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
@@ -35,9 +37,13 @@ class MaskinportenManagementConfigTest {
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
 
+    private fun load(settings: Map<String, String>) = AppConfig.load(MapApplicationConfig(*settings.toList().toTypedArray()))
+
     private fun start(settings: Map<String, String>) = testApplication {
-        environment { config = MapApplicationConfig(*settings.toList().toTypedArray()) }
-        application { configureMaskinportenManagement() }
+        application {
+            val config = load(settings)
+            module(maskinportenManagementClient(config), externalFiltering(config), config.accessLog)
+        }
         startApplication()
     }
 
@@ -59,6 +65,12 @@ class MaskinportenManagementConfigTest {
         for (setting in settings) {
             assertContains(startupFailure(complete - setting), setting)
         }
+    }
+
+    @Test
+    fun `the access log is on unless switched off`() {
+        assertTrue(load(complete).accessLog)
+        assertFalse(load(complete + ("accessLog.enabled" to "false")).accessLog)
     }
 
     @Test

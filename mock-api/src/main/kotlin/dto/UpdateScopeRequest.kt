@@ -8,7 +8,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.jsonObject
 
 @OptIn(ExperimentalSerializationApi::class)
 @KeepGeneratedSerializer
@@ -37,7 +39,10 @@ data class UpdateScopeRequest(
     val supports_european_businesses: Boolean? = null
 )
 
+/** Set by Digdir, so a scope sent back as it was read still updates */
+private val READ_ONLY_FIELDS = setOf("name", "created", "last_updated")
+
 @OptIn(ExperimentalSerializationApi::class)
 object UpdateScopeRequestSerializer : JsonTransformingSerializer<UpdateScopeRequest>(UpdateScopeRequest.generatedSerializer()) {
-    override fun transformDeserialize(element: JsonElement) = collectTranslations(element)
+    override fun transformDeserialize(element: JsonElement) = collectTranslations(JsonObject(element.jsonObject - READ_ONLY_FIELDS))
 }

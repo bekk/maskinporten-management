@@ -3,7 +3,7 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "v0",
-        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists and deletes the scopes, and lists, gives\nand removes organisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates and deletes the scopes, and\nlists, gives and removes organisations' access to them.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
     },
     "paths": {
         "/health/live": {
@@ -18,6 +18,119 @@
             }
         },
         "/api/scopes": {
+            "post": {
+                "summary": "Create a scope",
+                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewScope"
+                            },
+                            "examples": {
+                                "NewScope": {
+                                    "value": {
+                                        "prefix": "kartverk",
+                                        "subscope": "tilgangsstyring/demo.read",
+                                        "description": "Lesetilgang til demo-API-et",
+                                        "description#en": "Read access to the demo API",
+                                        "allowed_integration_types": [
+                                            "maskinporten"
+                                        ],
+                                        "visibility": "PRIVATE"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "default": {
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+                    },
+                    "200": {
+                        "description": "The scope that was created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScopeDetails"
+                                },
+                                "examples": {
+                                    "CreatedScope": {
+                                        "value": {
+                                            "name": "kartverk:tilgangsstyring/demo.read",
+                                            "prefix": "kartverk",
+                                            "subscope": "tilgangsstyring/demo.read",
+                                            "description": "Lesetilgang til demo-API-et",
+                                            "description#en": "Read access to the demo API",
+                                            "active": true,
+                                            "created": "2026-01-15T09:30:00Z",
+                                            "last_updated": "2026-01-15T09:30:00Z",
+                                            "allowed_integration_types": [
+                                                "maskinporten"
+                                            ],
+                                            "owner_orgno": "971040238",
+                                            "token_type": "SELF_CONTAINED",
+                                            "visibility": "PRIVATE",
+                                            "requires_user_consent": false,
+                                            "requires_user_authentication": false,
+                                            "requires_pseudonymous_tokens": false,
+                                            "at_max_age": 120,
+                                            "authorization_max_lifetime": 0,
+                                            "accessible_for_all": false,
+                                            "protected": false,
+                                            "supports_european_businesses": false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or not text. Digdir can also answer `400`, in its own error format.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UnknownField": {
+                                        "value": {
+                                            "error": "The field \"Subscope\" is not allowed",
+                                            "code": "INVALID_REQUEST"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamError": {
+                                        "value": {
+                                            "error": "The call to Digdir failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    },
+                                    "KmsError": {
+                                        "value": {
+                                            "error": "The call to Cloud KMS failed",
+                                            "code": "UPSTREAM_ERROR"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "summary": "Delete a scope",
                 "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged.",
@@ -698,6 +811,10 @@
                         "type": "string",
                         "description": "`description` in Norwegian Nynorsk. Left out if the owner has not written one."
                     },
+                    "description#se": {
+                        "type": "string",
+                        "description": "`description` in Northern Sami. Left out if the owner has not written one."
+                    },
                     "long_description#en": {
                         "type": "string",
                         "description": "`long_description` in English. Left out if the owner has not written one."
@@ -705,6 +822,10 @@
                     "long_description#nn": {
                         "type": "string",
                         "description": "`long_description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "long_description#se": {
+                        "type": "string",
+                        "description": "`long_description` in Northern Sami. Left out if the owner has not written one."
                     },
                     "active": {
                         "type": "boolean",
@@ -824,6 +945,138 @@
                         ]
                     }
                 }
+            },
+            "NewScope": {
+                "type": "object",
+                "title": "NewScope",
+                "required": [
+                    "prefix",
+                    "subscope"
+                ],
+                "properties": {
+                    "prefix": {
+                        "type": "string",
+                        "description": "Digdir's prefix for the owner, `kartverk` for Kartverket: only the part before the colon."
+                    },
+                    "subscope": {
+                        "type": "string",
+                        "description": "The part after the colon, which the owner chose. It cannot be changed."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A short description in Norwegian Bokmål."
+                    },
+                    "long_description": {
+                        "type": "string",
+                        "description": "A longer description in Norwegian Bokmål. Left out, or empty, if the owner has not written one."
+                    },
+                    "description#en": {
+                        "type": "string",
+                        "description": "`description` in English. Left out if the owner has not written one."
+                    },
+                    "description#nn": {
+                        "type": "string",
+                        "description": "`description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "description#se": {
+                        "type": "string",
+                        "description": "`description` in Northern Sami. Left out if the owner has not written one."
+                    },
+                    "long_description#en": {
+                        "type": "string",
+                        "description": "`long_description` in English. Left out if the owner has not written one."
+                    },
+                    "long_description#nn": {
+                        "type": "string",
+                        "description": "`long_description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "long_description#se": {
+                        "type": "string",
+                        "description": "`long_description` in Northern Sami. Left out if the owner has not written one."
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "description": "Whether clients can get tokens for the scope."
+                    },
+                    "allowed_integration_types": {
+                        "type": "array",
+                        "description": "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or an empty list, which allows every kind.",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "ansattporten",
+                                "api_klient",
+                                "eformidling",
+                                "idporten",
+                                "idporten_saml2",
+                                "krr",
+                                "maskinporten"
+                            ]
+                        }
+                    },
+                    "owner_orgno": {
+                        "type": "string",
+                        "description": "Leave it out: Digdir makes the calling organisation, Kartverket, the owner."
+                    },
+                    "token_type": {
+                        "type": "string",
+                        "description": "The kind of access token issued for the scope.\n\n- `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.\n- `OPAQUE`: a token that the API has to look up with Digdir.",
+                        "enum": [
+                            "SELF_CONTAINED",
+                            "OPAQUE"
+                        ]
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "description": "Who can see the scope.\n\n- `PUBLIC`: anyone, in Digdir's list of all scopes.\n- `PRIVATE`: only the owner and the organisations given access.\n- `INTERNAL`: Digdir's own use.",
+                        "enum": [
+                            "INTERNAL",
+                            "PRIVATE",
+                            "PUBLIC"
+                        ]
+                    },
+                    "requires_user_consent": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must consent before a client gets a token."
+                    },
+                    "requires_user_authentication": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must log in again, even with an active session."
+                    },
+                    "requires_pseudonymous_tokens": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: tokens leave out the person's national identity number."
+                    },
+                    "delegation_source": {
+                        "type": "string",
+                        "description": "Where an organisation with access can delegate it to a supplier, such as `https://www.altinn.no/`. Left out when the scope cannot be delegated."
+                    },
+                    "at_max_age": {
+                        "type": "integer",
+                        "description": "The most seconds an access token for the scope can live. `0` means Digdir's default."
+                    },
+                    "authorization_max_lifetime": {
+                        "type": "integer",
+                        "description": "The most seconds an authorization for the scope can live. `0` means Digdir's default."
+                    },
+                    "accessible_for_all": {
+                        "type": "boolean",
+                        "description": "If `true`, every organisation can get tokens for the scope without being given access."
+                    },
+                    "enforced_aud_for_access_token": {
+                        "type": "string",
+                        "description": "Digdir does not document this field."
+                    },
+                    "protected": {
+                        "type": "boolean",
+                        "description": "Digdir does not document this field."
+                    },
+                    "supports_european_businesses": {
+                        "type": "boolean",
+                        "description": "Digdir does not document this field. Its name matches Digdir's feature that lets European businesses get tokens with an eIDAS seal, without being given access."
+                    }
+                },
+                "additionalProperties": false
             },
             "ScopeAccess": {
                 "type": "object",

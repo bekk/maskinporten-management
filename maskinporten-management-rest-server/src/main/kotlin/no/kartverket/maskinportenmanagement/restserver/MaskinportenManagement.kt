@@ -7,10 +7,7 @@ import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.ApplicationStopped
-import io.ktor.server.application.install
 import io.ktor.server.application.log
-import io.ktor.server.plugins.di.DI
-import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.request.contentType
 import io.ktor.server.request.queryString
 import io.ktor.server.request.receive
@@ -27,81 +24,40 @@ import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
-import java.io.File
 import java.net.http.HttpClient
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
-import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
 import java.time.Clock
 import java.time.Duration
 
-fun Application.configureMaskinportenManagement(
-    client: MaskinportenManagementClient = clientFromConfig(),
-    externalFiltering: ExternalFiltering = externalFilteringFromConfig(),
-) {
-    install(DI)
-    dependencies.provide<MaskinportenManagementClient> { client }
-    dependencies.provide<ExternalFiltering> { externalFiltering }
-}
-
-private fun Application.clientFromConfig(): MaskinportenManagementClient {
-    val config = environment.config
+internal fun Application.maskinportenManagementClient(config: AppConfig): MaskinportenManagementClient {
     val httpClient = httpClient()
-    val cloudKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
-    val localKeyPath = config.optional("digdirAdmin.localKeyPath")
-    check((cloudKeyPath == null) != (localKeyPath == null)) {
-        "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
-    }
-    val kms = cloudKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(pemFile("digdirAdmin.localKeyPath", localKeyPath!!))
-    val certChain = pemCertificateChain("digdirAdmin.certChain", config.required("digdirAdmin.certChain"))
-    val digdirEnvironment = config.enum<DigdirEnvironment>("digdir.environment")
+    val kms = config.digdirAdminCloudKmsKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(checkNotNull(config.digdirAdminLocalKey))
     val tokenProvider = MaskinportenTokenProvider(
-        wellKnownUrl = digdirEnvironment.maskinportenWellKnownUrl,
-        clientId = config.required("maskinporten.clientId"),
+        wellKnownUrl = config.digdirEnvironment.maskinportenWellKnownUrl,
+        clientId = config.maskinportenClientId,
         scopes = DIGDIR_SCOPES,
         kms = kms,
-        certificateChainPem = certChain,
+        certificateChainPem = config.digdirAdminCertChain,
         httpClient = httpClient,
     )
     monitor.subscribe(ApplicationStopped) {
         tokenProvider.close()
         (kms as? AutoCloseable)?.close()
     }
-    return MaskinportenManagementClient(digdirEnvironment.digdirBaseUrl, httpClient, tokenProvider)
+    return MaskinportenManagementClient(config.digdirEnvironment.digdirBaseUrl, httpClient, tokenProvider)
 }
 
 // Digdir's API requires idporten:scopes.read to read scope access and idporten:scopes.write to change it
 private val DIGDIR_SCOPES = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))
 
-private fun pemFile(setting: String, path: String): String {
-    val file = File(path)
-    check(file.isFile) { "$setting must point to a PEM file, but was \"$path\" (see .env.example)" }
-    return file.readText()
-}
-
-// The client parses the chain too, but its errors cannot name the setting
-private fun pemCertificateChain(setting: String, pem: String): String {
-    val error = "$setting must be the certificate chain itself in PEM, but was \"$pem\" (see .env.example)"
-    val certificates = try {
-        CertificateFactory.getInstance("X.509").generateCertificates(pem.byteInputStream())
-    } catch (e: CertificateException) {
-        throw IllegalStateException(error, e)
-    }
-    check(certificates.isNotEmpty()) { error }
-    return pem
-}
-
-private fun Application.externalFilteringFromConfig(): ExternalFiltering {
-    val config = environment.config
-    if (!config.boolean("externalFiltering.enabled", default = false)) {
+internal fun Application.externalFiltering(config: AppConfig): ExternalFiltering {
+    val url = config.externalFilteringUrl
+    if (url == null) {
         log.warn("External filtering is off")
         return ExternalFiltering(null)
     }
-    return ExternalFiltering(
-        ExternalFilteringClient(config.url("externalFiltering.url"), httpClient()),
-        cacheDuration = config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1)),
-    )
+    return ExternalFiltering(ExternalFilteringClient(url, httpClient()), config.externalFilteringCacheDuration)
 }
 
 private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(

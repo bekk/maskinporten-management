@@ -7,7 +7,6 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.log
-import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -48,18 +47,14 @@ class LoggingTest {
         root.detachAppender(appender)
     }
 
-    private fun linesFor(enabled: String?) = run {
+    private fun linesFor(accessLog: Boolean?) = run {
         testApplication {
-            environment {
-                config = if (enabled == null) {
-                    MapApplicationConfig()
-                } else {
-                    MapApplicationConfig("accessLog.enabled" to enabled)
-                }
-            }
             application {
-                configureLogging()
-                configureRouting()
+                if (accessLog == null) {
+                    module(testClient(), ExternalFiltering(null))
+                } else {
+                    module(testClient(), ExternalFiltering(null), accessLog)
+                }
             }
             client.get("/health/live")
         }
@@ -67,13 +62,10 @@ class LoggingTest {
     }
 
     // Logs before and after moving to another thread, and fails, as the real routes can
-    private fun eventsFor(enabled: String, certificate: String?) = run {
+    private fun eventsFor(accessLog: Boolean, certificate: String?) = run {
         testApplication {
-            environment { config = MapApplicationConfig("accessLog.enabled" to enabled) }
             application {
-                configureLogging()
-                configureSerialization()
-                configureErrorHandling()
+                module(testClient(), ExternalFiltering(null), accessLog)
                 routing {
                     get("/logs") {
                         call.application.log.info("before")
@@ -106,7 +98,7 @@ class LoggingTest {
 
     @Test
     fun `logs nothing when switched off`() {
-        val logged = linesFor("false")
+        val logged = linesFor(false)
 
         assertFalse(
             logged.any { it.contains("/health/live") },
@@ -144,7 +136,7 @@ class LoggingTest {
 
     @Test
     fun `every line logged during a call has the workload`() {
-        val events = eventsFor("true", certificate).fromCalls()
+        val events = eventsFor(true, certificate).fromCalls()
 
         assertEquals(5, events.size, "expected two lines, an error and two access lines, got: $events")
         events.forEach { assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it") }
@@ -152,7 +144,7 @@ class LoggingTest {
 
     @Test
     fun `every line logged during a call has the workload, also with the access log off`() {
-        val events = eventsFor("false", certificate).fromCalls()
+        val events = eventsFor(false, certificate).fromCalls()
 
         assertEquals(3, events.size, "expected two lines and an error, got: $events")
         events.forEach { assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it") }
@@ -160,7 +152,7 @@ class LoggingTest {
 
     @Test
     fun `a call without a caller has no workload`() {
-        val events = eventsFor("true", null).fromCalls()
+        val events = eventsFor(true, null).fromCalls()
 
         assertEquals(5, events.size, "expected two lines, an error and two access lines, got: $events")
         events.forEach { assertFalse("workload" in it.mdcPropertyMap, "for: $it") }
@@ -186,9 +178,8 @@ class LoggingTest {
             httpClient = maskinporten,
         )
         testApplication {
-            environment { config = MapApplicationConfig() }
             application {
-                configureLogging()
+                module(testClient(), ExternalFiltering(null))
                 routing {
                     get("/token") {
                         tokenProvider.accessToken()

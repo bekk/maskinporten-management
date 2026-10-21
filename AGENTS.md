@@ -57,14 +57,17 @@ tests, see [its README](mock-api/README.md#tests).
   exception: Digdir refused our token, not the caller's request, so the server answers 502. Every other
   `DigdirException` is a 502 too: Digdir out of reach, Maskinporten refusing a token, or an answer the client cannot
   read. An enum value Digdir adds later becomes `UNKNOWN` through `OrUnknownSerializer`.
+- **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
+  installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
+  `module(...)`, so that tests and production run the same code.
 - **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
   `/openapi` itself, which uses `.hide()`.
   `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and `OpenApiSpecFileTest` fails
   when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
-  it with the helpers in `Config.kt`, like `required` and `seconds`: they treat an empty value as unset, and their
-  errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with `(see .env.example)`. Write any
-  other error about a setting the same way.
+  it once, into `AppConfig` in `Config.kt`, with the helpers there, like `required` and `seconds`: they treat an empty
+  value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with
+  `(see .env.example)`. Write any other error about a setting the same way.
 - **Formatting** in every module, `mock-api` too, is ktlint with the rules in `.editorconfig`. Run `ktlintFormat`
   instead of formatting by hand.
 
@@ -73,8 +76,8 @@ tests, see [its README](mock-api/README.md#tests).
 - `kotlin.test` on JUnit 5. Name a test with a sentence in backticks that states the behaviour.
 - No mocking library. Fake an `OutgoingHttpClient` with a lambda. In server tests, `json(...)` and `recording(...)` in
   `TestServer.kt` help.
-- Server tests start the app with `testServer(...)` from `TestServer.kt` (Ktor's `testApplication`). It skips config
-  loading and access logging, so tests of those call `testApplication` directly.
+- Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake
+  Digdir. Tests of settings call `AppConfig.load(...)`.
 - Shared test data lives in the client's `src/testFixtures`: `DigdirJson.kt` and `TestKeys.kt`.
 
 ## Decisions (ADRs)

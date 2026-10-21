@@ -37,17 +37,12 @@ internal fun testServer(
     externalFiltering: ExternalFiltering,
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = testApplication {
-    application {
-        configureSerialization()
-        configureErrorHandling()
-        configureMaskinportenManagement(
-            MaskinportenManagementClient(URI("https://digdir.test"), digdir) { AccessToken.of("test-token") },
-            externalFiltering,
-        )
-        configureRouting()
-    }
+    application { module(testClient(digdir), externalFiltering) }
     block()
 }
+
+internal fun testClient(digdir: OutgoingHttpClient = OutgoingHttpClient { error("unexpected call to ${it.url}") }) =
+    MaskinportenManagementClient(URI("https://digdir.test"), digdir) { AccessToken.of("test-token") }
 
 internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())

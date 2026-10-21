@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.DefaultJson
 import io.ktor.serialization.kotlinx.json.json
@@ -8,6 +9,8 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.callid.CallId
+import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -30,6 +33,7 @@ import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 fun main() {
     val config = AppConfig.load()
@@ -50,11 +54,15 @@ fun Application.module(
     externalFiltering: ExternalFiltering,
     accessLog: Boolean = true,
 ) {
+    install(CallId) {
+        header(HttpHeaders.XRequestId)
+        generate { UUID.randomUUID().toString() }
+        verify(::isSafeRequestId)
+    }
     install(CallLogging) {
-        // Workload: on every line logged during a call
         mdc("workload") { workloadFrom(it.request.headers[CLIENT_CERTIFICATE_HEADER]) }
+        callIdMdc("request_id")
 
-        // Access log: one line per call on the "access" logger, if switched on
         logger = LoggerFactory.getLogger("access")
         disableDefaultColors()
         filter { accessLog }

@@ -7,3 +7,7 @@ internal fun workloadFrom(clientCertificate: String?): String? =
         ?.map { it.trim() }
         ?.lastOrNull { it.startsWith("URI=spiffe://") }
         ?.removePrefix("URI=")
+
+private val safeRequestId = Regex("[A-Za-z0-9._:-]{1,128}")
+
+internal fun isSafeRequestId(requestId: String): Boolean = safeRequestId.matches(requestId)

@@ -144,7 +144,7 @@ val httpClient = JavaOutgoingHttpClient(
 )
 
 val tokenProvider = MaskinportenTokenProvider(
-    wellKnownUrl = URI("https://test.maskinporten.no/.well-known/oauth-authorization-server"),
+    environment = DigdirEnvironment.TEST,
     clientId = "<client id>",
     scopes = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write")),
     kms = LocalKms.fromPem(privateKeyPem),
@@ -152,8 +152,10 @@ val tokenProvider = MaskinportenTokenProvider(
     httpClient = httpClient,
 )
 
-val client = MaskinportenManagementClient(URI("https://api.test.samarbeid.digdir.no"), httpClient, tokenProvider)
+val client = MaskinportenManagementClient(DigdirEnvironment.TEST, httpClient, tokenProvider)
 ```
+
+To call other URLs, like the mock API's, give `wellKnownUrl` and `baseUrl` instead of `environment`.
 
 Build one client and reuse it. The token provider signs a JWT grant that carries the business certificate chain,
 leaf first, and reuses each token until shortly before it expires, fetching the next one in the background. Close it
@@ -194,9 +196,9 @@ The server connects within 2 s and waits at most 10 s per call, since Digdir can
 | :---------- | :------------------------------------- | :-------------------------------------------------------------------- |
 | `TEST`      | `https://api.test.samarbeid.digdir.no` | `https://test.maskinporten.no/.well-known/oauth-authorization-server` |
 | `PROD`      | `https://api.samarbeid.digdir.no`      | `https://maskinporten.no/.well-known/oauth-authorization-server`      |
-| `LOCAL`     | `http://localhost:8090`                | `http://localhost:8090/.well-known/oauth-authorization-server`        |
 
-`LOCAL` is the mock API in `mock-api`. The server picks one with `DIGDIR_ENVIRONMENT`.
+The server also has `LOCAL`, the mock API in `mock-api` on `http://localhost:8090`. It picks one with
+`DIGDIR_ENVIRONMENT`.
 
 ---
 

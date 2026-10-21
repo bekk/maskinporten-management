@@ -41,6 +41,21 @@ class MaskinportenManagementClientTest {
     private val filter = ScopeFilter(exact = listOf("kartverk:nrl.rapportering"), prefix = listOf("kartverk:tilgangsstyring/"))
 
     @Test
+    fun `a client made for an environment calls Digdir in that environment`() = runBlocking {
+        for (environment in DigdirEnvironment.entries) {
+            sent.clear()
+            val httpClient = OutgoingHttpClient { request ->
+                sent += request
+                OutgoingResponse(200, "application/json", "[]".toByteArray())
+            }
+
+            MaskinportenManagementClient(environment, httpClient) { AccessToken.of("test-token") }.listScopes()
+
+            assertEquals("${environment.digdirBaseUrl}/api/v1/scopes", sent.single().url.toString(), environment.name)
+        }
+    }
+
+    @Test
     fun `lists Kartverket's scopes without a query`() = runBlocking {
         clientAnswering().listScopes()
 

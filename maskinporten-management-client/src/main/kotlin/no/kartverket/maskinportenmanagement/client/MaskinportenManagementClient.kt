@@ -20,6 +20,9 @@ public class MaskinportenManagementClient(
     private val httpClient: OutgoingHttpClient,
     private val accessTokenProvider: AccessTokenProvider,
 ) {
+    public constructor(environment: DigdirEnvironment, httpClient: OutgoingHttpClient, accessTokenProvider: AccessTokenProvider) :
+        this(environment.digdirBaseUrl, httpClient, accessTokenProvider)
+
     private val baseUrl = baseUrl.toString().trimEnd('/')
 
     public suspend fun listScopes(filter: ScopeFilter? = null): List<ScopeDetails> {

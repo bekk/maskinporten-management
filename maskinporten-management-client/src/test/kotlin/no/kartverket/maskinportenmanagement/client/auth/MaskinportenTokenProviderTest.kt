@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
@@ -127,6 +128,28 @@ class MaskinportenTokenProviderTest {
         val assertion = URLDecoder.decode(form.substringAfter("assertion="), Charsets.UTF_8)
         val claimsJson = decodeJson(assertion.split('.')[1])
         assertEquals("idporten:scopes.read idporten:scopes.write", claimsJson.getValue("scope").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `a provider made for an environment asks Maskinporten in that environment`() = runBlocking {
+        for (environment in DigdirEnvironment.entries) {
+            val asked = mutableListOf<URI>()
+            val unavailable = OutgoingHttpClient { request ->
+                asked += request.url
+                OutgoingResponse(503, null, ByteArray(0))
+            }
+
+            MaskinportenTokenProvider(
+                environment = environment,
+                clientId = "test-client",
+                scopes = listOf(Scope.of("idporten:scopes.write")),
+                kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
+                certificateChainPem = chain.joinToString("") { pem(it) },
+                httpClient = unavailable,
+            ).use { assertFailsWith<DigdirException> { it.accessToken() } }
+
+            assertEquals(listOf(environment.maskinportenWellKnownUrl), asked, environment.name)
+        }
     }
 
     @Test

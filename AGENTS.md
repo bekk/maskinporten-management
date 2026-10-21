@@ -36,7 +36,7 @@ Before you finish a change:
 
 ## Running locally
 
-Follow README.md's [Getting started](README.md#getting-started). It starts the mock API in `mock-api`, which plays
+Follow README.md's [Getting started](README.md#-getting-started). It starts the mock API in `mock-api`, which plays
 Digdir, Maskinporten and the filtering service.
 
 ## Conventions

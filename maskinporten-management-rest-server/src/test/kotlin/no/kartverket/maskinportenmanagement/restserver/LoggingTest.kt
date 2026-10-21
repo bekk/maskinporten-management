@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem

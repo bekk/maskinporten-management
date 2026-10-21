@@ -10,6 +10,8 @@ import io.ktor.http.withCharset
 import io.ktor.server.testing.ApplicationTestBuilder
 import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.json
+import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import kotlin.test.Test

@@ -14,6 +14,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.http.json
+import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse

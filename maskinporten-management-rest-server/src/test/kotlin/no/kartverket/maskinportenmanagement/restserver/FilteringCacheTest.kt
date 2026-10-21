@@ -8,6 +8,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.http.json
+import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.client.jsonList
 import java.net.URI
 import java.time.Duration

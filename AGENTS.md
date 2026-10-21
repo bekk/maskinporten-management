@@ -64,9 +64,9 @@ tests, see [its README](mock-api/README.md#tests).
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.
 - **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
-  `/openapi` itself, which uses `.hide()`. Fields are described with `@JsonSchema` annotations on the server's models.
-  `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and `OpenApiSpecFileTest` fails
-  when it is stale.
+  `/openapi` and `/health/live`, which use `.hide()`. Fields are described with `@JsonSchema` annotations on the
+  server's models. `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and
+  `OpenApiSpecFileTest` fails when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
   it once, into `AppConfig` in `Config.kt`, with the helpers there, like `required` and `seconds`: they treat an empty
   value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with

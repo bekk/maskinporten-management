@@ -71,16 +71,6 @@ private val apiInfo = OpenApiInfo(
 fun Application.openApiSpec(): String =
     openApiJson.encodeToString(OpenApiDoc(info = apiInfo) + plugin(RoutingRoot).getAllRoutes())
 
-internal val healthLiveOperation: Operation.Builder.() -> Unit = {
-    summary = "Liveness probe"
-    description = "Returns 200 OK if the server is up. Not part of the stable API."
-    responses {
-        HttpStatusCode.OK {
-            description = "OK"
-        }
-    }
-}
-
 private val exampleScopeAccess = ScopeAccess(
     scope = Scope.of("kartverk:matrikkel.read"),
     ownerOrgno = OrganizationNumber.of("971040238"),

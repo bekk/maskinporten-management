@@ -110,7 +110,7 @@ class MaskinportenManagementConfigTest {
     fun `the server does not start without the local key file, and names the setting`() {
         assertContains(
             startupFailure(complete + ("digdirAdmin.localKeyPath" to "does-not-exist.key")),
-            "digdirAdmin.localKeyPath must point to a PEM file",
+            "digdirAdmin.localKeyPath must point to a file",
         )
     }
 

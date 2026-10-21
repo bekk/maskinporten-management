@@ -23,7 +23,7 @@ internal class AppConfig(
     companion object {
         fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig {
             val cloudKmsKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
-            val localKeyPath = config.optional("digdirAdmin.localKeyPath")
+            val localKeyPath = config.file("digdirAdmin.localKeyPath")
             check((cloudKmsKeyPath == null) != (localKeyPath == null)) {
                 "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
             }
@@ -36,7 +36,7 @@ internal class AppConfig(
                 maskinportenClientId = config.required("maskinporten.clientId"),
                 digdirAdminCertChain = config.pemCertificateChain("digdirAdmin.certChain"),
                 digdirAdminCloudKmsKeyPath = cloudKmsKeyPath,
-                digdirAdminLocalKey = localKeyPath?.let { pemFile("digdirAdmin.localKeyPath", it) },
+                digdirAdminLocalKey = localKeyPath?.let { File(it).readText() },
                 externalFilteringUrl = if (externalFiltering) config.url("externalFiltering.url") else null,
                 externalFilteringCacheDuration = if (externalFiltering) {
                     config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1))
@@ -107,11 +107,6 @@ internal fun ApplicationConfig.file(path: String): String? {
     val raw = optional(path) ?: return null
     check(File(raw).isFile) { "$path must point to a file, but was \"$raw\" (see .env.example)" }
     return raw
-}
-
-private fun pemFile(path: String, file: String): String {
-    check(File(file).isFile) { "$path must point to a PEM file, but was \"$file\" (see .env.example)" }
-    return File(file).readText()
 }
 
 // The client parses the chain too, but its errors cannot name the setting

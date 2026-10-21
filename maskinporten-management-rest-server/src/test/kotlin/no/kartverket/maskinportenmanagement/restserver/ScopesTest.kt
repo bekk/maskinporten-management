@@ -147,4 +147,23 @@ class ScopesTest {
             assertEquals(Json.parseToJsonElement("[$scope]"), Json.parseToJsonElement(response.bodyAsText()))
         }
     }
+
+    @Test
+    fun `answers with every field this API knows, each with the value Digdir sent for it`() {
+        val scope = """
+            {"name":"kartverk:nrl.rapportering","prefix":"kartverk","subscope":"nrl.rapportering","description":"Rapportering",
+            "long_description":"Rapportering til NRL","description#en":"Reporting","description#nn":"Rapportering, nynorsk",
+            "description#se":"Raporteren","long_description#en":"Reporting to NRL","long_description#nn":"Rapportering til NRL, nynorsk",
+            "long_description#se":"Raporteren NRL","active":true,"created":"2026-01-15T09:30:00Z",
+            "last_updated":"2026-02-01T12:00:00Z","allowed_integration_types":["maskinporten","idporten"],"owner_orgno":"971040238",
+            "token_type":"OPAQUE","visibility":"PRIVATE","requires_user_consent":true,"requires_user_authentication":false,
+            "requires_pseudonymous_tokens":true,"delegation_source":"https://www.altinn.no/","at_max_age":120,
+            "authorization_max_lifetime":3600,"accessible_for_all":false,"enforced_aud_for_access_token":"https://api.kartverket.no",
+            "protected":true,"supports_european_businesses":false}
+        """.trimIndent()
+
+        scopesTest(filtering = null, digdir = { json(200, "[$scope]") }) {
+            assertEquals(Json.parseToJsonElement("[$scope]"), Json.parseToJsonElement(client.get("/api/scopes").bodyAsText()))
+        }
+    }
 }

@@ -28,26 +28,26 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.modules.EmptySerializersModule
 import no.kartverket.maskinportenmanagement.client.IntegrationType
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
-import no.kartverket.maskinportenmanagement.client.PageMetadata
 import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.client.ScopeAccess
-import no.kartverket.maskinportenmanagement.client.ScopeAccessChange
-import no.kartverket.maskinportenmanagement.client.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.client.ScopeAccessState
-import no.kartverket.maskinportenmanagement.client.ScopeDetails
 import no.kartverket.maskinportenmanagement.client.TokenType
 import no.kartverket.maskinportenmanagement.client.Visibility
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.models.INTEGRATION_TYPES
+import no.kartverket.maskinportenmanagement.restserver.models.PageMetadata
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChange
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
+import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
+import no.kartverket.maskinportenmanagement.restserver.models.TOKEN_TYPES
+import no.kartverket.maskinportenmanagement.restserver.models.VISIBILITIES
 import kotlin.time.Instant
 
 private val openApiJson = Json { prettyPrint = true }
-
-private val schemaInference = KotlinxSerializerJsonSchemaInference(EmptySerializersModule())
 
 private val exampleJson = Json {
     encodeDefaults = true
@@ -70,197 +70,6 @@ private val apiInfo = OpenApiInfo(
 
 fun Application.openApiSpec(): String =
     openApiJson.encodeToString(OpenApiDoc(info = apiInfo) + plugin(RoutingRoot).getAllRoutes())
-
-private fun JsonSchema.documented(
-    vararg fields: Pair<String, JsonSchema.() -> JsonSchema>,
-    required: List<String>? = this.required,
-): JsonSchema {
-    val documentation = fields.toMap()
-    val unknown = (documentation.keys + required.orEmpty()) - properties?.keys.orEmpty()
-    require(unknown.isEmpty()) {
-        "$title has no ${unknown.joinToString()} - a renamed field leaves the spec describing one that is gone"
-    }
-    return copy(
-        required = required,
-        properties = properties?.mapValues { (field, schema) ->
-            documentation[field]?.let { schema.mapValue(it) } ?: schema
-        },
-    )
-}
-
-// Like Digdir, this API leaves out a missing value instead of sending null
-private fun JsonSchema.leftOutWhenMissing(description: String): JsonSchema =
-    copy(type = JsonType.STRING, description = description)
-
-private val scopeAccessSchema = schemaInference.jsonSchema<ScopeAccess>().documented(
-    "scope" to { copy(description = "The scope.") },
-    "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
-    "owner_organization_name" to {
-        leftOutWhenMissing("The name of the organisation that owns the scope. Left out when Digdir has no name for it.")
-    },
-    "consumer_orgno" to { copy(description = "The organisation that was given access.") },
-    "consumer_organization_name" to {
-        leftOutWhenMissing("The name of the organisation that was given access. Left out when Digdir has no name for it.")
-    },
-    "state" to {
-        copy(
-            description = "Where the access stands. Only `APPROVED` means the organisation has access, and giving " +
-                "access through this API sets it at once. Digdir does not document when it uses `REQUESTED` and " +
-                "`DENIED`. `UNKNOWN` is a state Digdir has added that this API does not know yet.",
-        )
-    },
-    "created" to { copy(description = "When the access was given.", format = "date-time") },
-    "last_updated" to { copy(description = "When the access was last changed.", format = "date-time") },
-)
-
-private val scopeAccessChangeSchema = schemaInference.jsonSchema<ScopeAccessChange>().documented(
-    "id" to { copy(description = "Digdir's id for the change.") },
-    "created" to { copy(description = "When the change was made.", format = "date-time") },
-    "message" to { leftOutWhenMissing("Digdir's short summary of the change. Left out when Digdir sends none.") },
-    "actor_name" to {
-        leftOutWhenMissing(
-            "Who made the change, as Digdir records it. Changes made through this API are made with this API's " +
-                "Maskinporten client, not as the calling app. Left out when Digdir sends none.",
-        )
-    },
-    "channel" to {
-        leftOutWhenMissing(
-            "Where the change was made, as Digdir records it. Digdir does not document the values. Left out when " +
-                "Digdir sends none.",
-        )
-    },
-    "diff" to {
-        leftOutWhenMissing(
-            "What changed, as JSON in a string. Digdir does not document its format. Left out when Digdir sends none.",
-        )
-    },
-)
-
-private val pageMetadataSchema = schemaInference.jsonSchema<PageMetadata>().documented(
-    "size" to { copy(description = "The most changes a page holds.") },
-    "number" to { copy(description = "This page's number, counting from 0.") },
-    "totalElements" to { copy(description = "How many changes there are in all.") },
-    "totalPages" to { copy(description = "How many pages there are in all.") },
-)
-
-private val scopeAccessChangelogSchema = schemaInference.jsonSchema<ScopeAccessChangelog>().documented(
-    "content" to { copy(description = "The changes on this page.", items = ReferenceOr.Value(scopeAccessChangeSchema)) },
-    "page" to { pageMetadataSchema.copy(description = "Where this page is in the whole changelog.") },
-)
-
-private const val PERSONS_ONLY = "Only for logins with ID-porten, not for Maskinporten:"
-
-private const val INTEGRATION_TYPES = "The kinds of client that can use the scope. A Maskinporten client needs " +
-    "`maskinporten`, or an empty list, which allows every kind."
-
-private val TOKEN_TYPES = """
-    The kind of access token issued for the scope.
-
-    - `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.
-    - `OPAQUE`: a token that the API has to look up with Digdir.
-""".trimIndent()
-
-private val VISIBILITIES = """
-    Who can see the scope.
-
-    - `PUBLIC`: anyone, in Digdir's list of all scopes.
-    - `PRIVATE`: only the owner and the organisations given access.
-    - `INTERNAL`: Digdir's own use.
-""".trimIndent()
-
-private val scopeSchema = schemaInference.jsonSchema<ScopeDetails>().documented(
-    "name" to { copy(description = "The whole scope: the prefix, a colon and the subscope.") },
-    "prefix" to {
-        copy(description = "Digdir's prefix for the owner, `kartverk` for Kartverket: only the part before the colon.")
-    },
-    "subscope" to { copy(description = "The part after the colon, which the owner chose. It cannot be changed.") },
-    "description" to { copy(description = "A short description in Norwegian Bokmål.") },
-    "long_description" to {
-        leftOutWhenMissing("A longer description in Norwegian Bokmål. Left out, or empty, if the owner has not written one.")
-    },
-    "description#en" to { leftOutWhenMissing("`description` in English. Left out if the owner has not written one.") },
-    "description#nn" to {
-        leftOutWhenMissing("`description` in Norwegian Nynorsk. Left out if the owner has not written one.")
-    },
-    "description#se" to {
-        leftOutWhenMissing("`description` in Northern Sami. Left out if the owner has not written one.")
-    },
-    "long_description#en" to {
-        leftOutWhenMissing("`long_description` in English. Left out if the owner has not written one.")
-    },
-    "long_description#nn" to {
-        leftOutWhenMissing("`long_description` in Norwegian Nynorsk. Left out if the owner has not written one.")
-    },
-    "long_description#se" to {
-        leftOutWhenMissing("`long_description` in Northern Sami. Left out if the owner has not written one.")
-    },
-    "active" to {
-        copy(description = "Always `true` in `GET /api/scopes`, which lists only active scopes, and `false` once the scope is deleted.")
-    },
-    "created" to { copy(description = "When the scope was created.", format = "date-time") },
-    "last_updated" to { copy(description = "When the scope was last changed.", format = "date-time") },
-    "allowed_integration_types" to {
-        copy(description = "$INTEGRATION_TYPES `unknown` is a kind Digdir has added that this API does not know yet.")
-    },
-    "owner_orgno" to { copy(description = "The organisation that owns the scope: Kartverket.") },
-    "token_type" to {
-        copy(description = "$TOKEN_TYPES\n- `UNKNOWN`: a kind Digdir has added that this API does not know yet.")
-    },
-    "visibility" to {
-        copy(description = "$VISIBILITIES\n- `UNKNOWN`: a value Digdir has added that this API does not know yet.")
-    },
-    "requires_user_consent" to {
-        copy(description = "$PERSONS_ONLY a person must consent before a client gets a token.")
-    },
-    "requires_user_authentication" to {
-        copy(description = "$PERSONS_ONLY a person must log in again, even with an active session.")
-    },
-    "requires_pseudonymous_tokens" to {
-        copy(description = "$PERSONS_ONLY tokens leave out the person's national identity number.")
-    },
-    "delegation_source" to {
-        leftOutWhenMissing(
-            "Where an organisation with access can delegate it to a supplier, such as `https://www.altinn.no/`. Left " +
-                "out when the scope cannot be delegated.",
-        )
-    },
-    "at_max_age" to {
-        copy(description = "The most seconds an access token for the scope can live. `0` means Digdir's default.")
-    },
-    "authorization_max_lifetime" to {
-        copy(description = "The most seconds an authorization for the scope can live. `0` means Digdir's default.")
-    },
-    "accessible_for_all" to {
-        copy(description = "If `true`, every organisation can get tokens for the scope without being given access.")
-    },
-    "enforced_aud_for_access_token" to { leftOutWhenMissing("Digdir does not document this field.") },
-    "protected" to { copy(description = "Digdir does not document this field.") },
-    "supports_european_businesses" to {
-        copy(
-            description = "Digdir does not document this field. Its name matches Digdir's feature that lets European " +
-                "businesses get tokens with an eIDAS seal, without being given access.",
-        )
-    },
-)
-
-private val errorResponseSchema = schemaInference.jsonSchema<ErrorResponse>().documented(
-    "error" to {
-        copy(description = "A short summary for people to read. The wording may change, so check `code` in your code.")
-    },
-    "code" to {
-        copy(
-            description = """
-                What went wrong. These values do not change, so your code can rely on them.
-
-                - `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.
-                - `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which
-                  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
-                  Maskinporten tokens. Your request did not cause it.
-                - `INTERNAL_ERROR` (500): an unexpected error in this API.
-            """.trimIndent(),
-        )
-    },
-)
 
 internal val healthLiveOperation: Operation.Builder.() -> Unit = {
     summary = "Liveness probe"
@@ -324,7 +133,7 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
     HttpStatusCode.BadRequest {
         this.description = "$description Digdir can also answer `400`, in its own error format."
         ContentType.Application.Json {
-            schema = errorResponseSchema
+            schema = jsonSchema<ErrorResponse>()
             examples.forEach { (name, value) -> example(name, value) }
         }
     }
@@ -341,7 +150,7 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
                 "Maskinporten tokens. Your request did not cause it."
         }
         ContentType.Application.Json {
-            schema = errorResponseSchema
+            schema = jsonSchema<ErrorResponse>()
             example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
             if (filtered) {
                 example(
@@ -408,18 +217,27 @@ private fun JsonSchema.withoutUnknown(): JsonSchema = copy(
     items = items?.mapValue { it.withoutUnknown() },
 )
 
-private val newScopeSchema = scopeSchema.copy(
-    title = "NewScope",
-    properties = scopeSchema.properties?.filterKeys { it !in setOf("name", "created", "last_updated") },
-    required = listOf("prefix", "subscope"),
-    additionalProperties = AdditionalProperties.Allowed(false),
-).documented(
-    "active" to { copy(description = "Whether clients can get tokens for the scope.") },
-    "owner_orgno" to { copy(description = "Leave it out: Digdir makes the calling organisation, Kartverket, the owner.") },
-    "allowed_integration_types" to { withoutUnknown().copy(description = INTEGRATION_TYPES) },
-    "token_type" to { withoutUnknown().copy(description = TOKEN_TYPES) },
-    "visibility" to { withoutUnknown().copy(description = VISIBILITIES) },
+private val newScopeDescriptions = mapOf(
+    "active" to "Whether clients can get tokens for the scope.",
+    "owner_orgno" to "Leave it out: Digdir makes the calling organisation, Kartverket, the owner.",
+    "allowed_integration_types" to INTEGRATION_TYPES,
+    "token_type" to TOKEN_TYPES,
+    "visibility" to VISIBILITIES,
 )
+
+// The body is sent on to Digdir as it is, so it has no type of its own: it is a scope without the fields Digdir sets
+private val newScopeSchema = KotlinxSerializerJsonSchemaInference.Default.jsonSchema<ScopeDetails>().run {
+    copy(
+        title = "NewScope",
+        properties = properties
+            ?.filterKeys { it !in setOf("name", "created", "last_updated") }
+            ?.mapValues { (field, schema) ->
+                schema.mapValue { it.withoutUnknown().copy(description = newScopeDescriptions[field] ?: it.description) }
+            },
+        required = listOf("prefix", "subscope"),
+        additionalProperties = AdditionalProperties.Allowed(false),
+    )
+}
 
 private val exampleNewScope = buildJsonObject {
     put("prefix", "kartverk")
@@ -455,7 +273,7 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The scope that was created."
             ContentType.Application.Json {
-                schema = scopeSchema
+                schema = jsonSchema<ScopeDetails>()
                 example("CreatedScope", exampleCreatedScope)
             }
         }
@@ -487,7 +305,7 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
     requestBody {
         required = true
         ContentType.Application.Json {
-            schema = scopeSchema
+            schema = jsonSchema<ScopeDetails>()
             example("ScopeUpdate", exampleUpdatedScope)
         }
     }
@@ -496,7 +314,7 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The scope after the update."
             ContentType.Application.Json {
-                schema = scopeSchema
+                schema = jsonSchema<ScopeDetails>()
                 example("UpdatedScope", exampleUpdatedScope)
             }
         }
@@ -526,7 +344,7 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The scopes the calling app has access to. The list is empty if it has access to none."
             ContentType.Application.Json {
-                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeSchema))
+                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeDetails>()))
                 example("Scopes", listOf(exampleScope))
             }
         }
@@ -552,7 +370,7 @@ internal val scopeDeleteOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The scope that was deleted."
             ContentType.Application.Json {
-                schema = scopeSchema
+                schema = jsonSchema<ScopeDetails>()
                 example("DeletedScope", exampleScope.copy(active = false))
             }
         }
@@ -574,7 +392,7 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The organisations given access to the scope. Check `state`: only `APPROVED` means access."
             ContentType.Application.Json {
-                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
+                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeAccess>()))
                 example("Consumers", listOf(exampleScopeAccess))
             }
         }
@@ -604,7 +422,7 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
             description = "The organisation's access to the scopes the calling app has access to. Check `state`: " +
                 "only `APPROVED` means access. The list is empty if there is none."
             ContentType.Application.Json {
-                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(scopeAccessSchema))
+                schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeAccess>()))
                 example("Scopes", listOf(exampleScopeAccess))
             }
         }
@@ -661,7 +479,7 @@ internal val scopeAccessChangelogOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "One page of the changes."
             ContentType.Application.Json {
-                schema = scopeAccessChangelogSchema
+                schema = jsonSchema<ScopeAccessChangelog>()
                 example("Changelog", exampleScopeAccessChangelog)
             }
         }
@@ -689,7 +507,7 @@ internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The access that was given."
             ContentType.Application.Json {
-                schema = scopeAccessSchema
+                schema = jsonSchema<ScopeAccess>()
                 example("GivenAccess", exampleScopeAccess)
             }
         }
@@ -713,7 +531,7 @@ internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
         HttpStatusCode.OK {
             description = "The access that was removed."
             ContentType.Application.Json {
-                schema = scopeAccessSchema
+                schema = jsonSchema<ScopeAccess>()
                 example("RemovedAccess", exampleScopeAccess)
             }
         }

@@ -51,8 +51,8 @@ class CreateScopeTest {
             "[]" to "Expected a scope as a JSON object",
             """{"prefix":"kartverk","active":True}""" to "The body is not valid JSON: ",
             """{"subscope":"a","subscope":"b"}""" to "The body is not valid JSON: ",
-            """{"prefix":"kartverk","Subscope":"a"}""" to "The field \"Subscope\" is not allowed",
-            """{"prefix":"kartverk"}""" to "The field \"subscope\" is required, as text",
+            """{"prefix":"kartverk","Subscope":"a"}""" to "Subscope is not allowed; subscope is required",
+            """{"prefix":"kartverk"}""" to "subscope is required",
         )
         for ((body, error) in refusals) {
             val response = createScope(body.toByteArray())

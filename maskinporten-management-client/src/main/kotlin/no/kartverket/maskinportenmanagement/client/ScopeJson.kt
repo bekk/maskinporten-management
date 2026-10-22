@@ -1,8 +1,12 @@
 package no.kartverket.maskinportenmanagement.client
 
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.client.validation.ValidationError
+import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import tools.jackson.core.JacksonException
 import tools.jackson.core.StreamReadFeature
 import tools.jackson.databind.DeserializationFeature
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.node.ObjectNode
 
@@ -36,11 +40,20 @@ public value class ScopeJson private constructor(public val value: String) {
                 throw IllegalArgumentException("The body is not valid JSON: ${e.originalMessage}")
             }
             require(json is ObjectNode) { "Expected a scope as a JSON object" }
-            val unknown = json.propertyNames().firstOrNull { it !in FIELDS }
-            require(unknown == null) { "The field \"$unknown\" is not allowed" }
-            val missing = NAME_FIELDS.firstOrNull { json[it]?.takeIf { it.isString }?.stringValue().isNullOrBlank() }
-            require(missing == null) { "The field \"$missing\" is required, as text" }
+            val errors = json.propertyNames().filter { it !in FIELDS }.map {
+                ValidationError(it, ValidationCode.NOT_ALLOWED, "$it is not allowed")
+            } + NAME_FIELDS.mapNotNull { nameFieldError(it, json[it]) }
+            if (errors.isNotEmpty()) throw ValidationException(errors)
             return ScopeJson(value)
+        }
+
+        private fun nameFieldError(field: String, node: JsonNode?): ValidationError? = when {
+            node == null || node.isNull || (node.isString && node.stringValue().isBlank()) ->
+                ValidationError(field, ValidationCode.MISSING, "$field is required")
+
+            !node.isString -> ValidationError(field, ValidationCode.INVALID_FORMAT, "$field must be text")
+
+            else -> null
         }
     }
 }

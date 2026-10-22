@@ -49,8 +49,8 @@ app has access to.
 
 > [!NOTE]
 > The server answers with its own model of Digdir's data. A field Digdir adds is left out until this project models
-> it, and a value Digdir adds to one of its lists of values becomes `UNKNOWN`. When Digdir answers with an error, the
-> server passes that answer on unchanged.
+> it, and a value Digdir adds to one of its lists of values becomes `UNKNOWN`. When Digdir rejects a request, the
+> server answers with Digdir's status and explanation, in its own error format.
 
 ---
 
@@ -129,9 +129,10 @@ Every call gets a request id: the caller's `X-Request-Id` header, or a new UUID 
 The server logs it on every line of the call as `request_id`, and sends it back in the response's `X-Request-Id`
 header, so a caller can tell us which call to look for.
 
-The server's own errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent as
+The server's errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent as
 `application/problem+json`, with a `code` your code can rely on, and with `VALIDATION_ERROR` an `errors` list of every
-field that failed. When Digdir answers with an error, that answer is passed on unchanged instead.
+field that failed. When Digdir rejects a request, the answer keeps Digdir's status, with `code` `UPSTREAM_REJECTED` and
+Digdir's explanation in `detail`.
 
 The OpenAPI spec documents every field and error. The server serves it at `GET /openapi`, and the same spec is checked
 in as [`openapi.json`](maskinporten-management-rest-server/openapi.json).

@@ -67,8 +67,8 @@ private val apiInfo = OpenApiInfo(
 
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
-        hold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this
-        API returns that answer unchanged: its status, body and content type.
+        hold the fields described here: a field Digdir adds later is left out. When Digdir rejects a request, this API
+        answers with Digdir's status and explanation, in its own error format.
     """.trimIndent(),
 )
 
@@ -141,7 +141,7 @@ private fun Parameters.Builder.consumerOrgno() {
 
 private fun Responses.Builder.badRequest(description: String, vararg examples: Pair<String, ErrorResponse>) {
     HttpStatusCode.BadRequest {
-        this.description = "$description Digdir can also answer `400`, in its own error format."
+        this.description = "$description Digdir can also reject the request with `400`, as `UPSTREAM_REJECTED`."
         headers { requestId() }
         ContentType.Application.ProblemJson {
             schema = jsonSchema<ErrorResponse>()
@@ -153,12 +153,12 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
 private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolean = false) {
     HttpStatusCode.BadGateway {
         description = if (filtered) {
-            "This API could not get an answer from Digdir, from the service that says which scopes the calling app " +
-                "has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your " +
-                "request did not cause it."
+            "This API could not get a usable answer from Digdir, from the service that says which scopes the " +
+                "calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten " +
+                "tokens. Your request did not cause it."
         } else {
-            "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for " +
-                "Maskinporten tokens. Your request did not cause it."
+            "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests " +
+                "for Maskinporten tokens. Your request did not cause it."
         }
         headers { requestId() }
         ContentType.Application.ProblemJson {
@@ -175,14 +175,25 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
     }
 
     default {
-        description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
-            "The exception is a `500` with `code` `INTERNAL_ERROR`, as `application/problem+json`, which is an unexpected " +
-            "error in this API."
+        description = "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `code` " +
+            "is `UPSTREAM_REJECTED`, and `detail` is Digdir's explanation. A `500` with `code` `INTERNAL_ERROR` is an " +
+            "unexpected error in this API."
         headers { requestId() }
+        ContentType.Application.ProblemJson {
+            schema = jsonSchema<ErrorResponse>()
+            example(
+                "UpstreamRejected",
+                ErrorResponse.of(HttpStatusCode.Conflict, "The explanation Digdir gave", ErrorCode.UPSTREAM_REJECTED),
+            )
+            example(
+                "InternalError",
+                ErrorResponse.of(HttpStatusCode.InternalServerError, "Internal server error", ErrorCode.INTERNAL_ERROR),
+            )
+        }
     }
 }
 
-private const val DIGDIR_ERRORS = "When Digdir answers with an error, that answer is returned unchanged."
+private const val DIGDIR_ERRORS = "When Digdir rejects the request, the answer has Digdir's status and explanation."
 
 private fun validationError(field: String, code: ValidationCode, message: String) = ErrorResponse.of(
     HttpStatusCode.BadRequest,

@@ -5,9 +5,7 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -25,9 +23,7 @@ import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class DigdirAnswersTest {
 
@@ -92,36 +88,64 @@ class DigdirAnswersTest {
     }
 
     @Test
-    fun `passes Digdir's errors on with their status, content type and body unchanged`() {
-        val error = """{"status":404,"error":"ikke funnet: æøå"}""".toByteArray(Charsets.ISO_8859_1)
-        val errors = listOf(400, 403, 404, 409, 500, 503).map { OutgoingResponse(it, "application/json;charset=ISO-8859-1", error) }
-        var answer = errors.first()
+    fun `a rejection from Digdir keeps Digdir's status, with Digdir's explanation as UPSTREAM_REJECTED`() {
+        val rejection = """{"status":409,"error":"Conflict","error_description":"finnes allerede: æøå"}"""
+        var answer = json(200, "[]")
         digdirAnswering({ answer }) {
             for (endpoint in endpoints) {
-                for (digdirAnswer in errors) {
-                    answer = digdirAnswer
+                for (status in listOf(400, 403, 404, 409)) {
+                    answer = OutgoingResponse(status, "application/json;charset=ISO-8859-1", rejection.toByteArray(Charsets.ISO_8859_1))
                     val response = call(endpoint)
 
-                    val case = "$endpoint, Digdir answered ${digdirAnswer.statusCode}"
-                    assertEquals(digdirAnswer.statusCode, response.status.value, case)
-                    assertEquals(digdirAnswer.contentType?.let(ContentType::parse), response.contentType(), case)
-                    assertContentEquals(digdirAnswer.body, response.readRawBytes(), case)
+                    val case = "$endpoint, Digdir answered $status"
+                    assertEquals(status, response.status.value, case)
+                    assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), case)
+                    assertEquals(
+                        ErrorResponse.of(HttpStatusCode.fromValue(status), "finnes allerede: æøå", ErrorCode.UPSTREAM_REJECTED),
+                        response.errorResponse(),
+                        case,
+                    )
                 }
             }
         }
     }
 
     @Test
-    fun `leaves out a content type from Digdir that cannot be parsed, and passes on the rest`() =
-        digdirAnswering({ OutgoingResponse(503, "text", "Service Unavailable".toByteArray()) }) {
-            for (endpoint in endpoints) {
-                val response = call(endpoint)
+    fun `explains a rejection with Digdir's error_description, else its error, else only that Digdir rejected it`() {
+        val cases = listOf(
+            json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}""") to "Scope finnes ikke",
+            json(404, """{"error":"not_found","error_description":" "}""") to "not_found",
+            json(404, """{"error":"not_found"}""") to "not_found",
+            OutgoingResponse(404, "text", """{"error_description":"Scope finnes ikke"}""".toByteArray()) to "Scope finnes ikke",
+            json(404, """{"error_description":42}""") to "Digdir rejected the request",
+            json(404, "[]") to "Digdir rejected the request",
+            OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()) to "Digdir rejected the request",
+            OutgoingResponse(404, null, ByteArray(0)) to "Digdir rejected the request",
+        )
+        var answer = cases.first().first
+        digdirAnswering({ answer }) {
+            for ((digdirAnswer, detail) in cases) {
+                answer = digdirAnswer
+                val response = call(endpoints.first())
 
-                assertEquals(HttpStatusCode.ServiceUnavailable, response.status, "$endpoint")
-                assertNull(response.headers[HttpHeaders.ContentType], "$endpoint")
-                assertEquals("Service Unavailable", response.bodyAsText(), "$endpoint")
+                assertEquals(HttpStatusCode.NotFound, response.status, detail)
+                assertEquals(ErrorResponse.of(HttpStatusCode.NotFound, detail, ErrorCode.UPSTREAM_REJECTED), response.errorResponse(), detail)
             }
         }
+    }
+
+    @Test
+    fun `any other error status from Digdir gives 502, since the caller did not cause it`() {
+        var answer = json(200, "[]")
+        digdirAnswering({ answer }) {
+            for (endpoint in endpoints) {
+                for (status in listOf(302, 500, 503)) {
+                    answer = OutgoingResponse(status, "text", "Service Unavailable".toByteArray())
+                    assertDigdirFailed(call(endpoint), endpoint)
+                }
+            }
+        }
+    }
 
     @Test
     fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =

@@ -28,9 +28,11 @@ data class ErrorResponse(
   invalid or not allowed. `errors` lists all of them.
 - `MALFORMED_REQUEST` (400): the request could not be read, for example a query that is not a list of names and
   values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.
+- `UPSTREAM_REJECTED` (the status Digdir gave, for example 403, 404 or 409): the request passed this API's checks,
+  but Digdir rejected it. `detail` is Digdir's explanation.
 - `NOT_FOUND` (404): there is no endpoint at this path.
 - `METHOD_NOT_ALLOWED` (405): the endpoint at this path does not accept this HTTP method.
-- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which
+- `UPSTREAM_ERROR` (502): this API could not get a usable answer from Digdir, from the service that says which
   scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
   Maskinporten tokens. Your request did not cause it.
 - `INTERNAL_ERROR` (500): an unexpected error in this API.""",

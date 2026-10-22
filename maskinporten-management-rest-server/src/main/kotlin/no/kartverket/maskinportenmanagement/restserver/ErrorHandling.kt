@@ -3,15 +3,17 @@ package no.kartverket.maskinportenmanagement.restserver
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLDecodeException
+import io.ktor.http.charset
 import io.ktor.http.decodeURLQueryComponent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.log
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.statuspages.StatusPagesConfig
 import io.ktor.server.request.uri
-import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import no.kartverket.maskinportenmanagement.client.DigdirException
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
@@ -40,11 +42,15 @@ internal fun StatusPagesConfig.errorResponses() {
         call.respondProblem(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, "The call to Digdir failed")
     }
     exception<DigdirErrorResponseException> { call, cause ->
-        call.respondBytes(
-            bytes = cause.body,
-            contentType = cause.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
-            status = HttpStatusCode.fromValue(cause.statusCode),
-        )
+        val answer = cause.text()
+        if (cause.statusCode in 400..499) {
+            call.application.log.info("Digdir rejected the request with HTTP ${cause.statusCode}: $answer")
+            val detail = explanation(answer) ?: "Digdir rejected the request"
+            call.respondProblem(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.fromValue(cause.statusCode), detail)
+        } else {
+            call.application.log.error("Digdir answered HTTP ${cause.statusCode}: $answer")
+            call.respondProblem(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, "The call to Digdir failed")
+        }
     }
     exception<ExternalFilteringException> { call, cause ->
         call.application.log.error("Call to the filtering service failed", cause)
@@ -76,6 +82,18 @@ private suspend fun ApplicationCall.respondProblem(
     ContentType.Application.ProblemJson,
     status,
 )
+
+private fun DigdirErrorResponseException.text(): String {
+    val charset = contentType?.let { runCatching { ContentType.parse(it).charset() }.getOrNull() }
+    return body.toString(charset ?: Charsets.UTF_8)
+}
+
+private fun explanation(answer: String): String? {
+    val fields = runCatching { Json.parseToJsonElement(answer) }.getOrNull() as? JsonObject ?: return null
+    return listOf("error_description", "error").firstNotNullOfOrNull { name ->
+        (fields[name] as? JsonPrimitive)?.takeIf { it.isString && it.content.isNotBlank() }?.content
+    }
+}
 
 internal fun isBrokenUrl(uri: String): Boolean = try {
     uri.decodeURLQueryComponent()

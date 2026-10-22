@@ -67,17 +67,17 @@ class ScopeAccessTest {
     @Test
     fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = scopeAccessTest {
         val refusals = mapOf(
-            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-            "?scope=kartverk:a&scope=kartverk:b" to malformedRequest("The query must contain only the parameter scope, sent once"),
-            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
         for ((method, path) in endpointsWithScope) {
-            for ((query, error) in refusals) {
+            for ((query, fieldError) in refusals) {
                 val response = call(method, "$path$query")
 
                 val case = "${method.value} $path$query"
                 assertEquals(HttpStatusCode.BadRequest, response.status, case)
-                assertEquals(error, response.errorResponse(), case)
+                assertEquals(validationFailed(fieldError), response.errorResponse(), case)
             }
         }
         assertTrue(sent.isEmpty())
@@ -97,6 +97,21 @@ class ScopeAccessTest {
                 )
             }
         }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `an invalid organisation number and an invalid scope are both listed, without calling Digdir`() = scopeAccessTest {
+        val response = call(changeMethods.first(), "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                invalidOrganisationNumber,
+                FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+            ),
+            response.errorResponse(),
+        )
         assertTrue(sent.isEmpty())
     }
 

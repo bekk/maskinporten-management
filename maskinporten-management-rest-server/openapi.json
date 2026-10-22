@@ -1734,7 +1734,7 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "- `MISSING`: the field is absent or blank.\n- `INVALID_FORMAT`: the field is there, but not valid.\n- `NOT_ALLOWED`: the field is not accepted here.",
+                        "description": "- `MISSING`: the field is absent or blank.\n- `INVALID_FORMAT`: the field is there, but not valid.\n- `NOT_ALLOWED`: the field is not accepted here, or a query parameter was sent more than once.",
                         "enum": [
                             "MISSING",
                             "INVALID_FORMAT",
@@ -1758,7 +1758,7 @@
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists all of them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
                         "enum": [
                             "tag:kartverket.no,2026:validation-error",
                             "tag:kartverket.no,2026:malformed-request",
@@ -1785,7 +1785,7 @@
                     },
                     "errors": {
                         "type": "array",
-                        "description": "Only with `tag:kartverket.no,2026:validation-error`: the fields that failed.",
+                        "description": "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
                         "items": {
                             "$ref": "#/components/schemas/FieldError"
                         }

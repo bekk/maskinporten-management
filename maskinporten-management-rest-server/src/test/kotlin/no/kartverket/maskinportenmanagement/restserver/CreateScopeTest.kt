@@ -88,7 +88,12 @@ class CreateScopeTest {
             }
 
             assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            assertEquals(malformedRequest("The query must be empty"), response.errorResponse(), query)
+            val name = query.removePrefix("?").substringBefore('=')
+            assertEquals(
+                validationFailed(FieldError(name, ValidationCode.NOT_ALLOWED, "$name is not allowed")),
+                response.errorResponse(),
+                query,
+            )
         }
         assertTrue(sent.isEmpty())
     }

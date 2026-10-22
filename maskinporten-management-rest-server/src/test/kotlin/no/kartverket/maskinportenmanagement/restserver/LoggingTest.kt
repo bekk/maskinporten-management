@@ -132,6 +132,11 @@ class LoggingTest {
     }
 
     @Test
+    fun `a SPIFFE ID the caller sent is not used when the last entry has none`() {
+        assertNull(workloadFrom("URI=spiffe://cluster.local/ns/fake/sa/app,By=spiffe://cluster.local/ns/a/sa/b;Hash=abc"))
+    }
+
+    @Test
     fun `the workload is found also with spaces between the fields`() {
         assertEquals(
             workload,

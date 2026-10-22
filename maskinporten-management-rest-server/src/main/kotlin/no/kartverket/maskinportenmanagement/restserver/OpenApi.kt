@@ -1,10 +1,12 @@
 package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.AdditionalProperties
 import io.ktor.openapi.ExampleObject
 import io.ktor.openapi.GenericElement
+import io.ktor.openapi.Headers
 import io.ktor.openapi.JsonSchema
 import io.ktor.openapi.JsonType
 import io.ktor.openapi.KotlinxSerializerJsonSchemaInference
@@ -111,6 +113,22 @@ private fun Parameters.Builder.clientCertificate() {
     }
 }
 
+private fun Parameters.Builder.requestId() {
+    header(HttpHeaders.XRequestId) {
+        description = "An id to find this call by in this API's logs. Up to 128 ASCII letters, digits, `-`, `_`, " +
+            "`.` and `:`. Without it, or with any other value, this API makes a new one. Every response has the id " +
+            "in its `X-Request-Id` header."
+        schema = JsonSchema(type = JsonType.STRING)
+        example = GenericElement("3f2b8c1e-7d4a-4f0e-9b6a-2c5d8e1f4a7b")
+    }
+}
+
+private fun Headers.Builder.requestId() = header(HttpHeaders.XRequestId) {
+    description = "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one."
+    required = true
+    schema = JsonSchema(type = JsonType.STRING)
+}
+
 private fun Parameters.Builder.consumerOrgno() {
     path("consumerOrgno") {
         required = true
@@ -122,6 +140,7 @@ private fun Parameters.Builder.consumerOrgno() {
 private fun Responses.Builder.badRequest(description: String, vararg examples: Pair<String, ErrorResponse>) {
     HttpStatusCode.BadRequest {
         this.description = "$description Digdir can also answer `400`, in its own error format."
+        headers { requestId() }
         ContentType.Application.Json {
             schema = jsonSchema<ErrorResponse>()
             examples.forEach { (name, value) -> example(name, value) }
@@ -139,6 +158,7 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
             "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for " +
                 "Maskinporten tokens. Your request did not cause it."
         }
+        headers { requestId() }
         ContentType.Application.Json {
             schema = jsonSchema<ErrorResponse>()
             example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
@@ -155,6 +175,7 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
     default {
         description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
             "The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+        headers { requestId() }
     }
 }
 
@@ -251,6 +272,10 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
         $DIGDIR_ERRORS
     """.trimIndent()
 
+    parameters {
+        requestId()
+    }
+
     requestBody {
         required = true
         ContentType.Application.Json {
@@ -262,6 +287,7 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
     responses {
         HttpStatusCode.OK {
             description = "The scope that was created."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeDetails>()
                 example("CreatedScope", exampleCreatedScope)
@@ -290,6 +316,7 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
 
     parameters {
         scope()
+        requestId()
     }
 
     requestBody {
@@ -303,6 +330,7 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
     responses {
         HttpStatusCode.OK {
             description = "The scope after the update."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeDetails>()
                 example("UpdatedScope", exampleUpdatedScope)
@@ -328,11 +356,13 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
 
     parameters {
         clientCertificate()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The scopes the calling app has access to. The list is empty if it has access to none."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeDetails>()))
                 example("Scopes", listOf(exampleScope))
@@ -354,11 +384,13 @@ internal val scopeDeleteOperation: Operation.Builder.() -> Unit = {
 
     parameters {
         scope()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The scope that was deleted."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeDetails>()
                 example("DeletedScope", exampleScope.copy(active = false))
@@ -376,11 +408,13 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
 
     parameters {
         scope()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The organisations given access to the scope. Check `state`: only `APPROVED` means access."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeAccess>()))
                 example("Consumers", listOf(exampleScopeAccess))
@@ -405,12 +439,14 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
     parameters {
         orgnr()
         clientCertificate()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The organisation's access to the scopes the calling app has access to. Check `state`: " +
                 "only `APPROVED` means access. The list is empty if there is none."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeAccess>()))
                 example("Scopes", listOf(exampleScopeAccess))
@@ -463,11 +499,13 @@ internal val scopeAccessChangelogOperation: Operation.Builder.() -> Unit = {
             description = "The most changes a page holds."
             schema = JsonSchema(type = JsonType.INTEGER, minimum = 1.0)
         }
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "One page of the changes."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeAccessChangelog>()
                 example("Changelog", exampleScopeAccessChangelog)
@@ -491,11 +529,13 @@ internal val scopeAccessGrantOperation: Operation.Builder.() -> Unit = {
     parameters {
         consumerOrgno()
         scope()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The access that was given."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeAccess>()
                 example("GivenAccess", exampleScopeAccess)
@@ -515,11 +555,13 @@ internal val scopeAccessRemoveOperation: Operation.Builder.() -> Unit = {
     parameters {
         consumerOrgno()
         scope()
+        requestId()
     }
 
     responses {
         HttpStatusCode.OK {
             description = "The access that was removed."
+            headers { requestId() }
             ContentType.Application.Json {
                 schema = jsonSchema<ScopeAccess>()
                 example("RemovedAccess", exampleScopeAccess)

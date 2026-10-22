@@ -82,54 +82,73 @@ fun Application.module(
         }.hide()
 
         get("/api/scopes") {
-            val filter = externalFiltering.filterFor(call)
-            call.respond(client.listScopes(filter).map(ScopeDetails::from))
+            val input = RequestInput()
+            val certificate by input.clientCertificate(call, required = externalFiltering.isOn)
+            input.requireValid()
+            call.respond(client.listScopes(externalFiltering.filterFor(certificate)).map(ScopeDetails::from))
         }.describe(scopesListOperation)
 
         post("/api/scopes") {
-            call.noQuery()
-            val scope = call.scopeJsonBody()
+            val input = RequestInput()
+            input.noQuery(call)
+            val scope by input.scopeJson(call)
+            input.requireValid()
             call.respond(ScopeDetails.from(client.createScope(scope)))
         }.describe(scopeCreateOperation)
 
         put("/api/scopes") {
-            val scope = call.scopeQueryParameter("scope")
-            call.respond(ScopeDetails.from(client.updateScope(scope, ScopeUpdateJson.of(call.jsonBody()))))
+            val input = RequestInput()
+            val scope by input.scopeQueryParameter(call)
+            val body = call.jsonBody()
+            input.requireValid()
+            call.respond(ScopeDetails.from(client.updateScope(scope, ScopeUpdateJson.of(body))))
         }.describe(scopeUpdateOperation)
 
         delete("/api/scopes") {
-            val scope = call.scopeQueryParameter("scope")
+            val input = RequestInput()
+            val scope by input.scopeQueryParameter(call)
+            input.requireValid()
             call.respond(ScopeDetails.from(client.deleteScope(scope)))
         }.describe(scopeDeleteOperation)
 
         get("/api/scopeaccess/orgs") {
-            val scope = call.scopeQueryParameter("scope")
+            val input = RequestInput()
+            val scope by input.scopeQueryParameter(call)
+            input.requireValid()
             call.respond(client.listScopeAccess(scope).map(ScopeAccess::from))
         }.describe(scopeAccessOrgsOperation)
 
         get("/api/scopeaccess/scopes") {
-            val orgnr = call.organizationNumberQueryParameter("orgnr")
-            val filter = externalFiltering.filterFor(call)
-            call.respond(client.listConsumerScopeAccess(orgnr, filter).map(ScopeAccess::from))
+            val input = RequestInput()
+            val orgnr by input.organizationNumberQueryParameter(call, "orgnr")
+            val certificate by input.clientCertificate(call, required = externalFiltering.isOn)
+            input.requireValid()
+            call.respond(client.listConsumerScopeAccess(orgnr, externalFiltering.filterFor(certificate)).map(ScopeAccess::from))
         }.describe(scopeAccessScopesOperation)
 
         get("/api/scopeaccess/changelog") {
-            val query = queryParameters(call.request.queryString(), "scope", "page", "size")
-            val scope = scopeParameter("scope", query.getValue("scope"))
-            val page = query["page"]?.let { wholeNumberParameter("page", it, min = 0) }
-            val size = query["size"]?.let { wholeNumberParameter("size", it, min = 1) }
+            val input = RequestInput()
+            val query = input.queryParameters(call.request.queryString(), "scope", "page", "size")
+            val scope by input.scope("scope", query["scope"])
+            val page by input.wholeNumber("page", query["page"], min = 0)
+            val size by input.wholeNumber("size", query["size"], min = 1)
+            input.requireValid()
             call.respond(ScopeAccessChangelog.from(client.getScopeAccessChangelog(scope, page, size)))
         }.describe(scopeAccessChangelogOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
-            val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
-            val scope = call.scopeQueryParameter("scope")
+            val input = RequestInput()
+            val consumerOrgno by input.organizationNumber("consumerOrgno", call.pathParameters["consumerOrgno"])
+            val scope by input.scopeQueryParameter(call)
+            input.requireValid()
             call.respond(ScopeAccess.from(client.grantScopeAccess(consumerOrgno, scope)))
         }.describe(scopeAccessGrantOperation)
 
         delete("/api/scopeaccess/{consumerOrgno}") {
-            val consumerOrgno = call.organizationNumberPathParameter("consumerOrgno")
-            val scope = call.scopeQueryParameter("scope")
+            val input = RequestInput()
+            val consumerOrgno by input.organizationNumber("consumerOrgno", call.pathParameters["consumerOrgno"])
+            val scope by input.scopeQueryParameter(call)
+            input.requireValid()
             call.respond(ScopeAccess.from(client.removeScopeAccess(consumerOrgno, scope)))
         }.describe(scopeAccessRemoveOperation)
     }

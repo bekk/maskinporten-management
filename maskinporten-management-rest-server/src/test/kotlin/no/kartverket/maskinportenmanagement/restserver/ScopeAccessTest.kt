@@ -9,8 +9,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -67,17 +67,17 @@ class ScopeAccessTest {
     @Test
     fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = scopeAccessTest {
         val refusals = mapOf(
-            "" to "Query parameter scope is required",
-            "?scope=kartverk:a&scope=kartverk:b" to "The query must contain only the parameter scope, sent once",
-            "?scope=kartverk:a+kartverk:b" to "Query parameter scope must not contain whitespace",
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
         for ((method, path) in endpointsWithScope) {
-            for ((query, error) in refusals) {
+            for ((query, fieldError) in refusals) {
                 val response = call(method, "$path$query")
 
                 val case = "${method.value} $path$query"
                 assertEquals(HttpStatusCode.BadRequest, response.status, case)
-                assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), case)
+                assertEquals(validationFailed(fieldError), response.errorResponse(), case)
             }
         }
         assertTrue(sent.isEmpty())
@@ -91,7 +91,7 @@ class ScopeAccessTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for $method $consumerOrgno")
                 assertEquals(
-                    ErrorResponse("Path parameter consumerOrgno must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
+                    validationFailed(invalidOrganisationNumber),
                     response.errorResponse(),
                     "for $method $consumerOrgno",
                 )
@@ -99,4 +99,22 @@ class ScopeAccessTest {
         }
         assertTrue(sent.isEmpty())
     }
+
+    @Test
+    fun `an invalid organisation number and an invalid scope are both listed, without calling Digdir`() = scopeAccessTest {
+        val response = call(changeMethods.first(), "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                invalidOrganisationNumber,
+                FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+            ),
+            response.errorResponse(),
+        )
+        assertTrue(sent.isEmpty())
+    }
+
+    private val invalidOrganisationNumber =
+        FieldError("consumerOrgno", ValidationCode.INVALID_FORMAT, "consumerOrgno must be an organisation number of 9 digits")
 }

@@ -95,7 +95,7 @@ class CloudKmsTest {
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
                 assertEquals(HttpStatusCode.BadGateway, response.status)
-                assertEquals(ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+                assertEquals(upstreamError("The call to Cloud KMS failed"), response.errorResponse())
             }
         }
     }

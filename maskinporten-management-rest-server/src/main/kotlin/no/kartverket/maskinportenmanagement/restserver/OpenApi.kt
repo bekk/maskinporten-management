@@ -37,8 +37,10 @@ import no.kartverket.maskinportenmanagement.client.ScopeAccessState
 import no.kartverket.maskinportenmanagement.client.TokenType
 import no.kartverket.maskinportenmanagement.client.Visibility
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import no.kartverket.maskinportenmanagement.restserver.models.INTEGRATION_TYPES
 import no.kartverket.maskinportenmanagement.restserver.models.PageMetadata
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
@@ -141,7 +143,7 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
     HttpStatusCode.BadRequest {
         this.description = "$description Digdir can also answer `400`, in its own error format."
         headers { requestId() }
-        ContentType.Application.Json {
+        ContentType.Application.ProblemJson {
             schema = jsonSchema<ErrorResponse>()
             examples.forEach { (name, value) -> example(name, value) }
         }
@@ -159,39 +161,48 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
                 "Maskinporten tokens. Your request did not cause it."
         }
         headers { requestId() }
-        ContentType.Application.Json {
+        ContentType.Application.ProblemJson {
             schema = jsonSchema<ErrorResponse>()
-            example("UpstreamError", ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+            example("UpstreamError", ErrorResponse.of(HttpStatusCode.BadGateway, "The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
             if (filtered) {
                 example(
                     "FilteringError",
-                    ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
+                    ErrorResponse.of(HttpStatusCode.BadGateway, "The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR),
                 )
             }
-            example("KmsError", ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR))
+            example("KmsError", ErrorResponse.of(HttpStatusCode.BadGateway, "The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR))
         }
     }
 
     default {
         description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
-            "The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+            "The exception is a `500` with `code` `INTERNAL_ERROR`, as `application/problem+json`, which is an unexpected " +
+            "error in this API."
         headers { requestId() }
     }
 }
 
 private const val DIGDIR_ERRORS = "When Digdir answers with an error, that answer is returned unchanged."
 
-private val missingScopeExample =
-    "MissingScope" to ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST)
-
-private val invalidOrganisationNumberExample = "InvalidOrganisationNumber" to ErrorResponse(
-    "Path parameter consumerOrgno must be an organisation number of 9 digits",
-    ErrorCode.INVALID_REQUEST,
+private fun validationError(field: String, code: ValidationCode, message: String) = ErrorResponse.of(
+    HttpStatusCode.BadRequest,
+    "Validation failed",
+    ErrorCode.VALIDATION_ERROR,
+    listOf(FieldError(field, code, message)),
 )
 
-private val missingClientCertificateExample = "MissingClientCertificate" to ErrorResponse(
-    "Header X-Forwarded-Client-Cert is required",
-    ErrorCode.INVALID_REQUEST,
+private val missingScopeExample = "MissingScope" to validationError("scope", ValidationCode.MISSING, "scope is required")
+
+private val invalidOrganisationNumberExample = "InvalidOrganisationNumber" to validationError(
+    "consumerOrgno",
+    ValidationCode.INVALID_FORMAT,
+    "consumerOrgno must be an organisation number of 9 digits",
+)
+
+private val missingClientCertificateExample = "MissingClientCertificate" to validationError(
+    "X-Forwarded-Client-Cert",
+    ValidationCode.MISSING,
+    "X-Forwarded-Client-Cert is required",
 )
 
 private const val INVALID_SCOPE_REASON =
@@ -298,7 +309,7 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
             "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or " +
                 "it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or " +
                 "not text.",
-            "UnknownField" to ErrorResponse("The field \"Subscope\" is not allowed", ErrorCode.INVALID_REQUEST),
+            "UnknownField" to validationError("Subscope", ValidationCode.NOT_ALLOWED, "Subscope is not allowed"),
         )
         digdirUnreachableAndOtherStatuses()
     }
@@ -456,9 +467,10 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
         badRequest(
             "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` " +
                 "header is missing.",
-            "InvalidOrganisationNumber" to ErrorResponse(
-                "Query parameter orgnr must be an organisation number of 9 digits",
-                ErrorCode.INVALID_REQUEST,
+            "InvalidOrganisationNumber" to validationError(
+                "orgnr",
+                ValidationCode.INVALID_FORMAT,
+                "orgnr must be an organisation number of 9 digits",
             ),
             missingClientCertificateExample,
         )
@@ -516,7 +528,7 @@ internal val scopeAccessChangelogOperation: Operation.Builder.() -> Unit = {
             "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is " +
                 "missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1.",
             missingScopeExample,
-            "InvalidPage" to ErrorResponse("Query parameter page must be a whole number of 0 or more", ErrorCode.INVALID_REQUEST),
+            "InvalidPage" to validationError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more"),
         )
         digdirUnreachableAndOtherStatuses()
     }

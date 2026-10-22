@@ -7,8 +7,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -42,39 +42,41 @@ class ScopeAccessChangelogTest {
 
     @Test
     fun `a query that is not one scope, with an optional page and size, is refused without calling Digdir`() = changelogTest {
-        val onlyThese = "The query must contain only the parameters scope, page and size, each sent once"
         val refusals = mapOf(
-            "" to "Query parameter scope is required",
-            "?page=0" to "Query parameter scope is required",
-            "?scope=kartverk:a&scope=kartverk:b" to onlyThese,
-            "?scope=kartverk:a&page=0&page=1" to onlyThese,
-            "?scope=kartverk:a&sort=created" to onlyThese,
-            "?scope=kartverk:a+kartverk:b" to "Query parameter scope must not contain whitespace",
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?page=0" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
+            "?scope=kartverk:a&page=0&page=1" to FieldError("page", ValidationCode.NOT_ALLOWED, "page must be sent once"),
+            "?scope=kartverk:a&sort=created" to FieldError("sort", ValidationCode.NOT_ALLOWED, "sort is not allowed"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = client.get("/api/scopeaccess/changelog$query")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), query)
+            assertEquals(validationFailed(fieldError), response.errorResponse(), query)
         }
         assertTrue(sent.isEmpty())
     }
 
     @Test
     fun `a page below 0 or a size below 1 is refused without calling Digdir`() = changelogTest {
+        val invalidPage = FieldError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more")
+        val invalidSize = FieldError("size", ValidationCode.INVALID_FORMAT, "size must be a whole number of 1 or more")
         val refusals = mapOf(
-            "page=-1" to "Query parameter page must be a whole number of 0 or more",
-            "page=" to "Query parameter page must be a whole number of 0 or more",
-            "page=first" to "Query parameter page must be a whole number of 0 or more",
-            "size=0" to "Query parameter size must be a whole number of 1 or more",
-            "size=1.5" to "Query parameter size must be a whole number of 1 or more",
-            "size=99999999999" to "Query parameter size must be a whole number of 1 or more",
+            "page=-1" to listOf(invalidPage),
+            "page=" to listOf(invalidPage),
+            "page=first" to listOf(invalidPage),
+            "size=0" to listOf(invalidSize),
+            "size=1.5" to listOf(invalidSize),
+            "size=99999999999" to listOf(invalidSize),
+            "page=-1&size=0" to listOf(invalidPage, invalidSize),
         )
-        for ((paging, error) in refusals) {
+        for ((paging, errors) in refusals) {
             val response = client.get("/api/scopeaccess/changelog?scope=kartverk:a&$paging")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, paging)
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), paging)
+            assertEquals(validationFailed(*errors.toTypedArray()), response.errorResponse(), paging)
         }
         assertTrue(sent.isEmpty())
     }

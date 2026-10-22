@@ -12,8 +12,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -64,15 +64,15 @@ class UpdateScopeTest {
     @Test
     fun `a query that is not exactly one scope, or a body that is not UTF-8 JSON, is refused without calling Digdir`() = updateScopeTest {
         val refusals = mapOf(
-            "" to "Query parameter scope is required",
-            "?scope=kartverk:a&inactive=true" to "The query must contain only the parameter scope, sent once",
-            "?scope=kartverk:a+kartverk:b" to "Query parameter scope must not contain whitespace",
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&inactive=true" to FieldError("inactive", ValidationCode.NOT_ALLOWED, "inactive is not allowed"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = updateScope(query, """{"description":"a"}""".toByteArray())
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), "for \"$query\"")
+            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
         }
 
         for (contentType in listOf(ContentType.Text.Plain, ContentType("application", ""), ContentType("", "json"))) {
@@ -82,7 +82,7 @@ class UpdateScopeTest {
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
             assertEquals(
-                ErrorResponse("The body must be JSON, sent with Content-Type application/json", ErrorCode.INVALID_REQUEST),
+                malformedRequest("The body must be JSON, sent with Content-Type application/json"),
                 response.errorResponse(),
                 "$contentType",
             )
@@ -90,7 +90,7 @@ class UpdateScopeTest {
 
         val response = updateScope("?scope=kartverk:a", byteArrayOf(0x7B, 0xFF.toByte(), 0x7D))
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(ErrorResponse("The body must be UTF-8", ErrorCode.INVALID_REQUEST), response.errorResponse())
+        assertEquals(malformedRequest("The body must be UTF-8"), response.errorResponse())
         assertTrue(sent.isEmpty())
     }
 }

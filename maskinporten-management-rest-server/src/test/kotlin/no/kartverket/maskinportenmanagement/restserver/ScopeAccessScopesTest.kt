@@ -16,8 +16,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.client.jsonList
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -70,14 +70,14 @@ class ScopeAccessScopesTest {
     @Test
     fun `a query that is not exactly one orgnr of 9 digits is refused before anything else is called`() = scopeAccessTest {
         val refusals = mapOf(
-            "?orgnr=31171837" to "Query parameter orgnr must be an organisation number of 9 digits",
-            "?orgnr=311718371&scope=kartverk:x" to "The query must contain only the parameter orgnr, sent once",
+            "?orgnr=31171837" to FieldError("orgnr", ValidationCode.INVALID_FORMAT, "orgnr must be an organisation number of 9 digits"),
+            "?orgnr=311718371&scope=kartverk:x" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope is not allowed"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = listScopes(query)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), "for \"$query\"")
+            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
         }
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())
@@ -88,7 +88,7 @@ class ScopeAccessScopesTest {
         val response = client.get("/api/scopeaccess/scopes?orgnr=311718371")
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(ErrorResponse("Header X-Forwarded-Client-Cert is required", ErrorCode.INVALID_REQUEST), response.errorResponse())
+        assertEquals(validationFailed(FieldError("X-Forwarded-Client-Cert", ValidationCode.MISSING, "X-Forwarded-Client-Cert is required")), response.errorResponse())
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())
     }
@@ -98,7 +98,7 @@ class ScopeAccessScopesTest {
         val response = listScopes()
 
         assertEquals(HttpStatusCode.BadGateway, response.status)
-        assertEquals(ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+        assertEquals(upstreamError("The call to the filtering service failed"), response.errorResponse())
         assertTrue(digdirRequests.isEmpty())
     }
 

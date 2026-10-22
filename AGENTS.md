@@ -60,6 +60,10 @@ tests, see [its README](mock-api/README.md#tests).
   caller's request, so the server answers 502. Every other `DigdirException` is a 502 too: Digdir out of reach,
   Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later becomes
   `UNKNOWN` through `OrUnknownSerializer`.
+- **Errors.** The server's own errors follow Problem Details (RFC 9457), as `application/problem+json`. Build them with
+  `ErrorResponse.of(...)`: `type` is `about:blank`, `title` and `status` come from the HTTP status, and `code` says what
+  went wrong. A route reads its query, path parameters, headers and body through one `RequestInput`, which collects
+  every invalid field, and calls `requireValid()` before calling Digdir, so a caller gets all the errors at once.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.

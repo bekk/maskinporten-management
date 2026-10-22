@@ -129,6 +129,10 @@ Every call gets a request id: the caller's `X-Request-Id` header, or a new UUID 
 The server logs it on every line of the call as `request_id`, and sends it back in the response's `X-Request-Id`
 header, so a caller can tell us which call to look for.
 
+The server's own errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent as
+`application/problem+json`, with a `code` your code can rely on, and with `VALIDATION_ERROR` an `errors` list of every
+field that failed. When Digdir answers with an error, that answer is passed on unchanged instead.
+
 The OpenAPI spec documents every field and error. The server serves it at `GET /openapi`, and the same spec is checked
 in as [`openapi.json`](maskinporten-management-rest-server/openapi.json).
 

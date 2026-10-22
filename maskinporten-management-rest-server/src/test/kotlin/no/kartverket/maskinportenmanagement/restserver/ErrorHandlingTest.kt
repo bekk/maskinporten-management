@@ -7,7 +7,9 @@ import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -54,17 +56,25 @@ class ErrorHandlingTest {
     }
 
     @Test
-    fun `a request Ktor refuses for another reason gives 400 with INVALID_REQUEST, without blaming the URL`() =
+    fun `a request Ktor refuses for another reason gives 400 with MALFORMED_REQUEST, without blaming the URL`() =
         answerTo(BadRequestException("Can't transform call to resource")) { response ->
             assertEquals(HttpStatusCode.BadRequest, response.status)
-            assertEquals("""{"error":"The request could not be read","code":"INVALID_REQUEST"}""", response.bodyAsText())
+            assertEquals(
+                """{"type":"about:blank","title":"Bad Request","status":400,"detail":"The request could not be read",""" +
+                    """"code":"MALFORMED_REQUEST"}""",
+                response.bodyAsText(),
+            )
         }
 
     @Test
     fun `a failed call to Cloud KMS gives 502 with UPSTREAM_ERROR, and is logged with its stack trace`() =
         answerTo(CloudKmsException("Call to Cloud KMS failed: PERMISSION_DENIED", RuntimeException("PERMISSION_DENIED"))) { response ->
             assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals("""{"error":"The call to Cloud KMS failed","code":"UPSTREAM_ERROR"}""", response.bodyAsText())
+            assertEquals(
+                """{"type":"about:blank","title":"Bad Gateway","status":502,"detail":"The call to Cloud KMS failed",""" +
+                    """"code":"UPSTREAM_ERROR"}""",
+                response.bodyAsText(),
+            )
             val logged = appender.list.single { it.formattedMessage == "Call to Cloud KMS failed" }
             assertEquals(Level.ERROR, logged.level)
             assertEquals(CloudKmsException::class.java.name, logged.throwableProxy.className)
@@ -75,6 +85,19 @@ class ErrorHandlingTest {
     fun `an unexpected error gives 500 with its code, but not its message`() =
         answerTo(IllegalStateException("secret detail")) { response ->
             assertEquals(HttpStatusCode.InternalServerError, response.status)
-            assertEquals("""{"error":"Internal server error","code":"INTERNAL_ERROR"}""", response.bodyAsText())
+            assertEquals(
+                """{"type":"about:blank","title":"Internal Server Error","status":500,"detail":"Internal server error",""" +
+                    """"code":"INTERNAL_ERROR"}""",
+                response.bodyAsText(),
+            )
         }
+
+    @Test
+    fun `every error is sent as application problem+json`() {
+        for (failure in listOf(BadRequestException("Can't transform call to resource"), IllegalStateException("secret detail"))) {
+            answerTo(failure) { response ->
+                assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "$failure")
+            }
+        }
+    }
 }

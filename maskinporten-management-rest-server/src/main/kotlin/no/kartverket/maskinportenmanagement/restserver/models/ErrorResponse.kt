@@ -11,7 +11,7 @@ data class ErrorResponse(
         """What went wrong, as a name that does not change, so your code can rely on it.
 
 - `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body
-  fields are missing, invalid or not allowed. `errors` lists them.
+  fields are missing, invalid or not allowed. `errors` lists all of them.
 - `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a
   list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.
 - `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.
@@ -37,7 +37,7 @@ data class ErrorResponse(
 
     @JsonSchema.Type(JsonType.ARRAY)
     @JsonSchema.Description(
-        "Only with `tag:kartverket.no,2026:validation-error`: the fields that failed.",
+        "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
     )
     val errors: List<FieldError>? = null,
 ) {

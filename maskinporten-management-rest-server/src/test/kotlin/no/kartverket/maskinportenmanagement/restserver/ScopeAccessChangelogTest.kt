@@ -43,18 +43,18 @@ class ScopeAccessChangelogTest {
     @Test
     fun `a query that is not one scope, with an optional page and size, is refused without calling Digdir`() = changelogTest {
         val refusals = mapOf(
-            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-            "?page=0" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-            "?scope=kartverk:a&scope=kartverk:b" to malformedRequest("The query must contain only the parameters scope, page and size, each sent once"),
-            "?scope=kartverk:a&page=0&page=1" to malformedRequest("The query must contain only the parameters scope, page and size, each sent once"),
-            "?scope=kartverk:a&sort=created" to malformedRequest("The query must contain only the parameters scope, page and size, each sent once"),
-            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?page=0" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
+            "?scope=kartverk:a&page=0&page=1" to FieldError("page", ValidationCode.NOT_ALLOWED, "page must be sent once"),
+            "?scope=kartverk:a&sort=created" to FieldError("sort", ValidationCode.NOT_ALLOWED, "sort is not allowed"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = client.get("/api/scopeaccess/changelog$query")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            assertEquals(error, response.errorResponse(), query)
+            assertEquals(validationFailed(fieldError), response.errorResponse(), query)
         }
         assertTrue(sent.isEmpty())
     }
@@ -70,7 +70,7 @@ class ScopeAccessChangelogTest {
             "size=0" to listOf(invalidSize),
             "size=1.5" to listOf(invalidSize),
             "size=99999999999" to listOf(invalidSize),
-            "page=-1&size=0" to listOf(invalidPage),
+            "page=-1&size=0" to listOf(invalidPage, invalidSize),
         )
         for ((paging, errors) in refusals) {
             val response = client.get("/api/scopeaccess/changelog?scope=kartverk:a&$paging")

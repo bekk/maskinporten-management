@@ -70,14 +70,14 @@ class ScopeAccessScopesTest {
     @Test
     fun `a query that is not exactly one orgnr of 9 digits is refused before anything else is called`() = scopeAccessTest {
         val refusals = mapOf(
-            "?orgnr=31171837" to validationFailed(FieldError("orgnr", ValidationCode.INVALID_FORMAT, "orgnr must be an organisation number of 9 digits")),
-            "?orgnr=311718371&scope=kartverk:x" to malformedRequest("The query must contain only the parameter orgnr, sent once"),
+            "?orgnr=31171837" to FieldError("orgnr", ValidationCode.INVALID_FORMAT, "orgnr must be an organisation number of 9 digits"),
+            "?orgnr=311718371&scope=kartverk:x" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope is not allowed"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = listScopes(query)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(error, response.errorResponse(), "for \"$query\"")
+            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
         }
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())

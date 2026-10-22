@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 enum class ErrorCode {
     VALIDATION_ERROR,
     MALFORMED_REQUEST,
+    NOT_FOUND,
+    METHOD_NOT_ALLOWED,
     UPSTREAM_ERROR,
     INTERNAL_ERROR,
 }

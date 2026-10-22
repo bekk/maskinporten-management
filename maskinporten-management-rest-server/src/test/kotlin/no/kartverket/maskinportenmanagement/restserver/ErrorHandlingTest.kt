@@ -4,7 +4,9 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -45,6 +47,11 @@ class ErrorHandlingTest {
             routing { get("/fails") { throw failure } }
         }
         check(client.get("/fails"))
+    }
+
+    private fun answerTo(request: suspend HttpClient.() -> HttpResponse, check: suspend (HttpResponse) -> Unit) = testApplication {
+        application { module(testClient(), ExternalFiltering(null)) }
+        check(client.request())
     }
 
     // Ktor's client cannot send a broken %-escape, so the check is tested on its own
@@ -93,10 +100,35 @@ class ErrorHandlingTest {
         }
 
     @Test
+    fun `a path with no endpoint gives 404 with NOT_FOUND`() = answerTo({ get("/api/scope") }) { response ->
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(
+            """{"type":"about:blank","title":"Not Found","status":404,"detail":"There is no endpoint at this path",""" +
+                """"code":"NOT_FOUND"}""",
+            response.bodyAsText(),
+        )
+    }
+
+    @Test
+    fun `a method the endpoint does not accept gives 405 with METHOD_NOT_ALLOWED`() = answerTo({ patch("/api/scopes") }) { response ->
+        assertEquals(HttpStatusCode.MethodNotAllowed, response.status)
+        assertEquals(
+            """{"type":"about:blank","title":"Method Not Allowed","status":405,""" +
+                """"detail":"The endpoint at this path does not accept this method","code":"METHOD_NOT_ALLOWED"}""",
+            response.bodyAsText(),
+        )
+    }
+
+    @Test
     fun `every error is sent as application problem+json`() {
         for (failure in listOf(BadRequestException("Can't transform call to resource"), IllegalStateException("secret detail"))) {
             answerTo(failure) { response ->
                 assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "$failure")
+            }
+        }
+        for (request in listOf<suspend HttpClient.() -> HttpResponse>({ get("/api/scope") }, { patch("/api/scopes") })) {
+            answerTo(request) { response ->
+                assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), "${response.status}")
             }
         }
     }

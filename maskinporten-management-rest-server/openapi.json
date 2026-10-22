@@ -1822,10 +1822,12 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more query parameters, path parameters, headers or body fields are missing,\n  invalid or not allowed. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a query that is not a list of names and\n  values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which\n  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `VALIDATION_ERROR` (400): one or more query parameters, path parameters, headers or body fields are missing,\n  invalid or not allowed. `errors` lists all of them.\n- `MALFORMED_REQUEST` (400): the request could not be read, for example a query that is not a list of names and\n  values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `NOT_FOUND` (404): there is no endpoint at this path.\n- `METHOD_NOT_ALLOWED` (405): the endpoint at this path does not accept this HTTP method.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which\n  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "VALIDATION_ERROR",
                             "MALFORMED_REQUEST",
+                            "NOT_FOUND",
+                            "METHOD_NOT_ALLOWED",
                             "UPSTREAM_ERROR",
                             "INTERNAL_ERROR"
                         ]

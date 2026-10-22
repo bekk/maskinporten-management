@@ -13,6 +13,9 @@ enum class ProblemType(val title: String) {
     @SerialName("$PROBLEM_TYPE_PREFIX:malformed-request")
     MALFORMED_REQUEST("Malformed request"),
 
+    @SerialName("$PROBLEM_TYPE_PREFIX:upstream-rejected")
+    UPSTREAM_REJECTED("A service this API depends on rejected the request"),
+
     @SerialName("$PROBLEM_TYPE_PREFIX:not-found")
     NOT_FOUND("Not found"),
 

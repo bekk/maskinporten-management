@@ -16,12 +16,14 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ErrorHandlingTest {
@@ -86,6 +88,27 @@ class ErrorHandlingTest {
             assertEquals(Level.ERROR, logged.level)
             assertEquals(CloudKmsException::class.java.name, logged.throwableProxy.className)
             assertTrue(logged.throwableProxy.stackTraceElementProxyArray.isNotEmpty())
+        }
+
+    @Test
+    fun `a rejection from Digdir is logged with Digdir's whole answer, in one line`() {
+        val answer = """{"error_description":"finnes allerede","correlation_id":"abc-123"}"""
+        answerTo(DigdirErrorResponseException(409, "application/json", answer.toByteArray())) { response ->
+            assertEquals(HttpStatusCode.Conflict, response.status)
+            val logged = appender.list.single { it.formattedMessage.startsWith("Digdir rejected") }
+            assertEquals(Level.INFO, logged.level)
+            assertEquals("Digdir rejected the request with HTTP 409: $answer", logged.formattedMessage)
+            assertNull(logged.throwableProxy)
+        }
+    }
+
+    @Test
+    fun `a failure at Digdir is logged as an error with Digdir's whole answer`() =
+        answerTo(DigdirErrorResponseException(503, "text/plain", "Service Unavailable".toByteArray())) { response ->
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            val logged = appender.list.single { it.formattedMessage.startsWith("Digdir answered") }
+            assertEquals(Level.ERROR, logged.level)
+            assertEquals("Digdir answered HTTP 503: Service Unavailable", logged.formattedMessage)
         }
 
     @Test

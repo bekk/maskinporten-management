@@ -21,8 +21,6 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.jsonList
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -154,6 +152,6 @@ class DigdirAnswersTest {
 
     private suspend fun assertDigdirFailed(response: HttpResponse, endpoint: Endpoint) {
         assertEquals(HttpStatusCode.BadGateway, response.status, "$endpoint")
-        assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse(), "$endpoint")
+        assertEquals(upstreamError("The call to Digdir failed"), response.errorResponse(), "$endpoint")
     }
 }

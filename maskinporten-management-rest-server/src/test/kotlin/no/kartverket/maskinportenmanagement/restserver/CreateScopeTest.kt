@@ -11,8 +11,9 @@ import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
+import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -46,22 +47,35 @@ class CreateScopeTest {
     }
 
     @Test
-    fun `a body that is not a scope in Digdir's format is refused without calling Digdir`() = createScopeTest {
+    fun `a body that is not a JSON object is refused without calling Digdir`() = createScopeTest {
         val refusals = mapOf(
             "[]" to "Expected a scope as a JSON object",
             """{"prefix":"kartverk","active":True}""" to "The body is not valid JSON: ",
             """{"subscope":"a","subscope":"b"}""" to "The body is not valid JSON: ",
-            """{"prefix":"kartverk","Subscope":"a"}""" to "Subscope is not allowed; subscope is required",
-            """{"prefix":"kartverk"}""" to "subscope is required",
         )
-        for ((body, error) in refusals) {
+        for ((body, detail) in refusals) {
             val response = createScope(body.toByteArray())
 
             assertEquals(HttpStatusCode.BadRequest, response.status, body)
             val answer = response.errorResponse()
-            assertEquals(ErrorCode.INVALID_REQUEST, answer.code, body)
-            assertTrue(answer.error.startsWith(error), "$body: ${answer.error}")
+            assertEquals(ProblemType.MALFORMED_REQUEST.uri, answer.type, body)
+            assertTrue(answer.detail.orEmpty().startsWith(detail), "$body: ${answer.detail}")
         }
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `every field that is wrong in the body is listed, without calling Digdir`() = createScopeTest {
+        val response = createScope("""{"prefix":"kartverk","Subscope":"a"}""".toByteArray())
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                FieldError("Subscope", ValidationCode.NOT_ALLOWED, "Subscope is not allowed"),
+                FieldError("subscope", ValidationCode.MISSING, "subscope is required"),
+            ),
+            response.errorResponse(),
+        )
         assertTrue(sent.isEmpty())
     }
 
@@ -74,7 +88,7 @@ class CreateScopeTest {
             }
 
             assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            assertEquals(ErrorResponse("The query must be empty", ErrorCode.INVALID_REQUEST), response.errorResponse(), query)
+            assertEquals(malformedRequest("The query must be empty"), response.errorResponse(), query)
         }
         assertTrue(sent.isEmpty())
     }
@@ -91,7 +105,7 @@ class CreateScopeTest {
             val response = createScope(body, contentType)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), "$contentType")
+            assertEquals(malformedRequest(error), response.errorResponse(), "$contentType")
         }
         assertTrue(sent.isEmpty())
     }
@@ -105,7 +119,7 @@ class CreateScopeTest {
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
             assertEquals(
-                ErrorResponse("The body must be JSON, sent with Content-Type application/json", ErrorCode.INVALID_REQUEST),
+                malformedRequest("The body must be JSON, sent with Content-Type application/json"),
                 response.errorResponse(),
                 "$contentType",
             )

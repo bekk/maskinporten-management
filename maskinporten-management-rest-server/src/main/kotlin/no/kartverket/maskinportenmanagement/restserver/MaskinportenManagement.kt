@@ -24,6 +24,9 @@ import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.client.validation.ValidationException
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import java.net.http.HttpClient
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -80,7 +83,7 @@ class ExternalFiltering(
     suspend fun filterFor(call: ApplicationCall): ScopeFilter? {
         val client = client ?: return null
         val certificate = call.request.headers[CLIENT_CERTIFICATE_HEADER]?.takeIf { it.isNotBlank() }
-            ?: throw InvalidRequestException("Header $CLIENT_CERTIFICATE_HEADER is required")
+            ?: throw invalid(CLIENT_CERTIFICATE_HEADER, ValidationCode.MISSING, "$CLIENT_CERTIFICATE_HEADER is required")
         cache.get(certificate)?.let { return it }
         return client.filterFor(ClientCertificate.of(certificate)).also { cache.put(certificate, it) }
     }
@@ -89,7 +92,12 @@ class ExternalFiltering(
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
 private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(10)
 
-internal class InvalidRequestException(message: String) : RuntimeException(message)
+internal class InvalidRequestException(val errors: List<FieldError>) : RuntimeException(errors.joinToString("; ") { it.message })
+
+internal class MalformedRequestException(message: String) : RuntimeException(message)
+
+private fun invalid(field: String, code: ValidationCode, message: String) =
+    InvalidRequestException(listOf(FieldError(field, code, message)))
 
 internal fun ApplicationCall.onlyQueryParameter(name: String): String = onlyQueryParameter(request.queryString(), name)
 
@@ -107,33 +115,33 @@ internal fun queryParameters(query: String, required: String, vararg optional: S
     val parameters = if (query.isEmpty()) emptyList() else query.split('&')
     val raw = parameters.map { parameter ->
         val (name, value) = parameter.split('=', limit = 2).takeIf { it.size == 2 && it[0] in names }
-            ?: throw InvalidRequestException(onlyThese)
+            ?: throw MalformedRequestException(onlyThese)
         name to value
     }
-    if (raw.distinctBy { it.first }.size != raw.size) throw InvalidRequestException(onlyThese)
+    if (raw.distinctBy { it.first }.size != raw.size) throw MalformedRequestException(onlyThese)
     val values = raw.associate { (name, value) ->
         name to try {
             value.decodeURLQueryComponent(plusIsSpace = true)
         } catch (e: URLDecodeException) {
-            throw InvalidRequestException("Query parameter $name is not URL-encoded correctly")
+            throw invalid(name, ValidationCode.INVALID_FORMAT, "$name is not URL-encoded correctly")
         }
     }
-    if (values[required].isNullOrBlank()) throw InvalidRequestException("Query parameter $required is required")
+    if (values[required].isNullOrBlank()) throw invalid(required, ValidationCode.MISSING, "$required is required")
     return values
 }
 
 // A query the server ignores could still be read by the access check in front of us, as a different scope
 internal fun ApplicationCall.noQuery() {
-    if (request.queryString().isNotEmpty()) throw InvalidRequestException("The query must be empty")
+    if (request.queryString().isNotEmpty()) throw MalformedRequestException("The query must be empty")
 }
 
 internal fun ApplicationCall.scopeQueryParameter(name: String): Scope = scopeParameter(name, onlyQueryParameter(name))
 
 internal fun scopeParameter(name: String, value: String): Scope = runCatching { Scope.of(value) }.getOrNull()
-    ?: throw InvalidRequestException("Query parameter $name must not contain whitespace")
+    ?: throw invalid(name, ValidationCode.INVALID_FORMAT, "$name must not contain whitespace")
 
 internal fun wholeNumberParameter(name: String, value: String, min: Int): Int = value.toIntOrNull()?.takeIf { it >= min }
-    ?: throw InvalidRequestException("Query parameter $name must be a whole number of $min or more")
+    ?: throw invalid(name, ValidationCode.INVALID_FORMAT, "$name must be a whole number of $min or more")
 
 // Strictly UTF-8, whatever charset the Content-Type names, so Digdir gets the bytes the access check in front of us saw
 internal suspend fun ApplicationCall.jsonBody(): String {
@@ -141,14 +149,16 @@ internal suspend fun ApplicationCall.jsonBody(): String {
     return try {
         Charsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(receive<ByteArray>())).toString()
     } catch (e: CharacterCodingException) {
-        throw InvalidRequestException("The body must be UTF-8")
+        throw MalformedRequestException("The body must be UTF-8")
     }
 }
 
 internal suspend fun ApplicationCall.scopeJsonBody(): ScopeJson = try {
     ScopeJson.of(jsonBody())
+} catch (e: ValidationException) {
+    throw InvalidRequestException(e.errors.map { FieldError(it.field, it.code, it.message) })
 } catch (e: IllegalArgumentException) {
-    throw InvalidRequestException(e.message!!)
+    throw MalformedRequestException(e.message!!)
 }
 
 private fun ApplicationCall.requireJsonContentType() {
@@ -158,18 +168,18 @@ private fun ApplicationCall.requireJsonContentType() {
         null
     }
     if (contentType?.withoutParameters() != ContentType.Application.Json) {
-        throw InvalidRequestException("The body must be JSON, sent with Content-Type application/json")
+        throw MalformedRequestException("The body must be JSON, sent with Content-Type application/json")
     }
 }
 
 internal fun RoutingCall.organizationNumberPathParameter(name: String): OrganizationNumber {
     val value = pathParameters[name].orEmpty()
     return runCatching { OrganizationNumber.of(value) }.getOrNull()
-        ?: throw InvalidRequestException("Path parameter $name must be an organisation number of 9 digits")
+        ?: throw invalid(name, ValidationCode.INVALID_FORMAT, "$name must be an organisation number of 9 digits")
 }
 
 internal fun ApplicationCall.organizationNumberQueryParameter(name: String): OrganizationNumber {
     val value = onlyQueryParameter(name)
     return runCatching { OrganizationNumber.of(value) }.getOrNull()
-        ?: throw InvalidRequestException("Query parameter $name must be an organisation number of 9 digits")
+        ?: throw invalid(name, ValidationCode.INVALID_FORMAT, "$name must be an organisation number of 9 digits")
 }

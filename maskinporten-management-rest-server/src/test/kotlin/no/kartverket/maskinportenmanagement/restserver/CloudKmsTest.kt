@@ -28,8 +28,6 @@ import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest
@@ -72,7 +70,7 @@ class CloudKmsTest {
     }
 
     @Test
-    fun `a failed signing gives the caller 502 with UPSTREAM_ERROR`() {
+    fun `a failed signing gives the caller 502 with upstream-error`() {
         val fake = FakeKms(keyPair, CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256, signFailure = Status.PERMISSION_DENIED)
         val maskinporten = OutgoingHttpClient {
             json(200, """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token"}""")
@@ -95,7 +93,7 @@ class CloudKmsTest {
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")
 
                 assertEquals(HttpStatusCode.BadGateway, response.status)
-                assertEquals(ErrorResponse("The call to Cloud KMS failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+                assertEquals(upstreamError("The call to Cloud KMS failed"), response.errorResponse())
             }
         }
     }

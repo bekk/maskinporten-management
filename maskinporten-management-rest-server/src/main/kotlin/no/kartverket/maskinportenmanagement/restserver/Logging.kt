@@ -1,9 +1,10 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-// The client cert header contains a list of caller IDs. The last one is the most accurate.
+// The proxy appends its entry after any the caller sent, so only the last entry can be trusted.
 internal fun workloadFrom(clientCertificate: String?): String? =
     clientCertificate
-        ?.split(',', ';')
+        ?.substringAfterLast(',')
+        ?.split(';')
         ?.map { it.trim() }
         ?.lastOrNull { it.startsWith("URI=spiffe://") }
         ?.removePrefix("URI=")

@@ -132,7 +132,7 @@ header, so a caller can tell us which call to look for.
 The server's own errors follow Problem Details ([RFC 9457](https://www.rfc-editor.org/info/rfc9457/)). They are sent
 as `application/problem+json`. Their `type` is a name that says what went wrong, like
 `tag:kartverket.no,2026:validation-error`, and your code can rely on it. A validation error has an `errors` list of
-the fields that failed. When Digdir answers with an error, that answer is passed on unchanged instead.
+every field that failed. When Digdir answers with an error, that answer is passed on unchanged instead.
 
 The OpenAPI spec documents every field and error. The server serves it at `GET /openapi`, and the same spec is checked
 in as [`openapi.json`](maskinporten-management-rest-server/openapi.json).

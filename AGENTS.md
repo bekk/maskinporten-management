@@ -60,9 +60,11 @@ tests, see [its README](mock-api/README.md#tests).
   caller's request, so the server answers 502. Every other `DigdirException` is a 502 too: Digdir out of reach,
   Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later becomes
   `UNKNOWN` through `OrUnknownSerializer`.
-- **Errors.** The server's own errors follow Problem Details (RFC 9457), as `application/problem+json`. In a route,
-  throw `InvalidRequestException` with a `FieldError` for each field that failed, or `MalformedRequestException` for
-  a request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
+- **Errors.** The server's own errors follow Problem Details (RFC 9457), as `application/problem+json`. A route reads
+  its query, path parameters, headers and body through one `RequestInput`, which collects every invalid field, and
+  calls `requireValid()` before calling Digdir, so a caller gets all the errors at once. `RequestInput` throws
+  `InvalidRequestException` with a `FieldError` for each field that failed, or `MalformedRequestException` for a
+  request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
   `type` is a `tag:kartverket.no,2026:` name from `ProblemType` that says what went wrong, `title` comes from the
   type, and `status` from the HTTP status.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`

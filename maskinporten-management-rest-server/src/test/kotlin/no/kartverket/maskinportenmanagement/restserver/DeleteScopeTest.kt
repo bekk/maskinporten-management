@@ -38,15 +38,15 @@ class DeleteScopeTest {
     @Test
     fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = deleteScopeTest {
         val refusals = mapOf(
-            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-            "?scope=kartverk:a&inactive=true" to malformedRequest("The query must contain only the parameter scope, sent once"),
-            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&inactive=true" to FieldError("inactive", ValidationCode.NOT_ALLOWED, "inactive is not allowed"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = client.delete("/api/scopes$query")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(error, response.errorResponse(), "for \"$query\"")
+            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
         }
         assertTrue(sent.isEmpty())
     }

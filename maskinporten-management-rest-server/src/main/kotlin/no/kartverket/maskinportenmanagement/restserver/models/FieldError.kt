@@ -12,7 +12,7 @@ data class FieldError(
     @JsonSchema.Description(
         """- `MISSING`: the field is absent or blank.
 - `INVALID_FORMAT`: the field is there, but not valid.
-- `NOT_ALLOWED`: the field is not accepted here.""",
+- `NOT_ALLOWED`: the field is not accepted here, or a query parameter was sent more than once.""",
     )
     val code: ValidationCode,
 

@@ -17,8 +17,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.client.jsonList
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -84,7 +84,7 @@ class ScopesTest {
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$value\"")
             assertEquals(
-                ErrorResponse("Header X-Forwarded-Client-Cert is required", ErrorCode.INVALID_REQUEST),
+                validationFailed(FieldError("X-Forwarded-Client-Cert", ValidationCode.MISSING, "X-Forwarded-Client-Cert is required")),
                 response.errorResponse(),
                 "for \"$value\"",
             )
@@ -98,7 +98,7 @@ class ScopesTest {
         val response = listScopes()
 
         assertEquals(HttpStatusCode.BadGateway, response.status)
-        assertEquals(ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+        assertEquals(upstreamError("The call to the filtering service failed"), response.errorResponse())
         assertTrue(digdirRequests.isEmpty())
     }
 
@@ -108,7 +108,7 @@ class ScopesTest {
             val response = listScopes()
 
             assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals(ErrorResponse("The call to the filtering service failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+            assertEquals(upstreamError("The call to the filtering service failed"), response.errorResponse())
             assertTrue(digdirRequests.isEmpty())
         }
 
@@ -118,7 +118,7 @@ class ScopesTest {
             val response = listScopes()
 
             assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse())
+            assertEquals(upstreamError("The call to Digdir failed"), response.errorResponse())
         }
 
     @Test

@@ -7,8 +7,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScope
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -38,15 +38,15 @@ class DeleteScopeTest {
     @Test
     fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = deleteScopeTest {
         val refusals = mapOf(
-            "" to "Query parameter scope is required",
-            "?scope=kartverk:a&inactive=true" to "The query must contain only the parameter scope, sent once",
-            "?scope=kartverk:a+kartverk:b" to "Query parameter scope must not contain whitespace",
+            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
+            "?scope=kartverk:a&inactive=true" to malformedRequest("The query must contain only the parameter scope, sent once"),
+            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
         )
         for ((query, error) in refusals) {
             val response = client.delete("/api/scopes$query")
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), "for \"$query\"")
+            assertEquals(error, response.errorResponse(), "for \"$query\"")
         }
         assertTrue(sent.isEmpty())
     }

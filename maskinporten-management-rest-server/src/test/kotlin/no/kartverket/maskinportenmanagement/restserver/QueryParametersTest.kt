@@ -1,5 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -8,7 +10,9 @@ class QueryParametersTest {
 
     private fun read(query: String) = queryParameters(query, "scope", "page", "size")
 
-    private fun refusal(query: String) = assertFailsWith<InvalidRequestException>(query) { read(query) }.message
+    private fun malformed(query: String) = assertFailsWith<MalformedRequestException>(query) { read(query) }.message
+
+    private fun invalid(query: String) = assertFailsWith<InvalidRequestException>(query) { read(query) }.errors
 
     @Test
     fun `returns the decoded values of the parameters that are there, in any order`() {
@@ -29,15 +33,18 @@ class QueryParametersTest {
             "scope=kartverk:a&p%61ge=0",
         )
         for (query in queries) {
-            assertEquals("The query must contain only the parameters scope, page and size, each sent once", refusal(query), query)
+            assertEquals("The query must contain only the parameters scope, page and size, each sent once", malformed(query), query)
         }
     }
 
     @Test
     fun `refuses a query without the required parameter, and a value that is not URL-encoded correctly`() {
         for (query in listOf("", "page=0", "scope=&page=0", "scope=+")) {
-            assertEquals("Query parameter scope is required", refusal(query), query)
+            assertEquals(listOf(FieldError("scope", ValidationCode.MISSING, "scope is required")), invalid(query), query)
         }
-        assertEquals("Query parameter page is not URL-encoded correctly", refusal("scope=kartverk:a&page=%zz"))
+        assertEquals(
+            listOf(FieldError("page", ValidationCode.INVALID_FORMAT, "page is not URL-encoded correctly")),
+            invalid("scope=kartverk:a&page=%zz"),
+        )
     }
 }

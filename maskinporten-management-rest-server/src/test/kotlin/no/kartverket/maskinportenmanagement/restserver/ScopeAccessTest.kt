@@ -9,8 +9,8 @@ import no.kartverket.maskinportenmanagement.client.digdirScopeAccess
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorCode
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -67,9 +67,9 @@ class ScopeAccessTest {
     @Test
     fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = scopeAccessTest {
         val refusals = mapOf(
-            "" to "Query parameter scope is required",
-            "?scope=kartverk:a&scope=kartverk:b" to "The query must contain only the parameter scope, sent once",
-            "?scope=kartverk:a+kartverk:b" to "Query parameter scope must not contain whitespace",
+            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
+            "?scope=kartverk:a&scope=kartverk:b" to malformedRequest("The query must contain only the parameter scope, sent once"),
+            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
         )
         for ((method, path) in endpointsWithScope) {
             for ((query, error) in refusals) {
@@ -77,7 +77,7 @@ class ScopeAccessTest {
 
                 val case = "${method.value} $path$query"
                 assertEquals(HttpStatusCode.BadRequest, response.status, case)
-                assertEquals(ErrorResponse(error, ErrorCode.INVALID_REQUEST), response.errorResponse(), case)
+                assertEquals(error, response.errorResponse(), case)
             }
         }
         assertTrue(sent.isEmpty())
@@ -91,7 +91,7 @@ class ScopeAccessTest {
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for $method $consumerOrgno")
                 assertEquals(
-                    ErrorResponse("Path parameter consumerOrgno must be an organisation number of 9 digits", ErrorCode.INVALID_REQUEST),
+                    validationFailed(invalidOrganisationNumber),
                     response.errorResponse(),
                     "for $method $consumerOrgno",
                 )
@@ -99,4 +99,7 @@ class ScopeAccessTest {
         }
         assertTrue(sent.isEmpty())
     }
+
+    private val invalidOrganisationNumber =
+        FieldError("consumerOrgno", ValidationCode.INVALID_FORMAT, "consumerOrgno must be an organisation number of 9 digits")
 }

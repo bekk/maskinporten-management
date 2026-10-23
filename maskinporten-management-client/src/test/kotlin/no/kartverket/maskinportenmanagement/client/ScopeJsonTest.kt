@@ -1,5 +1,7 @@
 package no.kartverket.maskinportenmanagement.client
 
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -10,6 +12,9 @@ class ScopeJsonTest {
 
     private fun refusal(json: String): String =
         assertFailsWith<IllegalArgumentException>(json) { ScopeJson.of(json) }.message!!
+
+    private fun fieldErrors(json: String) =
+        assertFailsWith<ValidationException>(json) { ScopeJson.of(json) }.errors.map { Triple(it.field, it.code, it.message) }
 
     @Test
     fun `keeps a scope in Digdir's format exactly as it was written`() {
@@ -61,7 +66,11 @@ class ScopeJsonTest {
     @Test
     fun `refuses a field that is not listed, or one spelled differently`() {
         for (field in listOf("name", "Subscope", "descriptions", "description#", "description#english", "description#de")) {
-            assertContains(refusal("""{"prefix":"kartverk","$field":"x"}"""), "The field \"$field\" is not allowed", message = field)
+            assertEquals(
+                listOf(Triple(field, ValidationCode.NOT_ALLOWED, "$field is not allowed")),
+                fieldErrors("""{"prefix":"kartverk","subscope":"a","$field":"x"}"""),
+                field,
+            )
         }
     }
 
@@ -75,16 +84,29 @@ class ScopeJsonTest {
     @Test
     fun `refuses a scope without a prefix and a subscope as text`() {
         val refusals = mapOf(
-            """{"subscope":"a"}""" to "prefix",
-            """{"prefix":"kartverk"}""" to "subscope",
-            """{"prefix":"","subscope":"a"}""" to "prefix",
-            """{"prefix":"kartverk","subscope":" "}""" to "subscope",
-            """{"prefix":1,"subscope":"a"}""" to "prefix",
-            """{"prefix":null,"subscope":"a"}""" to "prefix",
-            """{"prefix":"kartverk","subscope":["a"]}""" to "subscope",
+            """{"subscope":"a"}""" to Triple("prefix", ValidationCode.MISSING, "prefix is required"),
+            """{"prefix":"kartverk"}""" to Triple("subscope", ValidationCode.MISSING, "subscope is required"),
+            """{"prefix":"","subscope":"a"}""" to Triple("prefix", ValidationCode.MISSING, "prefix is required"),
+            """{"prefix":"kartverk","subscope":" "}""" to Triple("subscope", ValidationCode.MISSING, "subscope is required"),
+            """{"prefix":null,"subscope":"a"}""" to Triple("prefix", ValidationCode.MISSING, "prefix is required"),
+            """{"prefix":1,"subscope":"a"}""" to Triple("prefix", ValidationCode.INVALID_FORMAT, "prefix must be text"),
+            """{"prefix":"kartverk","subscope":["a"]}""" to Triple("subscope", ValidationCode.INVALID_FORMAT, "subscope must be text"),
         )
-        for ((json, field) in refusals) {
-            assertEquals("The field \"$field\" is required, as text", refusal(json), json)
+        for ((json, error) in refusals) {
+            assertEquals(listOf(error), fieldErrors(json), json)
         }
+    }
+
+    @Test
+    fun `lists every field that is wrong, not just the first`() {
+        assertEquals(
+            listOf(
+                Triple("name", ValidationCode.NOT_ALLOWED, "name is not allowed"),
+                Triple("Subscope", ValidationCode.NOT_ALLOWED, "Subscope is not allowed"),
+                Triple("prefix", ValidationCode.MISSING, "prefix is required"),
+                Triple("subscope", ValidationCode.MISSING, "subscope is required"),
+            ),
+            fieldErrors("""{"name":"x","Subscope":"a"}"""),
+        )
     }
 }

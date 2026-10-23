@@ -3,13 +3,13 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "v0",
-        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir rejects a request, this API\nanswers with Digdir's status and explanation, in its own error format."
     },
     "paths": {
         "/api/scopes": {
             "put": {
                 "summary": "Update a scope",
-                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -69,13 +69,37 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -127,7 +151,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Or the body is not in UTF-8 with `Content-Type: application/json`. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Or the body is not in UTF-8 with `Content-Type: application/json`. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -162,7 +186,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -202,7 +226,7 @@
             },
             "post": {
                 "summary": "Create a scope",
-                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "X-Request-ID",
@@ -240,13 +264,37 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -299,7 +347,7 @@
                         }
                     },
                     "400": {
-                        "description": "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or not text. Digdir can also answer `400`, in its own error format.",
+                        "description": "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or not text. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -334,7 +382,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -374,7 +422,7 @@
             },
             "delete": {
                 "summary": "Delete a scope",
-                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -397,13 +445,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -455,7 +527,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -490,7 +562,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -530,7 +602,7 @@
             },
             "get": {
                 "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "X-Forwarded-Client-Cert",
@@ -553,13 +625,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -616,7 +712,7 @@
                         }
                     },
                     "400": {
-                        "description": "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling. Digdir can also answer `400`, in its own error format.",
+                        "description": "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -651,7 +747,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -701,7 +797,7 @@
         "/api/scopeaccess/orgs": {
             "get": {
                 "summary": "List the organisations that have access to a scope",
-                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -724,13 +820,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -774,7 +894,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -809,7 +929,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -851,7 +971,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -884,13 +1004,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -934,7 +1078,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` header is missing. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` header is missing. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -983,7 +1127,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1033,7 +1177,7 @@
         "/api/scopeaccess/changelog": {
             "get": {
                 "summary": "List the changes to who has access to a scope",
-                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -1074,13 +1218,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1127,7 +1295,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1176,7 +1344,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1218,7 +1386,7 @@
         "/api/scopeaccess/{consumerOrgno}": {
             "put": {
                 "summary": "Give an organisation access to a scope",
-                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1251,13 +1419,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1296,7 +1488,7 @@
                         }
                     },
                     "400": {
-                        "description": "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
+                        "description": "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1345,7 +1537,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1385,7 +1577,7 @@
             },
             "delete": {
                 "summary": "Remove an organisation's access to a scope",
-                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir rejects the request, the answer has Digdir's status and explanation.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1418,13 +1610,37 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
+                        "description": "Digdir rejected the request. The status is Digdir's, for example `403`, `404` or `409`, `type` is `tag:kartverket.no,2026:upstream-rejected`, and `detail` is Digdir's explanation. A `500` with `type` `tag:kartverket.no,2026:internal-error` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
                                 "required": true,
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "examples": {
+                                    "UpstreamRejected": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:upstream-rejected",
+                                            "title": "A service this API depends on rejected the request",
+                                            "status": 409,
+                                            "detail": "The explanation Digdir gave"
+                                        }
+                                    },
+                                    "InternalError": {
+                                        "value": {
+                                            "type": "tag:kartverket.no,2026:internal-error",
+                                            "title": "Internal error",
+                                            "status": 500
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1463,7 +1679,7 @@
                         }
                     },
                     "400": {
-                        "description": "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also answer `400`, in its own error format.",
+                        "description": "`consumerOrgno` is not 9 digits, or the query is not exactly one `scope`, or `scope` is blank, contains whitespace or is not URL-encoded correctly. Digdir can also reject the request with `400`, as `tag:kartverket.no,2026:upstream-rejected`.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1512,7 +1728,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1554,6 +1770,71 @@
     },
     "components": {
         "schemas": {
+            "FieldError": {
+                "type": "object",
+                "title": "FieldError",
+                "required": [
+                    "field",
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "The query parameter, path parameter, header or body field, for example `scope`."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "- `MISSING`: the field is absent or blank.\n- `INVALID_FORMAT`: the field is there, but not valid.\n- `NOT_ALLOWED`: the field is not accepted here, or a query parameter was sent more than once.",
+                        "enum": [
+                            "MISSING",
+                            "INVALID_FORMAT",
+                            "NOT_ALLOWED"
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "What is wrong, for people to read. The wording may change."
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "title": "ErrorResponse",
+                "required": [
+                    "type",
+                    "title",
+                    "status"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists all of them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:upstream-rejected` (the status Digdir gave, for example 403, 404 or 409): the request passed\n  this API's checks, but Digdir rejected it. `detail` is Digdir's explanation.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get a usable answer from Digdir, from the service\n  that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "A short name for the `type`, the same every time."
+                    },
+                    "status": {
+                        "type": "integer",
+                        "description": "The HTTP status code, the same as the response's."
+                    },
+                    "detail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "What went wrong this time, for people to read. Left out when `title` says it all. The wording may change, so check `type` in your code."
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldError"
+                        }
+                    }
+                }
+            },
             "ScopeDetails": {
                 "type": "object",
                 "title": "ScopeDetails",
@@ -1716,71 +1997,6 @@
                     "supports_european_businesses": {
                         "type": "boolean",
                         "description": "Digdir does not document this field. Its name matches Digdir's feature that lets European businesses get tokens with an eIDAS seal, without being given access."
-                    }
-                }
-            },
-            "FieldError": {
-                "type": "object",
-                "title": "FieldError",
-                "required": [
-                    "field",
-                    "code",
-                    "message"
-                ],
-                "properties": {
-                    "field": {
-                        "type": "string",
-                        "description": "The query parameter, path parameter, header or body field, for example `scope`."
-                    },
-                    "code": {
-                        "type": "string",
-                        "description": "- `MISSING`: the field is absent or blank.\n- `INVALID_FORMAT`: the field is there, but not valid.\n- `NOT_ALLOWED`: the field is not accepted here, or a query parameter was sent more than once.",
-                        "enum": [
-                            "MISSING",
-                            "INVALID_FORMAT",
-                            "NOT_ALLOWED"
-                        ]
-                    },
-                    "message": {
-                        "type": "string",
-                        "description": "What is wrong, for people to read. The wording may change."
-                    }
-                }
-            },
-            "ErrorResponse": {
-                "type": "object",
-                "title": "ErrorResponse",
-                "required": [
-                    "type",
-                    "title",
-                    "status"
-                ],
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists all of them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API."
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "A short name for the `type`, the same every time."
-                    },
-                    "status": {
-                        "type": "integer",
-                        "description": "The HTTP status code, the same as the response's."
-                    },
-                    "detail": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "What went wrong this time, for people to read. Left out when `title` says it all. The wording may change, so check `type` in your code."
-                    },
-                    "errors": {
-                        "type": "array",
-                        "description": "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
-                        "items": {
-                            "$ref": "#/components/schemas/FieldError"
-                        }
                     }
                 }
             },

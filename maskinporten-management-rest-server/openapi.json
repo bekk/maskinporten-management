@@ -3,13 +3,13 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "v0",
-        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API. It lists, creates, updates and deletes the\nscopes. It also lists, gives and removes organisations' access to them, and shows the changes to that access.\n\nFiltering is set for each deployment of this API. When it is on, `GET /api/scopes` and\n`GET /api/scopeaccess/scopes` only show the scopes the calling app has access to, and need the\n`X-Forwarded-Client-Cert` header. When it is off, nothing is left out. Answers use Digdir's field names, but\nonly hold the fields described here: a field Digdir adds later is left out.\n\nWhen Digdir answers with an error, this API returns that answer unchanged: its status, body and content type.\nThe exception is a `401`, which means Digdir refused this API's token: this API answers `502` instead. In the\noperations described here, errors from this API itself are an `ErrorResponse`, whose `code` says what went\nwrong."
     },
     "paths": {
         "/api/scopes": {
             "put": {
                 "summary": "Update a scope",
-                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -154,7 +154,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -190,7 +190,7 @@
             },
             "post": {
                 "summary": "Create a scope",
-                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "X-Request-ID",
@@ -287,7 +287,7 @@
                         }
                     },
                     "400": {
-                        "description": "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or not text. Digdir can also answer `400`, in its own error format.",
+                        "description": "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing, blank or not text. Digdir can also answer `400`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -314,7 +314,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -350,7 +350,7 @@
             },
             "delete": {
                 "summary": "Delete a scope",
-                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -458,7 +458,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -493,14 +493,13 @@
                 }
             },
             "get": {
-                "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "summary": "List Kartverket's scopes",
+                "description": "Asks Digdir for Kartverket's active scopes. When filtering is on, this API only returns the ones the calling\napp has access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API\nreads which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "X-Forwarded-Client-Cert",
                         "in": "header",
-                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not.",
-                        "required": true,
+                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not. This API requires it when filtering is on.",
                         "schema": {
                             "type": "string"
                         }
@@ -529,7 +528,7 @@
                         }
                     },
                     "200": {
-                        "description": "The scopes the calling app has access to. The list is empty if it has access to none.",
+                        "description": "Kartverket's active scopes, or when filtering is on, the ones the calling app has access to. The list is empty if there are none.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -580,7 +579,7 @@
                         }
                     },
                     "400": {
-                        "description": "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling. Digdir can also answer `400`, in its own error format.",
+                        "description": "Filtering is on and the `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling. Digdir can also answer `400`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -607,7 +606,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -651,7 +650,7 @@
         "/api/scopeaccess/orgs": {
             "get": {
                 "summary": "List the organisations that have access to a scope",
-                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -751,7 +750,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -789,7 +788,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to. When filtering is on, this API only returns\nthe ones the calling app has access to: the scopes in its `exact` list, and the ones that start with one of its\nprefixes. This API reads which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually\nsets.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -804,8 +803,7 @@
                     {
                         "name": "X-Forwarded-Client-Cert",
                         "in": "header",
-                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not.",
-                        "required": true,
+                        "description": "Says which app is calling. Istio usually sets it on every call, so the app does not. This API requires it when filtering is on.",
                         "schema": {
                             "type": "string"
                         }
@@ -834,7 +832,7 @@
                         }
                     },
                     "200": {
-                        "description": "The organisation's access to the scopes the calling app has access to. Check `state`: only `APPROVED` means access. The list is empty if there is none.",
+                        "description": "The organisation's access to Kartverket's scopes, or when filtering is on, to the scopes the calling app has access to. Check `state`: only `APPROVED` means access. The list is empty if there is none.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -872,7 +870,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` header is missing. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or filtering is on and the `X-Forwarded-Client-Cert` header is missing. Digdir can also answer `400`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -905,7 +903,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -949,7 +947,7 @@
         "/api/scopeaccess/changelog": {
             "get": {
                 "summary": "List the changes to who has access to a scope",
-                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -1043,7 +1041,7 @@
                         }
                     },
                     "400": {
-                        "description": "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1. Digdir can also answer `400`, in its own error format.",
+                        "description": "The query has a parameter other than `scope`, `page` and `size`, or one of them twice or not URL-encoded correctly. Or `scope` is missing, blank or contains whitespace, or `page` is not a whole number of 0 or more, or `size` is not a whole number of 1 or more. Digdir can also answer `400`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1076,7 +1074,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1114,7 +1112,7 @@
         "/api/scopeaccess/{consumerOrgno}": {
             "put": {
                 "summary": "Give an organisation access to a scope",
-                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1225,7 +1223,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1261,7 +1259,7 @@
             },
             "delete": {
                 "summary": "Remove an organisation's access to a scope",
-                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged, except a `401`, which becomes a `502`.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1372,7 +1370,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "This API could not get a usable answer from Digdir or Maskinporten, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it. Digdir can also answer `502`, in its own error format.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1589,7 +1587,7 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which\n  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get a usable answer from Digdir or Maskinporten, from the\n  service that says which scopes the calling app has access to, or from Cloud KMS, which signs this\n  API's requests for Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "INVALID_REQUEST",
                             "UPSTREAM_ERROR",

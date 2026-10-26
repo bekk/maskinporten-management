@@ -1758,7 +1758,15 @@
                 "properties": {
                     "type": {
                         "type": "string",
-                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API."
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
+                        "enum": [
+                            "tag:kartverket.no,2026:validation-error",
+                            "tag:kartverket.no,2026:malformed-request",
+                            "tag:kartverket.no,2026:not-found",
+                            "tag:kartverket.no,2026:method-not-allowed",
+                            "tag:kartverket.no,2026:upstream-error",
+                            "tag:kartverket.no,2026:internal-error"
+                        ]
                     },
                     "title": {
                         "type": "string",

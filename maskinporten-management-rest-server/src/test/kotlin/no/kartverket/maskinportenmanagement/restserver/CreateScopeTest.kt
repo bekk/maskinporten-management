@@ -58,7 +58,7 @@ class CreateScopeTest {
 
             assertEquals(HttpStatusCode.BadRequest, response.status, body)
             val answer = response.errorResponse()
-            assertEquals(ProblemType.MALFORMED_REQUEST.uri, answer.type, body)
+            assertEquals(ProblemType.MALFORMED_REQUEST, answer.type, body)
             assertTrue(answer.detail.orEmpty().startsWith(detail), "$body: ${answer.detail}")
         }
         assertTrue(sent.isEmpty())

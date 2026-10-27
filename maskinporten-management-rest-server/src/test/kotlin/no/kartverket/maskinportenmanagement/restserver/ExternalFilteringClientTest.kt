@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.client.filtering
+package no.kartverket.maskinportenmanagement.restserver
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -19,7 +19,7 @@ class ExternalFilteringClientTest {
 
     private val sent = mutableListOf<OutgoingRequest>()
     private val certificate =
-        ClientCertificate.of("By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app")
+        "By=spiffe://cluster.local/ns/a/sa/b;Hash=abc;Subject=\"\";URI=spiffe://cluster.local/ns/team/sa/app"
 
     private fun filteringAnswering(answer: (OutgoingRequest) -> OutgoingResponse) =
         ExternalFilteringClient(
@@ -47,7 +47,7 @@ class ExternalFilteringClientTest {
         assertEquals("https://filtering.test/scopes", request.url.toString())
         assertEquals("application/json", request.headers["Content-Type"])
         val sentRequest = Json.decodeFromString(SentRequest.serializer(), request.body!!.decodeToString())
-        assertEquals(certificate.value, sentRequest.input.headers["x-forwarded-client-cert"])
+        assertEquals(certificate, sentRequest.input.headers["x-forwarded-client-cert"])
     }
 
     @Test

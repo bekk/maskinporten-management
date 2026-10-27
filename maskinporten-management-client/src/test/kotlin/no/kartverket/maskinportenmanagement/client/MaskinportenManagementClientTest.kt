@@ -3,7 +3,6 @@ package no.kartverket.maskinportenmanagement.client
 import kotlinx.coroutines.runBlocking
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
-import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
@@ -31,8 +30,6 @@ class MaskinportenManagementClientTest {
     ) = MaskinportenManagementClient(baseUrl, recording(sent, answer)) { AccessToken.of("test-token") }
 
     private fun answering(body: String) = clientAnswering { json(200, body) }
-
-    private val filter = ScopeFilter(exact = listOf("kartverk:nrl.rapportering"), prefix = listOf("kartverk:tilgangsstyring/"))
 
     @Test
     fun `a client made for an environment calls Digdir in that environment`() = runBlocking {
@@ -110,20 +107,6 @@ class MaskinportenManagementClientTest {
     }
 
     @Test
-    fun `with a filter, keeps only the scopes it allows`() = runBlocking {
-        val scopes = jsonList(
-            digdirScope("kartverk:tilgangsstyring/demo.read"),
-            digdirScope("kartverk:dokumentbestilling"),
-            digdirScope("kartverk:nrl.rapportering"),
-        )
-
-        assertEquals(
-            listOf("kartverk:tilgangsstyring/demo.read", "kartverk:nrl.rapportering"),
-            answering(scopes).listScopes(filter).map { it.name.value },
-        )
-    }
-
-    @Test
     fun `an answer this client cannot read becomes a DigdirException`() {
         val answers = listOf(
             "not json",
@@ -134,7 +117,7 @@ class MaskinportenManagementClientTest {
             jsonList(digdirScope("kartverk:nrl rapportering")),
         )
         for (answer in answers) {
-            val e = assertFailsWith<DigdirException>(answer) { runBlocking { answering(answer).listScopes(filter) } }
+            val e = assertFailsWith<DigdirException>(answer) { runBlocking { answering(answer).listScopes() } }
 
             assertContains(e.message!!, "cannot read", message = answer)
         }
@@ -238,20 +221,6 @@ class MaskinportenManagementClientTest {
         assertEquals(HttpMethod.GET, request.method)
         assertEquals("https://digdir.test/api/v1/scopes/access?consumer_orgno=311718371", request.url.toString())
         assertEquals("application/json", request.headers["Accept"])
-    }
-
-    @Test
-    fun `with a filter, keeps only the consumer's scope access whose scope it allows`() = runBlocking {
-        val access = jsonList(
-            digdirScopeAccess("kartverk:tilgangsstyring/demo.read"),
-            digdirScopeAccess("kartverk:dokumentbestilling"),
-            digdirScopeAccess("kartverk:nrl.rapportering"),
-        )
-
-        assertEquals(
-            listOf("kartverk:tilgangsstyring/demo.read", "kartverk:nrl.rapportering"),
-            answering(access).listConsumerScopeAccess(consumerOrgno, filter).map { it.scope.value },
-        )
     }
 
     @Test

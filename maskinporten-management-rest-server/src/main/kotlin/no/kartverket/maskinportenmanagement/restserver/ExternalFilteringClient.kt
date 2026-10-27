@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.client.filtering
+package no.kartverket.maskinportenmanagement.restserver
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -8,9 +8,11 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import java.io.IOException
 import java.net.URI
 
-public class ExternalFilteringClient(private val url: URI, private val httpClient: OutgoingHttpClient) {
-    public suspend fun filterFor(clientCertificate: ClientCertificate): ScopeFilter {
-        val requestBody = FilteringRequest(FilteringInput(mapOf(CLIENT_CERTIFICATE_HEADER.lowercase() to clientCertificate.value)))
+internal const val CLIENT_CERTIFICATE_HEADER = "X-Forwarded-Client-Cert"
+
+class ExternalFilteringClient(private val url: URI, private val httpClient: OutgoingHttpClient) {
+    suspend fun filterFor(clientCertificate: String): ScopeFilter {
+        val requestBody = FilteringRequest(FilteringInput(mapOf(CLIENT_CERTIFICATE_HEADER.lowercase() to clientCertificate)))
         val request = OutgoingRequest(
             method = HttpMethod.POST,
             url = url,
@@ -32,13 +34,9 @@ public class ExternalFilteringClient(private val url: URI, private val httpClien
             throw ExternalFilteringException("The filtering service did not answer with a valid filter: ${e.message}", e)
         }
     }
-
-    public companion object {
-        public const val CLIENT_CERTIFICATE_HEADER: String = "X-Forwarded-Client-Cert"
-    }
 }
 
-public class ExternalFilteringException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+class ExternalFilteringException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
 private val json = Json { ignoreUnknownKeys = true }
 

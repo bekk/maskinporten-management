@@ -6,9 +6,6 @@ import io.ktor.server.application.log
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
-import no.kartverket.maskinportenmanagement.client.filtering.ClientCertificate
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
-import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
@@ -69,7 +66,7 @@ class ExternalFiltering(
         val client = client ?: return null
         checkNotNull(certificate)
         cache.get(certificate)?.let { return it }
-        return client.filterFor(ClientCertificate.of(certificate)).also { cache.put(certificate, it) }
+        return client.filterFor(certificate).also { cache.put(certificate, it) }
     }
 }
 

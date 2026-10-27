@@ -99,6 +99,24 @@ class CreateScopeTest {
     }
 
     @Test
+    fun `a field missing from the body is listed even when the query has a parameter with the same name`() = createScopeTest {
+        val response = client.post("/api/scopes?subscope=matrikkel.read") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"prefix":"kartverk"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                FieldError("subscope", ValidationCode.NOT_ALLOWED, "subscope is not allowed"),
+                FieldError("subscope", ValidationCode.MISSING, "subscope is required"),
+            ),
+            response.errorResponse(),
+        )
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
     fun `a body that is not UTF-8 JSON is refused without calling Digdir`() = createScopeTest {
         val scope = """{"prefix":"kartverk"}""".toByteArray()
         val refusals = listOf(

@@ -13,6 +13,7 @@ import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeJson
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.client.validation.ValidationError
 import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import java.nio.ByteBuffer
@@ -25,9 +26,14 @@ internal class MalformedRequestException(message: String) : RuntimeException(mes
 
 internal class RequestInput {
     private val errors = mutableListOf<FieldError>()
+    private val invalidFields = mutableSetOf<String>()
 
     fun invalid(field: String, code: ValidationCode, message: String) {
-        if (errors.none { it.field == field }) errors += FieldError(field, code, message)
+        if (invalidFields.add(field)) errors += FieldError(field, code, message)
+    }
+
+    fun invalidBody(bodyErrors: List<ValidationError>) {
+        errors += bodyErrors.map { FieldError(it.field, it.code, it.message) }
     }
 
     fun requireValid() {
@@ -129,7 +135,7 @@ internal suspend fun RequestInput.scopeJson(call: ApplicationCall): ReadOnlyProp
     val scope = try {
         ScopeJson.of(call.jsonBody())
     } catch (e: ValidationException) {
-        e.errors.forEach { invalid(it.field, it.code, it.message) }
+        invalidBody(e.errors)
         null
     } catch (e: IllegalArgumentException) {
         throw MalformedRequestException(e.message!!)

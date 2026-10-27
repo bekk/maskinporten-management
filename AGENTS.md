@@ -55,11 +55,12 @@ tests, see [its README](mock-api/README.md#tests).
 - **Our model of Digdir's answers.** The client models Digdir's API, and the server models its own API. The server
   answers with the classes in `restserver/models`. They use Digdir's field names, but hold only the fields we describe.
   The routes make them from the client's classes with `from(...)`, and they reuse the client's enums and value types.
-  To answer with a field Digdir adds, add it to both classes and to `from(...)`. An error status from Digdir's API
-  passes through unchanged: status, body and content type. A 401 is the exception: Digdir refused our token, not the
-  caller's request, so the server answers 502. Every other `DigdirException` is a 502 too: Digdir out of reach,
-  Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later becomes
-  `UNKNOWN` through `OrUnknownSerializer`.
+  To answer with a field Digdir adds, add it to both classes and to `from(...)`. A 4xx from Digdir's API passes
+  through unchanged: status, body and content type. A 401 is the exception: Digdir refused our token, not the
+  caller's request, so the server answers 502. A 5xx from Digdir is Digdir's failure, not the caller's, so the server
+  logs it and answers 502. Every `DigdirException` is a 502 too: Digdir out of reach, Maskinporten refusing a token,
+  or an answer the client cannot read. An enum value Digdir adds later becomes `UNKNOWN` through
+  `OrUnknownSerializer`.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.

@@ -12,9 +12,9 @@ data class ErrorResponse(
         """What went wrong. These values do not change, so your code can rely on them.
 
 - `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.
-- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which
-  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
-  Maskinporten tokens. Your request did not cause it.
+- `UPSTREAM_ERROR` (502): Digdir answered with a `5xx`, or this API could not get an answer from Digdir,
+  from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs
+  this API's requests for Maskinporten tokens. Your request did not cause it.
 - `INTERNAL_ERROR` (500): an unexpected error in this API.""",
     )
     val code: ErrorCode,

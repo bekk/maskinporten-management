@@ -34,11 +34,16 @@ internal fun StatusPagesConfig.errorResponses() {
         call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
     }
     exception<DigdirErrorResponseException> { call, cause ->
-        call.respondBytes(
-            bytes = cause.body,
-            contentType = cause.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
-            status = HttpStatusCode.fromValue(cause.statusCode),
-        )
+        if (cause.statusCode >= 500) {
+            call.application.log.error("Digdir answered HTTP ${cause.statusCode}: ${cause.body.decodeToString()}")
+            call.respond(HttpStatusCode.BadGateway, ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR))
+        } else {
+            call.respondBytes(
+                bytes = cause.body,
+                contentType = cause.contentType?.let { runCatching { ContentType.parse(it) }.getOrNull() },
+                status = HttpStatusCode.fromValue(cause.statusCode),
+            )
+        }
     }
     exception<ExternalFilteringException> { call, cause ->
         call.application.log.error("Call to the filtering service failed", cause)

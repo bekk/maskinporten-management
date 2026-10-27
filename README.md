@@ -50,7 +50,7 @@ app has access to.
 > [!NOTE]
 > The server answers with its own model of Digdir's data. A field Digdir adds is left out until this project models
 > it, and a value Digdir adds to one of its lists of values becomes `UNKNOWN`. When Digdir answers with an error, the
-> server passes that answer on unchanged.
+> server passes that answer on unchanged, except that a `5xx` from Digdir gives `502`.
 
 ---
 

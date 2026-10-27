@@ -3,13 +3,13 @@
     "info": {
         "title": "Maskinporten Management REST API",
         "version": "v0",
-        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type."
+        "description": "Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,\nlists, gives and removes organisations' access to them, and shows the changes to that access.\n\nA call only reaches this API after the platform has checked that the calling app may make it. When a list\nholds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only\nhold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this\nAPI returns that answer unchanged: its status, body and content type. A `5xx` from Digdir gives `502` instead."
     },
     "paths": {
         "/api/scopes": {
             "put": {
                 "summary": "Update a scope",
-                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -69,7 +69,7 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -154,7 +154,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -190,7 +190,7 @@
             },
             "post": {
                 "summary": "Create a scope",
-                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to create the scope in the body, which Kartverket then owns. The body is in Digdir's format and is\nsent on unchanged. It may only hold the fields listed here, each once and spelled exactly so, so that the scope\ncannot be read in two ways.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "X-Request-ID",
@@ -228,7 +228,7 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -314,7 +314,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -350,7 +350,7 @@
             },
             "delete": {
                 "summary": "Delete a scope",
-                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to delete `scope`. Digdir keeps the scope with `active` set to `false`, so it no longer shows up in `GET /api/scopes`. When Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -373,7 +373,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -458,7 +458,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -494,7 +494,7 @@
             },
             "get": {
                 "summary": "List Kartverket's scopes that the calling app has access to",
-                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in\nits `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from\nthe `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "X-Forwarded-Client-Cert",
@@ -517,7 +517,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -607,7 +607,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -651,7 +651,7 @@
         "/api/scopeaccess/orgs": {
             "get": {
                 "summary": "List the organisations that have access to a scope",
-                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which organisations Kartverket has given access to `scope`. When Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -674,7 +674,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -751,7 +751,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -789,7 +789,7 @@
         "/api/scopeaccess/scopes": {
             "get": {
                 "summary": "List the scopes an organisation has access to",
-                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has\naccess to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads\nwhich app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "orgnr",
@@ -822,7 +822,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -905,7 +905,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -949,7 +949,7 @@
         "/api/scopeaccess/changelog": {
             "get": {
                 "summary": "List the changes to who has access to a scope",
-                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir for the changes to the access to `scope`, such as an organisation being given access or losing it.\nDigdir answers a page at a time. Without `page` and `size`, it gives its first page, in a size it picks.\n\nWhen Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -990,7 +990,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1076,7 +1076,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1114,7 +1114,7 @@
         "/api/scopeaccess/{consumerOrgno}": {
             "put": {
                 "summary": "Give an organisation access to a scope",
-                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to give `consumerOrgno` access to `scope`. When Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1147,7 +1147,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1225,7 +1225,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1261,7 +1261,7 @@
             },
             "delete": {
                 "summary": "Remove an organisation's access to a scope",
-                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged.",
+                "description": "Asks Digdir to remove the access `consumerOrgno` has to `scope`. Digdir keeps the access as inactive, so it no longer shows up in this API's lists. When Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`.",
                 "parameters": [
                     {
                         "name": "consumerOrgno",
@@ -1294,7 +1294,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1372,7 +1372,7 @@
                         }
                     },
                     "502": {
-                        "description": "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
+                        "description": "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your request did not cause it.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1589,7 +1589,7 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which\n  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): Digdir answered with a `5xx`, or this API could not get an answer from Digdir,\n  from the service that says which scopes the calling app has access to, or from Cloud KMS, which signs\n  this API's requests for Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
                         "enum": [
                             "INVALID_REQUEST",
                             "UPSTREAM_ERROR",

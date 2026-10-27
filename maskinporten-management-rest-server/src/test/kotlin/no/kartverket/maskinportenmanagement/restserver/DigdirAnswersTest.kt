@@ -92,9 +92,9 @@ class DigdirAnswersTest {
     }
 
     @Test
-    fun `passes Digdir's errors on with their status, content type and body unchanged`() {
+    fun `passes Digdir's 4xx errors on with their status, content type and body unchanged`() {
         val error = """{"status":404,"error":"ikke funnet: æøå"}""".toByteArray(Charsets.ISO_8859_1)
-        val errors = listOf(400, 403, 404, 409, 500, 503).map { OutgoingResponse(it, "application/json;charset=ISO-8859-1", error) }
+        val errors = listOf(400, 403, 404, 409).map { OutgoingResponse(it, "application/json;charset=ISO-8859-1", error) }
         var answer = errors.first()
         digdirAnswering({ answer }) {
             for (endpoint in endpoints) {
@@ -113,13 +113,13 @@ class DigdirAnswersTest {
 
     @Test
     fun `leaves out a content type from Digdir that cannot be parsed, and passes on the rest`() =
-        digdirAnswering({ OutgoingResponse(503, "text", "Service Unavailable".toByteArray()) }) {
+        digdirAnswering({ OutgoingResponse(404, "text", "Not Found".toByteArray()) }) {
             for (endpoint in endpoints) {
                 val response = call(endpoint)
 
-                assertEquals(HttpStatusCode.ServiceUnavailable, response.status, "$endpoint")
+                assertEquals(HttpStatusCode.NotFound, response.status, "$endpoint")
                 assertNull(response.headers[HttpHeaders.ContentType], "$endpoint")
-                assertEquals("Service Unavailable", response.bodyAsText(), "$endpoint")
+                assertEquals("Not Found", response.bodyAsText(), "$endpoint")
             }
         }
 
@@ -130,6 +130,20 @@ class DigdirAnswersTest {
                 assertDigdirFailed(call(endpoint), endpoint)
             }
         }
+
+    @Test
+    fun `a 5xx from Digdir gives 502, since Digdir failed, not the caller`() {
+        val errors = listOf(500, 502, 503, 504).map { json(it, """{"status":$it,"error":"feil"}""") }
+        var answer = errors.first()
+        digdirAnswering({ answer }) {
+            for (endpoint in endpoints) {
+                for (digdirAnswer in errors) {
+                    answer = digdirAnswer
+                    assertDigdirFailed(call(endpoint), "$endpoint, Digdir answered ${digdirAnswer.statusCode}")
+                }
+            }
+        }
+    }
 
     @Test
     fun `gives 502 when Digdir answers with something this API cannot read`() {
@@ -152,8 +166,8 @@ class DigdirAnswersTest {
             }
         }
 
-    private suspend fun assertDigdirFailed(response: HttpResponse, endpoint: Endpoint) {
-        assertEquals(HttpStatusCode.BadGateway, response.status, "$endpoint")
-        assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse(), "$endpoint")
+    private suspend fun assertDigdirFailed(response: HttpResponse, case: Any) {
+        assertEquals(HttpStatusCode.BadGateway, response.status, "$case")
+        assertEquals(ErrorResponse("The call to Digdir failed", ErrorCode.UPSTREAM_ERROR), response.errorResponse(), "$case")
     }
 }

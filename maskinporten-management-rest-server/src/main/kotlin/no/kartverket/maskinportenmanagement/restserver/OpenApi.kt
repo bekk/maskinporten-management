@@ -66,7 +66,7 @@ private val apiInfo = OpenApiInfo(
         A call only reaches this API after the platform has checked that the calling app may make it. When a list
         holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
         hold the fields described here: a field Digdir adds later is left out. When Digdir answers with an error, this
-        API returns that answer unchanged: its status, body and content type.
+        API returns that answer unchanged: its status, body and content type. A `5xx` from Digdir gives `502` instead.
     """.trimIndent(),
 )
 
@@ -151,12 +151,12 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
 private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolean = false) {
     HttpStatusCode.BadGateway {
         description = if (filtered) {
-            "This API could not get an answer from Digdir, from the service that says which scopes the calling app " +
-                "has access to, or from Cloud KMS, which signs this API's requests for Maskinporten tokens. Your " +
-                "request did not cause it."
+            "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, from the service that " +
+                "says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests " +
+                "for Maskinporten tokens. Your request did not cause it."
         } else {
-            "This API could not get an answer from Digdir, or from Cloud KMS, which signs this API's requests for " +
-                "Maskinporten tokens. Your request did not cause it."
+            "Digdir answered with a `5xx`, or this API could not get an answer from Digdir, or from Cloud KMS, which " +
+                "signs this API's requests for Maskinporten tokens. Your request did not cause it."
         }
         headers { requestId() }
         ContentType.Application.Json {
@@ -173,13 +173,14 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
     }
 
     default {
-        description = "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. " +
-            "The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API."
+        description = "Any other status below `500` is Digdir's own answer, passed on unchanged in Digdir's error " +
+            "format. A `500` with `code` `INTERNAL_ERROR` is an unexpected error in this API."
         headers { requestId() }
     }
 }
 
-private const val DIGDIR_ERRORS = "When Digdir answers with an error, that answer is returned unchanged."
+private const val DIGDIR_ERRORS =
+    "When Digdir answers with an error, that answer is returned unchanged, except that a `5xx` gives `502`."
 
 private val missingScopeExample =
     "MissingScope" to ErrorResponse("Query parameter scope is required", ErrorCode.INVALID_REQUEST)

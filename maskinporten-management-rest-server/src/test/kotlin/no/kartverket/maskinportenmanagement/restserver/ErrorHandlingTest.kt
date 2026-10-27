@@ -12,6 +12,7 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -69,6 +70,14 @@ class ErrorHandlingTest {
             assertEquals(Level.ERROR, logged.level)
             assertEquals(CloudKmsException::class.java.name, logged.throwableProxy.className)
             assertTrue(logged.throwableProxy.stackTraceElementProxyArray.isNotEmpty())
+        }
+
+    @Test
+    fun `a 5xx from Digdir is logged with its status and body`() =
+        answerTo(DigdirErrorResponseException(503, "text/plain", "Service Unavailable".toByteArray())) { response ->
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            val logged = appender.list.single { it.formattedMessage == "Digdir answered HTTP 503: Service Unavailable" }
+            assertEquals(Level.ERROR, logged.level)
         }
 
     @Test

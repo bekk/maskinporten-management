@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.Serializable
@@ -12,6 +13,8 @@ import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringCl
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
+import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
 import java.net.URI
 
 internal const val CLIENT_CERTIFICATE =
@@ -37,6 +40,13 @@ internal fun testClient(digdir: OutgoingHttpClient = OutgoingHttpClient { error(
 
 internal suspend fun HttpResponse.errorResponse(): ErrorResponse =
     Json.decodeFromString(ErrorResponse.serializer(), bodyAsText())
+
+internal fun validationFailed(vararg errors: FieldError) =
+    ErrorResponse.of(ProblemType.VALIDATION_ERROR, HttpStatusCode.BadRequest, errors = errors.toList())
+
+internal fun malformedRequest(detail: String) = ErrorResponse.of(ProblemType.MALFORMED_REQUEST, HttpStatusCode.BadRequest, detail)
+
+internal fun upstreamError(detail: String) = ErrorResponse.of(ProblemType.UPSTREAM_ERROR, HttpStatusCode.BadGateway, detail)
 
 @Serializable
 private data class FilteringInput(val headers: Map<String, String>)

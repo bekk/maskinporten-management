@@ -1,13 +1,18 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class OnlyQueryParameterTest {
 
-    private fun refusal(query: String) =
-        assertFailsWith<InvalidRequestException>(query.take(60)) { onlyQueryParameter(query, "scope") }.message
+    private fun malformed(query: String) =
+        assertFailsWith<MalformedRequestException>(query.take(60)) { onlyQueryParameter(query, "scope") }.message
+
+    private fun invalid(query: String) =
+        assertFailsWith<InvalidRequestException>(query) { onlyQueryParameter(query, "scope") }.errors
 
     @Test
     fun `returns the decoded value of the one parameter`() {
@@ -30,21 +35,25 @@ class OnlyQueryParameterTest {
             "scope",
         )
         for (query in queries) {
-            assertEquals("The query must contain only the parameter scope, sent once", refusal(query), query.take(60))
+            assertEquals("The query must contain only the parameter scope, sent once", malformed(query), query.take(60))
         }
     }
 
     @Test
     fun `refuses a missing or blank value`() {
         for (query in listOf("", "scope=", "scope=%20", "scope=+")) {
-            assertEquals("Query parameter scope is required", refusal(query), query)
+            assertEquals(listOf(FieldError("scope", ValidationCode.MISSING, "scope is required")), invalid(query), query)
         }
     }
 
     @Test
     fun `refuses a value that is not URL-encoded correctly`() {
         for (query in listOf("scope=%zz", "scope=kartverk%3", "scope=%")) {
-            assertEquals("Query parameter scope is not URL-encoded correctly", refusal(query), query)
+            assertEquals(
+                listOf(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope is not URL-encoded correctly")),
+                invalid(query),
+                query,
+            )
         }
     }
 }

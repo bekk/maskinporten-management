@@ -69,7 +69,7 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -138,15 +138,23 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -165,21 +173,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -228,7 +240,7 @@
                 },
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -298,15 +310,23 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UnknownField": {
                                         "value": {
-                                            "error": "The field \"Subscope\" is not allowed",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "Subscope",
+                                                    "code": "NOT_ALLOWED",
+                                                    "message": "Subscope is not allowed"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -325,21 +345,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -373,7 +397,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -442,15 +466,23 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -469,21 +501,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -517,7 +553,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -591,15 +627,23 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingClientCertificate": {
                                         "value": {
-                                            "error": "Header X-Forwarded-Client-Cert is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "X-Forwarded-Client-Cert",
+                                                    "code": "MISSING",
+                                                    "message": "X-Forwarded-Client-Cert is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -618,27 +662,33 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "FilteringError": {
                                         "value": {
-                                            "error": "The call to the filtering service failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to the filtering service failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -674,7 +724,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -735,15 +785,23 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -762,21 +820,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -822,7 +884,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -883,21 +945,37 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "InvalidOrganisationNumber": {
                                         "value": {
-                                            "error": "Query parameter orgnr must be an organisation number of 9 digits",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "orgnr",
+                                                    "code": "INVALID_FORMAT",
+                                                    "message": "orgnr must be an organisation number of 9 digits"
+                                                }
+                                            ]
                                         }
                                     },
                                     "MissingClientCertificate": {
                                         "value": {
-                                            "error": "Header X-Forwarded-Client-Cert is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "X-Forwarded-Client-Cert",
+                                                    "code": "MISSING",
+                                                    "message": "X-Forwarded-Client-Cert is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -916,27 +994,33 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "FilteringError": {
                                         "value": {
-                                            "error": "The call to the filtering service failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to the filtering service failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -990,7 +1074,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1054,21 +1138,37 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     },
                                     "InvalidPage": {
                                         "value": {
-                                            "error": "Query parameter page must be a whole number of 0 or more",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "page",
+                                                    "code": "INVALID_FORMAT",
+                                                    "message": "page must be a whole number of 0 or more"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -1087,21 +1187,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -1147,7 +1251,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1203,21 +1307,37 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "InvalidOrganisationNumber": {
                                         "value": {
-                                            "error": "Path parameter consumerOrgno must be an organisation number of 9 digits",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "consumerOrgno",
+                                                    "code": "INVALID_FORMAT",
+                                                    "message": "consumerOrgno must be an organisation number of 9 digits"
+                                                }
+                                            ]
                                         }
                                     },
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -1236,21 +1356,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -1294,7 +1418,7 @@
                 ],
                 "responses": {
                     "default": {
-                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with `code` `INTERNAL_ERROR`, which is an unexpected error in this API.",
+                        "description": "Any other status is Digdir's own answer, passed on unchanged in Digdir's error format. The exception is a `500` with the `type` `tag:kartverket.no,2026:internal-error`, as `application/problem+json`, which is an unexpected error in this API.",
                         "headers": {
                             "X-Request-ID": {
                                 "description": "The id of this call in this API's logs: the `X-Request-Id` you sent, or a new one.",
@@ -1350,21 +1474,37 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "InvalidOrganisationNumber": {
                                         "value": {
-                                            "error": "Path parameter consumerOrgno must be an organisation number of 9 digits",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "consumerOrgno",
+                                                    "code": "INVALID_FORMAT",
+                                                    "message": "consumerOrgno must be an organisation number of 9 digits"
+                                                }
+                                            ]
                                         }
                                     },
                                     "MissingScope": {
                                         "value": {
-                                            "error": "Query parameter scope is required",
-                                            "code": "INVALID_REQUEST"
+                                            "type": "tag:kartverket.no,2026:validation-error",
+                                            "title": "Validation failed",
+                                            "status": 400,
+                                            "errors": [
+                                                {
+                                                    "field": "scope",
+                                                    "code": "MISSING",
+                                                    "message": "scope is required"
+                                                }
+                                            ]
                                         }
                                     }
                                 }
@@ -1383,21 +1523,25 @@
                             }
                         },
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ErrorResponse"
                                 },
                                 "examples": {
                                     "UpstreamError": {
                                         "value": {
-                                            "error": "The call to Digdir failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Digdir failed"
                                         }
                                     },
                                     "KmsError": {
                                         "value": {
-                                            "error": "The call to Cloud KMS failed",
-                                            "code": "UPSTREAM_ERROR"
+                                            "type": "tag:kartverket.no,2026:upstream-error",
+                                            "title": "A service this API depends on failed",
+                                            "status": 502,
+                                            "detail": "The call to Cloud KMS failed"
                                         }
                                     }
                                 }
@@ -1575,26 +1719,76 @@
                     }
                 }
             },
+            "FieldError": {
+                "type": "object",
+                "title": "FieldError",
+                "required": [
+                    "field",
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "The query parameter, path parameter, header or body field, for example `scope`."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "- `MISSING`: the field is absent or blank.\n- `INVALID_FORMAT`: the field is there, but not valid.\n- `NOT_ALLOWED`: the field is not accepted here.",
+                        "enum": [
+                            "MISSING",
+                            "INVALID_FORMAT",
+                            "NOT_ALLOWED"
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "What is wrong, for people to read. The wording may change."
+                    }
+                }
+            },
             "ErrorResponse": {
                 "type": "object",
                 "title": "ErrorResponse",
                 "required": [
-                    "error",
-                    "code"
+                    "type",
+                    "title",
+                    "status"
                 ],
                 "properties": {
-                    "error": {
+                    "type": {
                         "type": "string",
-                        "description": "A short summary for people to read. The wording may change, so check `code` in your code."
-                    },
-                    "code": {
-                        "type": "string",
-                        "description": "What went wrong. These values do not change, so your code can rely on them.\n\n- `INVALID_REQUEST` (400): the request was refused before it reached Digdir. `error` says why.\n- `UPSTREAM_ERROR` (502): this API could not get an answer from Digdir, from the service that says which\n  scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `INTERNAL_ERROR` (500): an unexpected error in this API.",
+                        "description": "What went wrong, as a name that does not change, so your code can rely on it.\n\n- `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body\n  fields are missing, invalid or not allowed. `errors` lists them.\n- `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a\n  list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.\n- `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.\n- `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.\n- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that\n  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for\n  Maskinporten tokens. Your request did not cause it.\n- `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.",
                         "enum": [
-                            "INVALID_REQUEST",
-                            "UPSTREAM_ERROR",
-                            "INTERNAL_ERROR"
+                            "tag:kartverket.no,2026:validation-error",
+                            "tag:kartverket.no,2026:malformed-request",
+                            "tag:kartverket.no,2026:not-found",
+                            "tag:kartverket.no,2026:method-not-allowed",
+                            "tag:kartverket.no,2026:upstream-error",
+                            "tag:kartverket.no,2026:internal-error"
                         ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "A short name for the `type`, the same every time."
+                    },
+                    "status": {
+                        "type": "integer",
+                        "description": "The HTTP status code, the same as the response's."
+                    },
+                    "detail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "What went wrong this time, for people to read. Left out when `title` says it all. The wording may change, so check `type` in your code."
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "Only with `tag:kartverket.no,2026:validation-error`: the fields that failed.",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldError"
+                        }
                     }
                 }
             },

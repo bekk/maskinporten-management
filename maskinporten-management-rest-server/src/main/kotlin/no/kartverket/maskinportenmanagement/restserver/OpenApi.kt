@@ -36,7 +36,6 @@ import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeAccessState
 import no.kartverket.maskinportenmanagement.client.TokenType
 import no.kartverket.maskinportenmanagement.client.Visibility
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError

@@ -5,7 +5,6 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
 import no.kartverket.maskinportenmanagement.client.digdirScope
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json

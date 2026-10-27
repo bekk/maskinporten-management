@@ -1,6 +1,5 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-import no.kartverket.maskinportenmanagement.client.filtering.ScopeFilter
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

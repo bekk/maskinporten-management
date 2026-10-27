@@ -28,7 +28,6 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.ScopeUpdateJson
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
@@ -85,7 +84,8 @@ fun Application.module(
             val input = RequestInput()
             val certificate by input.clientCertificate(call, required = externalFiltering.isOn)
             input.requireValid()
-            call.respond(client.listScopes(externalFiltering.filterFor(certificate)).map(ScopeDetails::from))
+            val filter = externalFiltering.filterFor(certificate)
+            call.respond(client.listScopes().allowedBy(filter) { it.name }.map(ScopeDetails::from))
         }.describe(scopesListOperation)
 
         post("/api/scopes") {
@@ -123,7 +123,8 @@ fun Application.module(
             val orgnr by input.organizationNumberQueryParameter(call, "orgnr")
             val certificate by input.clientCertificate(call, required = externalFiltering.isOn)
             input.requireValid()
-            call.respond(client.listConsumerScopeAccess(orgnr, externalFiltering.filterFor(certificate)).map(ScopeAccess::from))
+            val filter = externalFiltering.filterFor(certificate)
+            call.respond(client.listConsumerScopeAccess(orgnr).allowedBy(filter) { it.scope }.map(ScopeAccess::from))
         }.describe(scopeAccessScopesOperation)
 
         get("/api/scopeaccess/changelog") {

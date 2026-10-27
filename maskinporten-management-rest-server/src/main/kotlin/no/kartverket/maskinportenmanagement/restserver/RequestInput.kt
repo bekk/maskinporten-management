@@ -11,7 +11,6 @@ import io.ktor.server.request.receive
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeJson
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError

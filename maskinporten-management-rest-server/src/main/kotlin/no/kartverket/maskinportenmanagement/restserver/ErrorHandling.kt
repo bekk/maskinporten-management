@@ -16,7 +16,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import no.kartverket.maskinportenmanagement.client.DigdirException
-import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import no.kartverket.maskinportenmanagement.restserver.models.ProblemType

@@ -8,7 +8,7 @@ caller's `X-Forwarded-Client-Cert` header to the filtering service, which decide
 
 | Module | What it is |
 | --- | --- |
-| `maskinporten-management-client` | Kotlin library for other services: calls Digdir, gets Maskinporten tokens, filters scopes. |
+| `maskinporten-management-client` | Kotlin library for other services: calls Digdir and gets Maskinporten tokens. |
 | `maskinporten-management-rest-server` | Ktor server exposing the client as a REST/JSON API. Shipped as a Docker image built with Jib. |
 | `mock-api` | Mock of Digdir, Maskinporten and the filtering service, for running locally. |
 
@@ -46,8 +46,7 @@ tests, see [its README](mock-api/README.md#tests).
 
 - **Strong types.** A domain value is a `value class` with a private constructor and an `of()`. Where the value has
   rules, `of()` rejects invalid input with `require`, as in `Scope.kt` and `OrganizationNumber.kt`. `AccessToken.of`
-  and `ClientCertificate.of` check nothing. In new code, parse at the edge and don't pass raw strings on. Older public
-  API, like `ScopeFilter`, still takes strings; changing it changes the client's public API.
+  checks nothing. In new code, parse at the edge and don't pass raw strings on.
 - **Few comments.** Comment only a reason the code cannot show, like the path traversal note in
   `OrganizationNumber.kt`. Don't restate the code, and don't add KDoc to obvious members.
 - **Explicit API in the client.** The client module uses `explicitApi()`, so declarations need an explicit

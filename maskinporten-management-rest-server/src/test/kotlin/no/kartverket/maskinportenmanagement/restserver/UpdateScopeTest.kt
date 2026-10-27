@@ -64,15 +64,15 @@ class UpdateScopeTest {
     @Test
     fun `a query that is not exactly one scope, or a body that is not UTF-8 JSON, is refused without calling Digdir`() = updateScopeTest {
         val refusals = mapOf(
-            "" to validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-            "?scope=kartverk:a&inactive=true" to malformedRequest("The query must contain only the parameter scope, sent once"),
-            "?scope=kartverk:a+kartverk:b" to validationFailed(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
+            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
+            "?scope=kartverk:a&inactive=true" to FieldError("inactive", ValidationCode.NOT_ALLOWED, "inactive is not allowed"),
+            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
         )
-        for ((query, error) in refusals) {
+        for ((query, fieldError) in refusals) {
             val response = updateScope(query, """{"description":"a"}""".toByteArray())
 
             assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(error, response.errorResponse(), "for \"$query\"")
+            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
         }
 
         for (contentType in listOf(ContentType.Text.Plain, ContentType("application", ""), ContentType("", "json"))) {

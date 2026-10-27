@@ -11,13 +11,15 @@ data class ErrorResponse(
         """What went wrong, as a name that does not change, so your code can rely on it.
 
 - `tag:kartverket.no,2026:validation-error` (400): one or more query parameters, path parameters, headers or body
-  fields are missing, invalid or not allowed. `errors` lists them.
+  fields are missing, invalid or not allowed. `errors` lists all of them.
 - `tag:kartverket.no,2026:malformed-request` (400): the request could not be read, for example a query that is not a
   list of names and values, or a body that is not JSON in UTF-8 sent with `Content-Type: application/json`.
+- `tag:kartverket.no,2026:upstream-rejected` (the status Digdir gave, for example 403, 404 or 409): the request passed
+  this API's checks, but Digdir rejected it. `detail` is Digdir's explanation.
 - `tag:kartverket.no,2026:not-found` (404): there is no endpoint at this path.
 - `tag:kartverket.no,2026:method-not-allowed` (405): the endpoint at this path does not accept this HTTP method.
-- `tag:kartverket.no,2026:upstream-error` (502): this API could not get an answer from Digdir, from the service that
-  says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
+- `tag:kartverket.no,2026:upstream-error` (502): this API could not get a usable answer from Digdir, from the service
+  that says which scopes the calling app has access to, or from Cloud KMS, which signs this API's requests for
   Maskinporten tokens. Your request did not cause it.
 - `tag:kartverket.no,2026:internal-error` (500): an unexpected error in this API.""",
     )
@@ -37,7 +39,7 @@ data class ErrorResponse(
 
     @JsonSchema.Type(JsonType.ARRAY)
     @JsonSchema.Description(
-        "Only with `tag:kartverket.no,2026:validation-error`: the fields that failed.",
+        "Only with `tag:kartverket.no,2026:validation-error`: every field that failed, so you can fix them all at once.",
     )
     val errors: List<FieldError>? = null,
 ) {

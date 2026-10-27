@@ -55,14 +55,17 @@ tests, see [its README](mock-api/README.md#tests).
 - **Our model of Digdir's answers.** The client models Digdir's API, and the server models its own API. The server
   answers with the classes in `restserver/models`. They use Digdir's field names, but hold only the fields we describe.
   The routes make them from the client's classes with `from(...)`, and they reuse the client's enums and value types.
-  To answer with a field Digdir adds, add it to both classes and to `from(...)`. An error status from Digdir's API
-  passes through unchanged: status, body and content type. A 401 is the exception: Digdir refused our token, not the
-  caller's request, so the server answers 502. Every other `DigdirException` is a 502 too: Digdir out of reach,
-  Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later becomes
-  `UNKNOWN` through `OrUnknownSerializer`.
-- **Errors.** The server's own errors follow Problem Details (RFC 9457), as `application/problem+json`. In a route,
-  throw `InvalidRequestException` with a `FieldError` for each field that failed, or `MalformedRequestException` for
-  a request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
+  To answer with a field Digdir adds, add it to both classes and to `from(...)`. A 4xx from Digdir's API keeps its
+  status, as the type `upstream-rejected` with Digdir's `error_description` (or else `error`) as `detail`, and
+  Digdir's whole answer goes to the log. A 401 is the exception: Digdir refused our token, not the caller's request,
+  so the server answers 502. Any other status from Digdir is a 502 too, and so is every `DigdirException`: Digdir
+  out of reach, Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later
+  becomes `UNKNOWN` through `OrUnknownSerializer`.
+- **Errors.** The server's errors follow Problem Details (RFC 9457), as `application/problem+json`. A route reads
+  its query, path parameters, headers and body through one `RequestInput`, which collects every invalid field, and
+  calls `requireValid()` before calling Digdir, so a caller gets all the errors at once. `RequestInput` throws
+  `InvalidRequestException` with a `FieldError` for each field that failed, or `MalformedRequestException` for a
+  request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
   `type` is a `tag:kartverket.no,2026:` name from `ProblemType` that says what went wrong, `title` comes from the
   type, and `status` from the HTTP status.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`

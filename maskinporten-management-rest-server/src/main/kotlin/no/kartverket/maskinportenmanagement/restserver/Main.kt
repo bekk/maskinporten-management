@@ -129,16 +129,16 @@ fun Application.module(
         get("/api/scopeaccess/changelog") {
             val input = RequestInput()
             val query = input.queryParameters(call.request.queryString(), "scope", "page", "size")
-            val scope by input.scope("scope", query["scope"])
-            val page by input.wholeNumber("page", query["page"], min = 0)
-            val size by input.wholeNumber("size", query["size"], min = 1)
+            val scope by input.scope(Location.QUERY, "scope", query["scope"])
+            val page by input.wholeNumber(Location.QUERY, "page", query["page"], min = 0)
+            val size by input.wholeNumber(Location.QUERY, "size", query["size"], min = 1)
             input.requireValid()
             call.respond(ScopeAccessChangelog.from(client.getScopeAccessChangelog(scope, page, size)))
         }.describe(scopeAccessChangelogOperation)
 
         put("/api/scopeaccess/{consumerOrgno}") {
             val input = RequestInput()
-            val consumerOrgno by input.organizationNumber("consumerOrgno", call.pathParameters["consumerOrgno"])
+            val consumerOrgno by input.organizationNumber(Location.PATH, "consumerOrgno", call.pathParameters["consumerOrgno"])
             val scope by input.scopeQueryParameter(call)
             input.requireValid()
             call.respond(ScopeAccess.from(client.grantScopeAccess(consumerOrgno, scope)))
@@ -146,7 +146,7 @@ fun Application.module(
 
         delete("/api/scopeaccess/{consumerOrgno}") {
             val input = RequestInput()
-            val consumerOrgno by input.organizationNumber("consumerOrgno", call.pathParameters["consumerOrgno"])
+            val consumerOrgno by input.organizationNumber(Location.PATH, "consumerOrgno", call.pathParameters["consumerOrgno"])
             val scope by input.scopeQueryParameter(call)
             input.requireValid()
             call.respond(ScopeAccess.from(client.removeScopeAccess(consumerOrgno, scope)))

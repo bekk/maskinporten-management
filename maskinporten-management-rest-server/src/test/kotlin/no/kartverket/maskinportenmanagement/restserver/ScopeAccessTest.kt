@@ -115,6 +115,21 @@ class ScopeAccessTest {
         assertTrue(sent.isEmpty())
     }
 
+    @Test
+    fun `an invalid organisation number is listed even when the query has a parameter with the same name`() = scopeAccessTest {
+        val response = call(changeMethods.first(), "/api/scopeaccess/31171837?scope=kartverk:a&consumerOrgno=311718371")
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                invalidOrganisationNumber,
+                FieldError("consumerOrgno", ValidationCode.NOT_ALLOWED, "consumerOrgno is not allowed"),
+            ),
+            response.errorResponse(),
+        )
+        assertTrue(sent.isEmpty())
+    }
+
     private val invalidOrganisationNumber =
         FieldError("consumerOrgno", ValidationCode.INVALID_FORMAT, "consumerOrgno must be an organisation number of 9 digits")
 }

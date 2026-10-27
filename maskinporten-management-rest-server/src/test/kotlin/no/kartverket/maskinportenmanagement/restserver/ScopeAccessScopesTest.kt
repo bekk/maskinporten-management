@@ -94,6 +94,22 @@ class ScopeAccessScopesTest {
     }
 
     @Test
+    fun `a missing certificate header is listed even when the query has a parameter with the same name`() = scopeAccessTest {
+        val response = client.get("/api/scopeaccess/scopes?orgnr=311718371&X-Forwarded-Client-Cert=x")
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                FieldError("X-Forwarded-Client-Cert", ValidationCode.NOT_ALLOWED, "X-Forwarded-Client-Cert is not allowed"),
+                FieldError("X-Forwarded-Client-Cert", ValidationCode.MISSING, "X-Forwarded-Client-Cert is required"),
+            ),
+            response.errorResponse(),
+        )
+        assertTrue(filteringRequests.isEmpty())
+        assertTrue(digdirRequests.isEmpty())
+    }
+
+    @Test
     fun `gives 502 without calling Digdir when the filtering service fails`() = scopeAccessTest(filtering = { json(500, "{}") }) {
         val response = listScopes()
 

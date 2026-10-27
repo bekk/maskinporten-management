@@ -13,7 +13,6 @@ import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeJson
 import no.kartverket.maskinportenmanagement.client.filtering.ExternalFilteringClient.Companion.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
-import no.kartverket.maskinportenmanagement.client.validation.ValidationError
 import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import java.nio.ByteBuffer
@@ -24,16 +23,14 @@ internal class InvalidRequestException(val errors: List<FieldError>) : RuntimeEx
 
 internal class MalformedRequestException(message: String) : RuntimeException(message)
 
+internal enum class Location { QUERY, PATH, HEADER, BODY }
+
 internal class RequestInput {
     private val errors = mutableListOf<FieldError>()
-    private val invalidFields = mutableSetOf<String>()
+    private val invalidFields = mutableSetOf<Pair<Location, String>>()
 
-    fun invalid(field: String, code: ValidationCode, message: String) {
-        if (invalidFields.add(field)) errors += FieldError(field, code, message)
-    }
-
-    fun invalidBody(bodyErrors: List<ValidationError>) {
-        errors += bodyErrors.map { FieldError(it.field, it.code, it.message) }
+    fun invalid(location: Location, field: String, code: ValidationCode, message: String) {
+        if (invalidFields.add(location to field)) errors += FieldError(field, code, message)
     }
 
     fun requireValid() {
@@ -63,14 +60,14 @@ internal fun RequestInput.queryParameters(query: String, vararg names: String): 
     val values = mutableMapOf<String, String>()
     for ((name, sent) in raw.groupBy({ it.first }, { it.second })) {
         when {
-            name !in names -> invalid(name, ValidationCode.NOT_ALLOWED, "$name is not allowed")
+            name !in names -> invalid(Location.QUERY, name, ValidationCode.NOT_ALLOWED, "$name is not allowed")
 
-            sent.size > 1 -> invalid(name, ValidationCode.NOT_ALLOWED, "$name must be sent once")
+            sent.size > 1 -> invalid(Location.QUERY, name, ValidationCode.NOT_ALLOWED, "$name must be sent once")
 
             else -> try {
                 values[name] = sent.single().decodeURLQueryComponent(plusIsSpace = true)
             } catch (e: URLDecodeException) {
-                invalid(name, ValidationCode.INVALID_FORMAT, "$name is not URL-encoded correctly")
+                invalid(Location.QUERY, name, ValidationCode.INVALID_FORMAT, "$name is not URL-encoded correctly")
             }
         }
     }
@@ -89,36 +86,39 @@ internal fun RequestInput.noQuery(call: ApplicationCall) {
 }
 
 internal fun RequestInput.scopeQueryParameter(call: ApplicationCall): ReadOnlyProperty<Any?, Scope> =
-    scope("scope", queryParameters(call.request.queryString(), "scope")["scope"])
+    scope(Location.QUERY, "scope", queryParameters(call.request.queryString(), "scope")["scope"])
 
 internal fun RequestInput.organizationNumberQueryParameter(
     call: ApplicationCall,
     name: String,
-): ReadOnlyProperty<Any?, OrganizationNumber> = organizationNumber(name, queryParameters(call.request.queryString(), name)[name])
+): ReadOnlyProperty<Any?, OrganizationNumber> = organizationNumber(Location.QUERY, name, queryParameters(call.request.queryString(), name)[name])
 
-internal fun RequestInput.scope(name: String, value: String?): ReadOnlyProperty<Any?, Scope> =
-    required(parse(name, value, "must not contain whitespace", Scope::of))
+internal fun RequestInput.scope(location: Location, name: String, value: String?): ReadOnlyProperty<Any?, Scope> =
+    required(parse(location, name, value, "must not contain whitespace", Scope::of))
 
-internal fun RequestInput.organizationNumber(name: String, value: String?): ReadOnlyProperty<Any?, OrganizationNumber> =
-    required(parse(name, value, "must be an organisation number of 9 digits", OrganizationNumber::of))
+internal fun RequestInput.organizationNumber(
+    location: Location,
+    name: String,
+    value: String?,
+): ReadOnlyProperty<Any?, OrganizationNumber> = required(parse(location, name, value, "must be an organisation number of 9 digits", OrganizationNumber::of))
 
-internal fun RequestInput.wholeNumber(name: String, value: String?, min: Int): ReadOnlyProperty<Any?, Int?> {
+internal fun RequestInput.wholeNumber(location: Location, name: String, value: String?, min: Int): ReadOnlyProperty<Any?, Int?> {
     val number = value?.toIntOrNull()?.takeIf { it >= min }
     if (value != null && number == null) {
-        invalid(name, ValidationCode.INVALID_FORMAT, "$name must be a whole number of $min or more")
+        invalid(location, name, ValidationCode.INVALID_FORMAT, "$name must be a whole number of $min or more")
     }
     return optional(number)
 }
 
-private fun <T : Any> RequestInput.parse(name: String, value: String?, format: String, parse: (String) -> T): T? {
+private fun <T : Any> RequestInput.parse(location: Location, name: String, value: String?, format: String, parse: (String) -> T): T? {
     if (value.isNullOrBlank()) {
-        invalid(name, ValidationCode.MISSING, "$name is required")
+        invalid(location, name, ValidationCode.MISSING, "$name is required")
         return null
     }
     return try {
         parse(value)
     } catch (e: IllegalArgumentException) {
-        invalid(name, ValidationCode.INVALID_FORMAT, "$name $format")
+        invalid(location, name, ValidationCode.INVALID_FORMAT, "$name $format")
         null
     }
 }
@@ -126,7 +126,7 @@ private fun <T : Any> RequestInput.parse(name: String, value: String?, format: S
 internal fun RequestInput.clientCertificate(call: ApplicationCall, required: Boolean): ReadOnlyProperty<Any?, String?> {
     val certificate = call.request.headers[CLIENT_CERTIFICATE_HEADER]?.takeIf { it.isNotBlank() }
     if (required && certificate == null) {
-        invalid(CLIENT_CERTIFICATE_HEADER, ValidationCode.MISSING, "$CLIENT_CERTIFICATE_HEADER is required")
+        invalid(Location.HEADER, CLIENT_CERTIFICATE_HEADER, ValidationCode.MISSING, "$CLIENT_CERTIFICATE_HEADER is required")
     }
     return optional(certificate)
 }
@@ -135,7 +135,7 @@ internal suspend fun RequestInput.scopeJson(call: ApplicationCall): ReadOnlyProp
     val scope = try {
         ScopeJson.of(call.jsonBody())
     } catch (e: ValidationException) {
-        invalidBody(e.errors)
+        e.errors.forEach { invalid(Location.BODY, it.field, it.code, it.message) }
         null
     } catch (e: IllegalArgumentException) {
         throw MalformedRequestException(e.message!!)

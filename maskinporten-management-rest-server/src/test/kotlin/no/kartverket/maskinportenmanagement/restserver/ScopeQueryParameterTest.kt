@@ -11,7 +11,7 @@ class ScopeQueryParameterTest {
 
     private fun read(query: String): Scope {
         val input = RequestInput()
-        val scope by input.scope("scope", input.queryParameters(query, "scope")["scope"])
+        val scope by input.scope(Location.QUERY, "scope", input.queryParameters(query, "scope")["scope"])
         input.requireValid()
         return scope
     }

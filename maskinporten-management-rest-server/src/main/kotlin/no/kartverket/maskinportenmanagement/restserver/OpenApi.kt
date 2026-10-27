@@ -62,13 +62,16 @@ private val apiInfo = OpenApiInfo(
     title = "Maskinporten Management REST API",
     version = "v0",
     description = """
-        Manages Kartverket's Maskinporten scopes through Digdir's API: lists, creates, updates and deletes the scopes,
-        lists, gives and removes organisations' access to them, and shows the changes to that access.
+        Manages Kartverket's Maskinporten scopes through Digdir's API. It lists, creates, updates and deletes the
+        scopes. It also lists, gives and removes organisations' access to them, and shows the changes to that access.
 
-        A call only reaches this API after the platform has checked that the calling app may make it. When a list
-        holds scopes, it only shows the ones the calling app has access to. Answers use Digdir's field names, but only
-        hold the fields described here: a field Digdir adds later is left out. When Digdir rejects a request, this API
-        answers with Digdir's status and explanation, in its own error format.
+        Filtering is set for each deployment of this API. When it is on, `GET /api/scopes` and
+        `GET /api/scopeaccess/scopes` only show the scopes the calling app has access to, and need the
+        `X-Forwarded-Client-Cert` header. When it is off, nothing is left out. Answers use Digdir's field names, but
+        only hold the fields described here: a field Digdir adds later is left out.
+
+        When Digdir rejects a request, this API answers with Digdir's status and explanation, in its own error format.
+        The exception is a `401`: Digdir refused this API's token, not your request, so this API answers `502`.
     """.trimIndent(),
 )
 
@@ -109,8 +112,8 @@ private fun Parameters.Builder.orgnr() {
 
 private fun Parameters.Builder.clientCertificate() {
     header(CLIENT_CERTIFICATE_HEADER) {
-        required = true
-        description = "Says which app is calling. Istio usually sets it on every call, so the app does not."
+        description = "Says which app is calling. Istio usually sets it on every call, so the app does not. This " +
+            "API requires it when filtering is on."
         schema = JsonSchema(type = JsonType.STRING)
     }
 }
@@ -153,12 +156,12 @@ private fun Responses.Builder.badRequest(description: String, vararg examples: P
 private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolean = false) {
     HttpStatusCode.BadGateway {
         description = if (filtered) {
-            "This API could not get a usable answer from Digdir, from the service that says which scopes the " +
-                "calling app has access to, or from Cloud KMS, which signs this API's requests for Maskinporten " +
-                "tokens. Your request did not cause it."
+            "A service this API depends on failed: Digdir, Maskinporten, the service that says which scopes the " +
+                "calling app has access to, or Cloud KMS, which signs this API's requests for Maskinporten tokens. " +
+                "Your request did not cause it."
         } else {
-            "This API could not get a usable answer from Digdir, or from Cloud KMS, which signs this API's requests " +
-                "for Maskinporten tokens. Your request did not cause it."
+            "A service this API depends on failed: Digdir, Maskinporten, or Cloud KMS, which signs this API's " +
+                "requests for Maskinporten tokens. Your request did not cause it."
         }
         headers { requestId() }
         ContentType.Application.ProblemJson {
@@ -190,7 +193,9 @@ private fun Responses.Builder.digdirUnreachableAndOtherStatuses(filtered: Boolea
     }
 }
 
-private const val DIGDIR_ERRORS = "When Digdir rejects the request, the answer has Digdir's status and explanation."
+private const val DIGDIR_ERRORS =
+    "When Digdir rejects the request, the answer has Digdir's status and explanation, except a `401`, which this " +
+        "API answers with `502`."
 
 private fun validationError(field: String, code: ValidationCode, message: String) = ErrorResponse.of(
     ProblemType.VALIDATION_ERROR,
@@ -314,8 +319,8 @@ internal val scopeCreateOperation: Operation.Builder.() -> Unit = {
 
         badRequest(
             "The URL has a query, or the body is not a JSON object in UTF-8 with `Content-Type: application/json`, or " +
-                "it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing or " +
-                "not text.",
+                "it has a field that is not listed here, or the same field twice, or `prefix` or `subscope` is missing, " +
+                "blank or not text.",
             "UnknownField" to validationError("Subscope", ValidationCode.NOT_ALLOWED, "Subscope is not allowed"),
         )
         digdirUnreachableAndOtherStatuses()
@@ -363,11 +368,11 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
 private val exampleUpdatedScope = exampleScope.copy(description = "Lesetilgang til demo-API-et, også for leverandører")
 
 internal val scopesListOperation: Operation.Builder.() -> Unit = {
-    summary = "List Kartverket's scopes that the calling app has access to"
+    summary = "List Kartverket's scopes"
     description = """
-        Asks Digdir for Kartverket's active scopes, and returns the ones the calling app has access to: the scopes in
-        its `exact` list, and the ones that start with one of its prefixes. This API reads which app is calling from
-        the `X-Forwarded-Client-Cert` header, which Istio usually sets.
+        Asks Digdir for Kartverket's active scopes. When filtering is on, this API only returns the ones the calling
+        app has access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API
+        reads which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.
 
         $DIGDIR_ERRORS
     """.trimIndent()
@@ -379,7 +384,8 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "The scopes the calling app has access to. The list is empty if it has access to none."
+            description = "Kartverket's active scopes, or when filtering is on, the ones the calling app has " +
+                "access to. The list is empty if there are none."
             headers { requestId() }
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeDetails>()))
@@ -388,7 +394,8 @@ internal val scopesListOperation: Operation.Builder.() -> Unit = {
         }
 
         badRequest(
-            "The `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which app is calling.",
+            "Filtering is on and the `X-Forwarded-Client-Cert` header is missing, so this API cannot tell which " +
+                "app is calling.",
             missingClientCertificateExample,
         )
         digdirUnreachableAndOtherStatuses(filtered = true)
@@ -447,9 +454,10 @@ internal val scopeAccessOrgsOperation: Operation.Builder.() -> Unit = {
 internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
     summary = "List the scopes an organisation has access to"
     description = """
-        Asks Digdir which of Kartverket's scopes `orgnr` has access to, and returns the ones the calling app has
-        access to: the scopes in its `exact` list, and the ones that start with one of its prefixes. This API reads
-        which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually sets.
+        Asks Digdir which of Kartverket's scopes `orgnr` has access to. When filtering is on, this API only returns
+        the ones the calling app has access to: the scopes in its `exact` list, and the ones that start with one of its
+        prefixes. This API reads which app is calling from the `X-Forwarded-Client-Cert` header, which Istio usually
+        sets.
 
         $DIGDIR_ERRORS
     """.trimIndent()
@@ -462,8 +470,9 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
 
     responses {
         HttpStatusCode.OK {
-            description = "The organisation's access to the scopes the calling app has access to. Check `state`: " +
-                "only `APPROVED` means access. The list is empty if there is none."
+            description = "The organisation's access to Kartverket's scopes, or when filtering is on, to the " +
+                "scopes the calling app has access to. Check `state`: only `APPROVED` means access. The list is empty " +
+                "if there is none."
             headers { requestId() }
             ContentType.Application.Json {
                 schema = JsonSchema(type = JsonType.ARRAY, items = ReferenceOr.Value(jsonSchema<ScopeAccess>()))
@@ -472,8 +481,8 @@ internal val scopeAccessScopesOperation: Operation.Builder.() -> Unit = {
         }
 
         badRequest(
-            "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or the `X-Forwarded-Client-Cert` " +
-                "header is missing.",
+            "The query is not exactly one `orgnr`, or `orgnr` is not 9 digits, or filtering is on and the " +
+                "`X-Forwarded-Client-Cert` header is missing.",
             "InvalidOrganisationNumber" to validationError(
                 "orgnr",
                 ValidationCode.INVALID_FORMAT,
@@ -532,8 +541,9 @@ internal val scopeAccessChangelogOperation: Operation.Builder.() -> Unit = {
         }
 
         badRequest(
-            "The query has a parameter other than `scope`, `page` and `size`, or one of them twice, or `scope` is " +
-                "missing, blank or not URL-encoded correctly, or `page` is below 0, or `size` is below 1.",
+            "The query has a parameter other than `scope`, `page` and `size`, or one of them twice or not " +
+                "URL-encoded correctly. Or `scope` is missing, blank or contains whitespace, or `page` is not a whole " +
+                "number of 0 or more, or `size` is not a whole number of 1 or more.",
             missingScopeExample,
             "InvalidPage" to validationError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more"),
         )

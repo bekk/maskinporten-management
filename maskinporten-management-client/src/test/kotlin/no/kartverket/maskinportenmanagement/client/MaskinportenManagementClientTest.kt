@@ -147,7 +147,7 @@ class MaskinportenManagementClientTest {
     fun `creates a scope by posting its JSON as it is, and returns it`() = runBlocking {
         val json = """{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read","description":"Lesetilgang, æøå"}"""
 
-        val created = answering(digdirScope("kartverk:tilgangsstyring/demo.read")).createScope(ScopeJson.of(json))
+        val created = answering(digdirScope("kartverk:tilgangsstyring/demo.read")).createScope(json)
 
         val request = sent.single()
         assertEquals(HttpMethod.POST, request.method)
@@ -171,7 +171,7 @@ class MaskinportenManagementClientTest {
         val json = """{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read","description":"Lesetilgang, æøå"}"""
 
         val updated = answering(digdirScope("kartverk:tilgangsstyring/demo.read"))
-            .updateScope(Scope.of("kartverk:tilgangsstyring/demo.read"), ScopeUpdateJson.of(json))
+            .updateScope(Scope.of("kartverk:tilgangsstyring/demo.read"), json)
 
         val request = sent.single()
         assertEquals(HttpMethod.PUT, request.method)

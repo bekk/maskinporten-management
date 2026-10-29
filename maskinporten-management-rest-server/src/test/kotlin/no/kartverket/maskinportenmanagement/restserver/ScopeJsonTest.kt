@@ -1,9 +1,7 @@
-package no.kartverket.maskinportenmanagement.client
+package no.kartverket.maskinportenmanagement.restserver
 
-import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
-import no.kartverket.maskinportenmanagement.client.validation.ValidationException
+import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
 import kotlin.test.Test
-import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -11,10 +9,10 @@ import kotlin.test.assertTrue
 class ScopeJsonTest {
 
     private fun refusal(json: String): String =
-        assertFailsWith<IllegalArgumentException>(json) { ScopeJson.of(json) }.message!!
+        assertFailsWith<MalformedRequestException>(json) { ScopeJson.of(json) }.message!!
 
     private fun fieldErrors(json: String) =
-        assertFailsWith<ValidationException>(json) { ScopeJson.of(json) }.errors.map { Triple(it.field, it.code, it.message) }
+        assertFailsWith<InvalidRequestException>(json) { ScopeJson.of(json) }.errors.map { Triple(it.field, it.code, it.message) }
 
     @Test
     fun `keeps a scope in Digdir's format exactly as it was written`() {

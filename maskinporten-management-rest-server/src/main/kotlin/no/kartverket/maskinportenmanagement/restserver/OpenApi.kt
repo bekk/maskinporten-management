@@ -36,7 +36,6 @@ import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeAccessState
 import no.kartverket.maskinportenmanagement.client.TokenType
 import no.kartverket.maskinportenmanagement.client.Visibility
-import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import no.kartverket.maskinportenmanagement.restserver.models.INTEGRATION_TYPES
@@ -48,6 +47,7 @@ import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangel
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
 import no.kartverket.maskinportenmanagement.restserver.models.TOKEN_TYPES
 import no.kartverket.maskinportenmanagement.restserver.models.VISIBILITIES
+import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
 import kotlin.time.Instant
 
 private val openApiJson = Json { prettyPrint = true }

@@ -2,7 +2,6 @@ package no.kartverket.maskinportenmanagement.restserver.models
 
 import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable
-import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 
 @Serializable
 data class FieldError(
@@ -19,3 +18,9 @@ data class FieldError(
     @JsonSchema.Description("What is wrong, for people to read. The wording may change.")
     val message: String,
 )
+
+enum class ValidationCode {
+    MISSING,
+    INVALID_FORMAT,
+    NOT_ALLOWED,
+}

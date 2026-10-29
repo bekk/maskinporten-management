@@ -12,8 +12,8 @@ caller's `X-Forwarded-Client-Cert` header to the filtering service, which decide
 | `maskinporten-management-rest-server` | Ktor server exposing the client as a REST/JSON API. Shipped as a Docker image built with Jib. |
 | `mock-api` | Mock of Digdir, Maskinporten and the filtering service, for running locally. |
 
-Kotlin 2.4, Ktor 3, kotlinx.serialization (Jackson only in `ScopeJson.kt`, to read a new scope strictly), Gradle with
-two version catalogs: `gradle/libs.versions.toml`, and Ktor's own `ktorLibs`, whose version is set in
+Kotlin 2.4, Ktor 3, kotlinx.serialization (Jackson only in the server's `ScopeJson.kt`, to read a new scope strictly),
+Gradle with two version catalogs: `gradle/libs.versions.toml`, and Ktor's own `ktorLibs`, whose version is set in
 `settings.gradle.kts`. Code compiles for Java 25 (Gradle toolchain, provisioned if missing), whatever JDK runs Gradle.
 CI, `.java-version` and the server's image use Java 25.
 

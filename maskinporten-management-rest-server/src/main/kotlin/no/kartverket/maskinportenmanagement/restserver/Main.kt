@@ -27,7 +27,6 @@ import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
-import no.kartverket.maskinportenmanagement.client.ScopeUpdateJson
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails
@@ -93,7 +92,7 @@ fun Application.module(
             input.noQuery(call)
             val scope by input.scopeJson(call)
             input.requireValid()
-            call.respond(ScopeDetails.from(client.createScope(scope)))
+            call.respond(ScopeDetails.from(client.createScope(scope.value)))
         }.describe(scopeCreateOperation)
 
         put("/api/scopes") {
@@ -101,7 +100,7 @@ fun Application.module(
             val scope by input.scopeQueryParameter(call)
             val body = call.jsonBody()
             input.requireValid()
-            call.respond(ScopeDetails.from(client.updateScope(scope, ScopeUpdateJson.of(body))))
+            call.respond(ScopeDetails.from(client.updateScope(scope, body)))
         }.describe(scopeUpdateOperation)
 
         delete("/api/scopes") {

@@ -10,10 +10,8 @@ import io.ktor.server.request.queryString
 import io.ktor.server.request.receive
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.client.ScopeJson
-import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
-import no.kartverket.maskinportenmanagement.client.validation.ValidationException
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
+import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import kotlin.properties.ReadOnlyProperty
@@ -133,11 +131,9 @@ internal fun RequestInput.clientCertificate(call: ApplicationCall, required: Boo
 internal suspend fun RequestInput.scopeJson(call: ApplicationCall): ReadOnlyProperty<Any?, ScopeJson> {
     val scope = try {
         ScopeJson.of(call.jsonBody())
-    } catch (e: ValidationException) {
+    } catch (e: InvalidRequestException) {
         e.errors.forEach { invalid(Location.BODY, it.field, it.code, it.message) }
         null
-    } catch (e: IllegalArgumentException) {
-        throw MalformedRequestException(e.message!!)
     }
     return required(scope)
 }

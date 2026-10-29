@@ -26,10 +26,10 @@ public class MaskinportenManagementClient(
 
     public suspend fun listScopes(): List<ScopeDetails> = send(HttpMethod.GET, SCOPES_PATH).decode()
 
-    public suspend fun createScope(scope: ScopeJson): ScopeDetails = send(HttpMethod.POST, SCOPES_PATH, scope.value).decode()
+    public suspend fun createScope(json: String): ScopeDetails = send(HttpMethod.POST, SCOPES_PATH, json).decode()
 
-    public suspend fun updateScope(scope: Scope, update: ScopeUpdateJson): ScopeDetails =
-        send(HttpMethod.PUT, "$SCOPES_PATH?scope=${encode(scope.value)}", update.value).decode()
+    public suspend fun updateScope(scope: Scope, json: String): ScopeDetails =
+        send(HttpMethod.PUT, "$SCOPES_PATH?scope=${encode(scope.value)}", json).decode()
 
     public suspend fun deleteScope(scope: Scope): ScopeDetails =
         send(HttpMethod.DELETE, "$SCOPES_PATH?scope=${encode(scope.value)}").decode()

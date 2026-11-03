@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.kms
 
 import com.google.api.gax.core.NoCredentialsProvider
 import com.google.api.gax.grpc.GrpcTransportChannel
@@ -28,7 +28,10 @@ import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import no.kartverket.maskinportenmanagement.restserver.errorResponse
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
+import no.kartverket.maskinportenmanagement.restserver.module
+import no.kartverket.maskinportenmanagement.restserver.upstreamError
 import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest

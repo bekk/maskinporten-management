@@ -2,7 +2,6 @@ package com.maskinporten
 
 import com.maskinporten.database.DatabaseFactory
 import com.maskinporten.errors.ConflictException
-import com.maskinporten.filtering.filteringRoutes
 import com.maskinporten.maskinporten.ForbiddenException
 import com.maskinporten.maskinporten.UnauthorizedException
 import com.maskinporten.maskinporten.maskinportenMockFromConfig
@@ -302,7 +301,6 @@ fun Application.module() {
         }
         swaggerUI(path = "swagger", swaggerFile = "openapi/maskinporten-api.json")
         maskinporten?.let { maskinportenRoutes(it) }
-        filteringRoutes()
         route("/api/v1") {
             maskinporten?.let { install(requireMaskinportenToken(it)) }
             scopesRoutes()

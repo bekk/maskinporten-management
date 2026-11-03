@@ -1,11 +1,10 @@
 # digdir-maskinporten-mock-api
 
-A mock for running maskinporten-management locally. It plays the three services the server calls:
+A mock for running maskinporten-management locally. It plays the two services the server calls at Digdir:
 
 - Digdir's API for managing Maskinporten scopes (`/api/v1/...`), from the contract in `maskinporten-api.json`, with
   schema and seed data in `init.sql`
 - Maskinporten, which issues the tokens for Digdir's API (see [Maskinporten](#maskinporten))
-- the filtering service (see [Filtering](#filtering))
 
 It is built with Ktor and Exposed on Postgres, as a subproject of the root Gradle build: run the commands below from
 `digdir-maskinporten-mock-api/`. It is only for development, so nothing publishes it, and `./gradlew build` skips its
@@ -82,27 +81,6 @@ It is on when `local-kms/ca.crt` exists, so run `./scripts/setup-local-kms.sh` f
 off, `/api/v1` takes calls without a token.
 `MASKINPORTEN_ENABLED=true` makes a missing CA an error, and `false` turns it off. `MASKINPORTEN_CA_FILE` and
 `MASKINPORTEN_ISSUER` override the CA (`local-kms/ca.crt`) and the issuer (`http://localhost:8090/`).
-
-## Filtering
-
-maskinporten-management asks a filtering service, at `EXTERNAL_FILTERING_URL`, which scopes the calling app may see.
-In production that is OPA. `POST /filtering` plays it, in OPA's format: maskinporten-management sends the
-`X-Forwarded-Client-Cert` header it got as `{"input": {"headers": {"x-forwarded-client-cert": "..."}}}`, and the mock
-takes the app from the last SPIFFE URI in it and answers `{"result": {"exact": [...], "prefix": [...]}}`. Unknown apps
-get empty lists.
-
-| App (`<namespace>/<app>`) | Sees |
-| ------------------------- | ---- |
-| `tilgangsstyring/demo`    | Scopes starting with `kartverk:tilgangsstyring/` |
-| `matrikkel/matrikkel-api` | `kartverk:matrikkel.read`, `kartverk:matrikkel.write` and `kartverk:adresse.read` |
-
-To try it, run maskinporten-management with `EXTERNAL_FILTERING_ENABLED=true` and
-`EXTERNAL_FILTERING_URL=http://localhost:8090/filtering`, as in [`.env.example`](../.env.example), and set the header
-the platform sets in production yourself:
-
-```sh
-curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/sa/demo' http://localhost:8080/api/scopes
-```
 
 ## Tests
 

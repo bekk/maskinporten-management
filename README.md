@@ -60,7 +60,7 @@ app has access to.
 | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
 | [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin library that talks to Maskinporten and Digdir's API directly         | nothing yet, as only the server uses it                                       |
 | [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API over the client                        | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
-| [`digdir-maskinporten-mock-api`](digdir-maskinporten-mock-api)               | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing, as it is only for local development                                  |
+| [`digdir-maskinporten-mock-api`](digdir-maskinporten-mock-api)               | Mock of Digdir and Maskinporten, for running locally                         | nothing, as it is only for local development                                  |
 
 `maskinporten-management-rest-server` is the intended consumer of `maskinporten-management-client`, so other systems
 can manage scopes over plain JSON without speaking Maskinporten and Digdir's API themselves.
@@ -93,12 +93,20 @@ more.
 server signs its requests for Maskinporten tokens with a key from a file instead of Cloud KMS.
 
 `dev.sh` is what turns `.env` into real environment variables. The server itself only reads the environment, so
-starting it any other way, like an IDE run configuration or `./gradlew :maskinporten-management-rest-server:run`,
+starting it any other way, like an IDE run configuration or `./gradlew :maskinporten-management-rest-server:runLocal`,
 means setting them yourself.
 
-The mock API also plays the filtering service. To try filtering, set `EXTERNAL_FILTERING_ENABLED=true` in `.env` and
-restart the server. Lists then need the `X-Forwarded-Client-Cert` header that Istio sets in production, so set it
-yourself, as one of the [mock's test apps](digdir-maskinporten-mock-api/README.md#filtering):
+`dev.sh` runs the server with a fake filtering service, from the server's `src/local`, which is not in the image. To
+try filtering, set `EXTERNAL_FILTERING_ENABLED=true` in `.env` and restart the server. The fake answers in place of
+`EXTERNAL_FILTERING_URL`, and takes the app from the last SPIFFE URI in the `X-Forwarded-Client-Cert` header. Unknown
+apps see no scopes:
+
+| App (`<namespace>/<app>`) | Sees                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| `tilgangsstyring/demo`    | Scopes starting with `kartverk:tilgangsstyring/`                                  |
+| `matrikkel/matrikkel-api` | `kartverk:matrikkel.read`, `kartverk:matrikkel.write` and `kartverk:adresse.read` |
+
+Lists then need the header that Istio sets in production, so set it yourself:
 
 ```bash
 curl -H 'X-Forwarded-Client-Cert: URI=spiffe://cluster.local/ns/tilgangsstyring/sa/demo' localhost:8080/api/scopes

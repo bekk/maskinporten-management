@@ -34,13 +34,13 @@ internal fun Application.maskinportenManagementClient(config: AppConfig): Maskin
 // Digdir's API requires idporten:scopes.read to read scope access and idporten:scopes.write to change it
 private val DIGDIR_SCOPES = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))
 
-internal fun Application.externalFiltering(config: AppConfig): ExternalFiltering {
+internal fun Application.externalFiltering(config: AppConfig, httpClient: OutgoingHttpClient = httpClient()): ExternalFiltering {
     val url = config.externalFilteringUrl
     if (url == null) {
         log.warn("External filtering is off")
         return ExternalFiltering(null)
     }
-    return ExternalFiltering(ExternalFilteringClient(url, httpClient()), config.externalFilteringCacheDuration)
+    return ExternalFiltering(ExternalFilteringClient(url, httpClient), config.externalFilteringCacheDuration)
 }
 
 private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(

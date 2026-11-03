@@ -10,7 +10,7 @@ caller's `X-Forwarded-Client-Cert` header to the filtering service, which decide
 | --- | --- |
 | `maskinporten-management-client` | Kotlin library for other services: calls Digdir and gets Maskinporten tokens. |
 | `maskinporten-management-rest-server` | Ktor server exposing the client as a REST/JSON API. Shipped as a Docker image built with Jib. |
-| `digdir-maskinporten-mock-api` | Mock of Digdir, Maskinporten and the filtering service, for running locally. |
+| `digdir-maskinporten-mock-api` | Mock of Digdir and Maskinporten, for running locally. |
 
 Kotlin 2.4, Ktor 3, kotlinx.serialization (Jackson only in `ScopeJson.kt`, to read a new scope strictly), Gradle with
 two version catalogs: `gradle/libs.versions.toml`, and Ktor's own `ktorLibs`, whose version is set in
@@ -38,7 +38,8 @@ Before you finish a change:
 ## Running locally
 
 Follow README.md's [Getting started](README.md#-getting-started). It starts the mock API in
-`digdir-maskinporten-mock-api`, which plays Digdir, Maskinporten and the filtering service.
+`digdir-maskinporten-mock-api`, which plays Digdir and Maskinporten. `scripts/dev.sh` runs the server from its `local`
+source set, with a fake filtering service in `FakeFilteringService.kt`.
 
 ## Conventions
 

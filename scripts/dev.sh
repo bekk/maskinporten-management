@@ -12,4 +12,4 @@ set -a
 . ./.env
 set +a
 
-exec ./gradlew :maskinporten-management-rest-server:run
+exec ./gradlew :maskinporten-management-rest-server:runLocal

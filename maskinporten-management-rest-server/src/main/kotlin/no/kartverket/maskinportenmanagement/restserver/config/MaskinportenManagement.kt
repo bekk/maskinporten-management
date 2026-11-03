@@ -10,9 +10,9 @@ import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.restserver.CloudKms
-import no.kartverket.maskinportenmanagement.restserver.ExternalFiltering
-import no.kartverket.maskinportenmanagement.restserver.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.restserver.LoggingOutgoingHttpClient
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringClient
 import java.net.http.HttpClient
 import java.time.Duration
 

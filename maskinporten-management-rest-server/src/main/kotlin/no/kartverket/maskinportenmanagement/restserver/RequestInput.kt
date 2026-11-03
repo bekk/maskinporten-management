@@ -10,6 +10,7 @@ import io.ktor.server.request.queryString
 import io.ktor.server.request.receive
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
+import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
 import java.nio.ByteBuffer

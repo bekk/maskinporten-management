@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.filtering
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

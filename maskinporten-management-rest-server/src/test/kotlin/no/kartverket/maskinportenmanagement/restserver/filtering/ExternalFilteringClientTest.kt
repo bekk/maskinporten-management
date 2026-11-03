@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.filtering
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable

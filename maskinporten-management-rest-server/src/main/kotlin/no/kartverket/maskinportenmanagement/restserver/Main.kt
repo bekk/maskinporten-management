@@ -32,6 +32,9 @@ import no.kartverket.maskinportenmanagement.restserver.config.externalFiltering
 import no.kartverket.maskinportenmanagement.restserver.config.file
 import no.kartverket.maskinportenmanagement.restserver.config.loadApplicationConfig
 import no.kartverket.maskinportenmanagement.restserver.config.maskinportenManagementClient
+import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
+import no.kartverket.maskinportenmanagement.restserver.filtering.allowedBy
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails

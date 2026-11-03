@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.restserver.filtering.ScopeFilter
 
 internal val testApps = mapOf(
     "tilgangsstyring/demo" to ScopeFilter(exact = emptyList(), prefix = listOf("kartverk:tilgangsstyring/")),

@@ -28,6 +28,7 @@ import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
 import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest

@@ -13,6 +13,7 @@ import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.client.ScopeJson
 import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.client.validation.ValidationException
+import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException

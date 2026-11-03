@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.filtering
 
 import no.kartverket.maskinportenmanagement.client.Scope
 import kotlin.test.Test

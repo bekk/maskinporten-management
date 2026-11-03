@@ -5,6 +5,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import kotlinx.coroutines.runBlocking
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringClient
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringException
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URI

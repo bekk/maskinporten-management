@@ -22,6 +22,8 @@ import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.security.interfaces.RSAPrivateCrtKey

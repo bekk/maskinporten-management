@@ -3,13 +3,13 @@ FROM eclipse-temurin:25-jdk AS builder
 WORKDIR /app
 
 COPY . .
-RUN ./gradlew :mock-api:buildFatJar --no-daemon
+RUN ./gradlew :digdir-maskinporten-mock-api:buildFatJar --no-daemon
 
 # Run stage
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
-COPY --from=builder /app/mock-api/build/libs/mock-api-all.jar app.jar
+COPY --from=builder /app/digdir-maskinporten-mock-api/build/libs/digdir-maskinporten-mock-api-all.jar app.jar
 
 EXPOSE 8090
 

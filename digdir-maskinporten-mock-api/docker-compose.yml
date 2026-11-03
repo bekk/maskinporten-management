@@ -1,5 +1,5 @@
 
-name: maskinporten-management-mock
+name: digdir-maskinporten-mock-api
 
 services:
   db:
@@ -22,7 +22,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: mock-api/Dockerfile
+      dockerfile: digdir-maskinporten-mock-api/Dockerfile
     depends_on:
       db:
         condition: service_healthy

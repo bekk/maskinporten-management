@@ -5,5 +5,5 @@
 **/.kotlin
 **/build
 .env
-mock-api/local-kms
-mock-api/.local-kms-work.*
+digdir-maskinporten-mock-api/local-kms
+digdir-maskinporten-mock-api/.local-kms-work.*

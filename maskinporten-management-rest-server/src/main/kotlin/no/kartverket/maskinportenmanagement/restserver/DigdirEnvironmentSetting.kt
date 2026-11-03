@@ -3,8 +3,8 @@ package no.kartverket.maskinportenmanagement.restserver
 import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import java.net.URI
 
-// LOCAL is the mock API in mock-api, which plays both Digdir and Maskinporten. The client library has no environment
-// for it, so the server gives the client the mock's URLs
+// LOCAL is the mock API in digdir-maskinporten-mock-api, which plays both Digdir and Maskinporten. The client library
+// has no environment for it, so the server gives the client the mock's URLs
 internal enum class DigdirEnvironmentSetting(val digdirBaseUrl: URI, val maskinportenWellKnownUrl: URI) {
     TEST(DigdirEnvironment.TEST),
     PROD(DigdirEnvironment.PROD),

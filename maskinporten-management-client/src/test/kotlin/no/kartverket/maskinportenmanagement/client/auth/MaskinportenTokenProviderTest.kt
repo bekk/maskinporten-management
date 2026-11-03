@@ -288,6 +288,17 @@ class MaskinportenTokenProviderTest {
     }
 
     @Test
+    fun `an access_token that is not a valid bearer token is a DigdirException that does not quote it`() {
+        tokenAnswer = json(200, """{"access_token":"secret-token\nrest","expires_in":120}""")
+
+        val e = assertFailsWith<DigdirException> { runBlocking { provider.accessToken() } }
+
+        assertContains(e.message!!, "bearer token")
+        val chain = generateSequence<Throwable>(e) { it.cause }.toList()
+        assertTrue(chain.none { "secret-token" in it.message.orEmpty() })
+    }
+
+    @Test
     fun `a refused grant names Maskinporten's answer`() {
         tokenAnswer = json(400, """{"error":"invalid_grant"}""")
 

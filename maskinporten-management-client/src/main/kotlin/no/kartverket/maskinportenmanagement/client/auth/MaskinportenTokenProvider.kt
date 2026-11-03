@@ -121,6 +121,9 @@ public class MaskinportenTokenProvider(
             ),
         )
         val tokenResponse = response.decode<TokenResponse>("token request")
+        if (!isValidBearerToken(tokenResponse.accessToken)) {
+            throw DigdirException("Maskinporten token request answered HTTP 200 with an access_token that is not a valid bearer token")
+        }
         val expiry = requestedAt.plusSeconds(tokenResponse.expiresIn)
         return Token(
             value = AccessToken.of(tokenResponse.accessToken),

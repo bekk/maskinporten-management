@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.MapApplicationConfig
 import java.io.File

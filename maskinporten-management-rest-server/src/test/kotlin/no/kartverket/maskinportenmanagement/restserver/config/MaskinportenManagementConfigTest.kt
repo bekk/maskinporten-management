@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.config
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -9,6 +9,7 @@ import io.ktor.server.testing.testApplication
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import no.kartverket.maskinportenmanagement.restserver.module
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.io.path.createTempFile

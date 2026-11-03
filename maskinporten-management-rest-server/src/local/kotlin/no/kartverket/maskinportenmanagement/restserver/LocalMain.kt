@@ -2,6 +2,11 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import no.kartverket.maskinportenmanagement.restserver.config.AppConfig
+import no.kartverket.maskinportenmanagement.restserver.config.externalFiltering
+import no.kartverket.maskinportenmanagement.restserver.config.file
+import no.kartverket.maskinportenmanagement.restserver.config.loadApplicationConfig
+import no.kartverket.maskinportenmanagement.restserver.config.maskinportenManagementClient
 
 // main(), but with the fake filtering service, since nothing plays the real one locally
 fun main() {

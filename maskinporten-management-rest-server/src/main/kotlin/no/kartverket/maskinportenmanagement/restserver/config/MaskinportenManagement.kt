@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -9,6 +9,10 @@ import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvide
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
+import no.kartverket.maskinportenmanagement.restserver.CloudKms
+import no.kartverket.maskinportenmanagement.restserver.ExternalFiltering
+import no.kartverket.maskinportenmanagement.restserver.ExternalFilteringClient
+import no.kartverket.maskinportenmanagement.restserver.LoggingOutgoingHttpClient
 import java.net.http.HttpClient
 import java.time.Duration
 

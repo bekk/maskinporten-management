@@ -27,6 +27,11 @@ import io.ktor.server.routing.routing
 import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.restserver.config.AppConfig
+import no.kartverket.maskinportenmanagement.restserver.config.externalFiltering
+import no.kartverket.maskinportenmanagement.restserver.config.file
+import no.kartverket.maskinportenmanagement.restserver.config.loadApplicationConfig
+import no.kartverket.maskinportenmanagement.restserver.config.maskinportenManagementClient
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccess
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeAccessChangelog
 import no.kartverket.maskinportenmanagement.restserver.models.ScopeDetails

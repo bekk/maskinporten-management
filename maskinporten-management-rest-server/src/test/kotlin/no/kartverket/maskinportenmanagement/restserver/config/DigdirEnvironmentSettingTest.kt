@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.config
 
 import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import java.net.URI

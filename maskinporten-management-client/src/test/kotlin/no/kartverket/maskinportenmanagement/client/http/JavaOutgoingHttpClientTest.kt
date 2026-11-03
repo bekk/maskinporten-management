@@ -16,6 +16,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class JavaOutgoingHttpClientTest {
 
@@ -72,6 +73,20 @@ class JavaOutgoingHttpClientTest {
         assertEquals("POST", method)
         assertEquals("Bearer test-token", authorization)
         assertContentEquals(body, receivedBody)
+    }
+
+    @Test
+    fun `keeps a header value the JDK rejects out of the error`() {
+        val url = URI("http://localhost/api/v1/scopes/access")
+        val request = OutgoingRequest(HttpMethod.GET, url, mapOf("Authorization" to "Bearer secret-token\nrest"))
+
+        val e = assertFailsWith<IllegalArgumentException> {
+            runBlocking { JavaOutgoingHttpClient(noRedirects, Duration.ofSeconds(3)).send(request) }
+        }
+
+        assertContains(e.message!!, "Authorization")
+        val chain = generateSequence<Throwable>(e) { it.cause }.toList()
+        assertTrue(chain.none { "secret-token" in it.message.orEmpty() })
     }
 
     @Test

@@ -10,7 +10,6 @@ import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import java.net.http.HttpClient
-import java.time.Clock
 import java.time.Duration
 
 internal fun Application.maskinportenManagementClient(config: AppConfig): MaskinportenManagementClient {
@@ -52,23 +51,6 @@ private fun httpClient(): OutgoingHttpClient = LoggingOutgoingHttpClient(
         REQUEST_TIMEOUT,
     ),
 )
-
-class ExternalFiltering(
-    private val client: ExternalFilteringClient?,
-    cacheDuration: Duration = Duration.ZERO,
-    clock: Clock = Clock.systemUTC(),
-) {
-    private val cache = ScopeFilterCache(cacheDuration, clock)
-
-    val isOn: Boolean get() = client != null
-
-    suspend fun filterFor(certificate: String?): ScopeFilter? {
-        val client = client ?: return null
-        checkNotNull(certificate)
-        cache.get(certificate)?.let { return it }
-        return client.filterFor(certificate).also { cache.put(certificate, it) }
-    }
-}
 
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
 private val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(10)

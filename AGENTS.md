@@ -77,8 +77,8 @@ style; for its tests, see [its README](digdir-maskinporten-mock-api/README.md#te
   server's models. `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and
   `OpenApiSpecFileTest` fails when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
-  it once, into `AppConfig` in `Config.kt`, with the helpers there, like `required` and `seconds`: they treat an empty
-  value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with
+  it once, into `AppConfig` in `config/Config.kt`, with the helpers there, like `required` and `seconds`: they treat an
+  empty value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with
   `(see .env.example)`. Write any other error about a setting the same way.
 - **Formatting** in every module, `digdir-maskinporten-mock-api` too, is ktlint with the rules in `.editorconfig`. Run
   `ktlintFormat` instead of formatting by hand.

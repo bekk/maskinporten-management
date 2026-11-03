@@ -17,7 +17,7 @@ tasks.test {
     inputs.file("init.sql")
 }
 
-// The tests need the compose Postgres, so `./gradlew build` leaves them out. Run them with `./gradlew :mock-api:test`.
+// The tests need the compose Postgres, so `./gradlew build` leaves them out. Run them with `./gradlew :digdir-maskinporten-mock-api:test`.
 tasks.check {
     setDependsOn(dependsOn.filterNot { it is NamedDomainObjectProvider<*> && it.name == "test" })
 }

@@ -1,4 +1,4 @@
-# mock-api
+# digdir-maskinporten-mock-api
 
 A mock for running maskinporten-management locally. It plays the three services the server calls:
 
@@ -8,7 +8,8 @@ A mock for running maskinporten-management locally. It plays the three services 
 - the filtering service (see [Filtering](#filtering))
 
 It is built with Ktor and Exposed on Postgres, as a subproject of the root Gradle build: run the commands below from
-`mock-api/`. It is only for development, so nothing publishes it, and `./gradlew build` skips its tests.
+`digdir-maskinporten-mock-api/`. It is only for development, so nothing publishes it, and `./gradlew build` skips its
+tests.
 
 ## Running
 

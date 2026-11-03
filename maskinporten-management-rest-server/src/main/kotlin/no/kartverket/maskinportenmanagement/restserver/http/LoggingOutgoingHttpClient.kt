@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.http
 
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest

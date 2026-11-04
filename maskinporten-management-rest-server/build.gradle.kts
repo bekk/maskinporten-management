@@ -43,6 +43,7 @@ tasks.named<JavaExec>("run") {
 // image.
 val local: SourceSet by sourceSets.creating
 kotlin.target.compilations.named(local.name) { associateWith(kotlin.target.compilations.getByName("main")) }
+tasks.check { dependsOn(local.classesTaskName) }
 
 tasks.register<JavaExec>("runLocal") {
     group = "application"

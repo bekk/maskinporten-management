@@ -5,6 +5,9 @@
 build/
 .kotlin/
 
+local-kms/
+.local-kms-work.*/
+
 # VS Code
 .vscode/
 

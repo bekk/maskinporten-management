@@ -59,7 +59,10 @@ tests, see [its README](mock-api/README.md#tests).
   Digdir's whole answer goes to the log. A 401 is the exception: Digdir refused our token, not the caller's request,
   so the server answers 502. Any other status from Digdir is a 502 too, and so is every `DigdirException`: Digdir
   out of reach, Maskinporten refusing a token, or an answer the client cannot read. An enum value Digdir adds later
-  becomes `UNKNOWN` through `OrUnknownSerializer`.
+  becomes `UNKNOWN` through `OrUnknownSerializer`. Digdir lets us see and change only the scopes of the organisation
+  in our token, Kartverket (971040238), whose prefix is `kartverk`. Digdir's `prefix` field is only that part before
+  the colon, while a prefix from the filtering service is the start of a whole scope, like `kartverk:matrikkel`.
+  Deleting a scope in Digdir only sets `active` to `false`.
 - **Errors.** The server's errors follow Problem Details (RFC 9457), as `application/problem+json`. A route reads
   its query, path parameters, headers and body through one `RequestInput`, which collects every invalid field, and
   calls `requireValid()` before calling Digdir, so a caller gets all the errors at once. `RequestInput` throws
@@ -67,6 +70,12 @@ tests, see [its README](mock-api/README.md#tests).
   request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
   `type` is a `tag:kartverket.no,2026:` name from `ProblemType` that says what went wrong, `title` comes from the
   type, and `status` from the HTTP status.
+- **Logging.** The logger `access` writes one line per incoming call, unless `accessLog.enabled` is off. Every line
+  logged during a call has `request_id` and `workload` (the calling app, from `X-Forwarded-Client-Cert`) from the
+  MDC. The logger `outgoing` writes a line before and after every outgoing call, with only the method and URL. Never
+  log headers or request bodies, since they can hold our Maskinporten token. A request the caller got wrong is
+  logged as one line at most. A stack trace is only for a real failure, like Digdir out of reach, Cloud KMS or the
+  filtering service failing, or an unhandled exception.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.

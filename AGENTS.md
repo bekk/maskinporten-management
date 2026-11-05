@@ -46,7 +46,9 @@ tests, see [its README](mock-api/README.md#tests).
 
 - **Strong types.** A domain value is a `value class` with a private constructor and an `of()`. Where the value has
   rules, `of()` rejects invalid input with `require`, as in `Scope.kt` and `OrganizationNumber.kt`. `AccessToken.of`
-  checks nothing. In new code, parse at the edge and don't pass raw strings on.
+  checks nothing. In new code, parse at the edge and don't pass raw strings on. The body of a new or changed scope is
+  the exception: the client's `createScope` and `updateScope` take it as a JSON `String`, since Digdir gets it
+  unchanged. The server reads a new scope strictly with `ScopeJson` first.
 - **Few comments.** Comment only a reason the code cannot show, like the path traversal note in
   `OrganizationNumber.kt`. Don't restate the code, and don't add KDoc to obvious members.
 - **Explicit API in the client.** The client module uses `explicitApi()`, so declarations need an explicit

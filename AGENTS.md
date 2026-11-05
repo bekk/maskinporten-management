@@ -71,11 +71,12 @@ tests, see [its README](mock-api/README.md#tests).
   `type` is a `tag:kartverket.no,2026:` name from `ProblemType` that says what went wrong, `title` comes from the
   type, and `status` from the HTTP status.
 - **Logging.** The logger `access` writes one line per incoming call, unless `accessLog.enabled` is off. Every line
-  logged during a call has `request_id` and `workload` (the calling app, from `X-Forwarded-Client-Cert`) from the
-  MDC. The logger `outgoing` writes a line before and after every outgoing call, with only the method and URL. Never
-  log headers or request bodies, since they can hold our Maskinporten token. A request the caller got wrong is
-  logged as one line at most. A stack trace is only for a real failure, like Digdir out of reach, Cloud KMS or the
-  filtering service failing, or an unhandled exception.
+  logged during a call has `request_id` from the MDC, and `workload` (the calling app) when the last entry in
+  `X-Forwarded-Client-Cert` has a SPIFFE URI. Without one, `workload` is left out. The logger `outgoing` writes a line
+  before and after every outgoing call, with only the method and URL. Never log headers or request bodies, since
+  they can hold our Maskinporten token. A request the caller got wrong is logged as one line at most. A stack trace
+  is only for a real failure, like Digdir out of reach, Cloud KMS or the filtering service failing, or an unhandled
+  exception.
 - **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.

@@ -1,7 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver
 
-import no.kartverket.maskinportenmanagement.client.validation.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.models.FieldError
+import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

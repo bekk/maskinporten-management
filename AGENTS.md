@@ -87,7 +87,9 @@ tests, see [its README](mock-api/README.md#tests).
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
   it once, into `AppConfig` in `Config.kt`, with the helpers there, like `required` and `seconds`: they treat an empty
   value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with
-  `(see .env.example)`. Write any other error about a setting the same way.
+  `(see .env.example)`. Write any other error about a setting the same way. The Logback path (`logback.configFile`)
+  is the exception: `main()` sets it before `AppConfig.load(...)`, since Logback only reads it when the first logger
+  is created, and ignores it after that without an error.
 - **Formatting** in every module, `mock-api` too, is ktlint with the rules in `.editorconfig`. Run `ktlintFormat`
   instead of formatting by hand.
 

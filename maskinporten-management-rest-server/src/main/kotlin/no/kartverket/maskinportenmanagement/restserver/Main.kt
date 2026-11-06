@@ -35,8 +35,10 @@ import org.slf4j.LoggerFactory
 import java.util.UUID
 
 fun main() {
-    val config = AppConfig.load()
-    config.logbackConfigFile?.let { System.setProperty("logback.configurationFile", it) }
+    val applicationConfig = loadApplicationConfig()
+    // Logback reads this when the first logger is created, so it is set before anything that could log.
+    applicationConfig.file("logback.configFile")?.let { System.setProperty("logback.configurationFile", it) }
+    val config = AppConfig.load(applicationConfig)
 
     embeddedServer(Netty, port = config.port) {
         module(

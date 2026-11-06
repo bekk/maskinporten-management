@@ -8,6 +8,8 @@ buildscript {
 }
 
 plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ktlint)
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.jib)
@@ -21,12 +23,24 @@ val dockerTags = providers.gradleProperty("dockerTags").orNull
     ?.toSet()
     ?: emptySet()
 
+kotlin {
+    jvmToolchain(25)
+}
+
+ktlint {
+    version.set(libs.versions.ktlint.cli.get())
+}
+
 application {
     mainClass = "no.kartverket.maskinportenmanagement.restserver.MainKt"
 }
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 tasks.test {
@@ -63,6 +77,7 @@ dependencies {
     implementation(libs.logstash.logback.encoder)
     implementation(libs.google.cloud.kms)
 
+    testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.google.cloud.kms.grpc)
     testImplementation(testFixtures(project(":maskinporten-management-client")))

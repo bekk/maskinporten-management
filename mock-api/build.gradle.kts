@@ -1,6 +1,16 @@
 plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ktlint)
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
+}
+
+kotlin {
+    jvmToolchain(25)
+}
+
+ktlint {
+    version.set(libs.versions.ktlint.cli.get())
 }
 
 application {
@@ -10,6 +20,10 @@ application {
 // Bundle the API contract on the classpath so Swagger UI can serve it from the fat jar too.
 tasks.processResources {
     from("maskinporten-api.json") { into("openapi") }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 tasks.test {
@@ -41,6 +55,7 @@ dependencies {
     implementation(libs.hikari)
     implementation(libs.postgresql)
 
+    testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.bouncycastle.pkix)
 }

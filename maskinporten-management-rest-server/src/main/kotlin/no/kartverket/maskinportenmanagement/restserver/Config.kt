@@ -11,7 +11,6 @@ import java.time.Duration
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
-    val logbackConfigFile: String?,
     val digdirEnvironment: DigdirEnvironmentSetting,
     val maskinportenClientId: String,
     val digdirAdminCertChain: String,
@@ -31,7 +30,6 @@ internal class AppConfig(
             return AppConfig(
                 port = config.port("server.port"),
                 accessLog = config.boolean("accessLog.enabled", default = true),
-                logbackConfigFile = config.file("logback.configFile"),
                 digdirEnvironment = config.enum("digdir.environment"),
                 maskinportenClientId = config.required("maskinporten.clientId"),
                 digdirAdminCertChain = config.pemCertificateChain("digdirAdmin.certChain"),

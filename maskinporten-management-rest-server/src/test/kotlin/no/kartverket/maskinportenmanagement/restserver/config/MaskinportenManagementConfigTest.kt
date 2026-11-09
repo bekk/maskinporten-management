@@ -31,7 +31,7 @@ class MaskinportenManagementConfigTest {
 
     private val complete = mapOf(
         "server.port" to "8080",
-        "digdir.environment" to "LOCAL",
+        "digdir.environment" to "TEST",
         "maskinporten.clientId" to "dev-client",
         "digdirAdmin.certChain" to certificateChain(keyPair.public).joinToString("") { pem(it) },
         "digdirAdmin.localKeyPath" to pemFile(pem("PRIVATE KEY", keyPair.private.encoded)).toString(),

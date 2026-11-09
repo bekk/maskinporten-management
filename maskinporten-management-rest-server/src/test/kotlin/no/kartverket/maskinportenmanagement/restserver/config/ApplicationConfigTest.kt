@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.yaml.YamlConfig
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -23,7 +24,7 @@ class ApplicationConfigTest {
         assumeTrue(System.getenv("DIGDIR_ENVIRONMENT") == null, "DIGDIR_ENVIRONMENT is set in this shell")
         val config = YamlConfig("application.yaml") ?: fail("application.yaml is not on the classpath")
 
-        val e = assertFailsWith<IllegalStateException> { config.enum<DigdirEnvironmentSetting>("digdir.environment") }
+        val e = assertFailsWith<IllegalStateException> { config.enum<DigdirEnvironment>("digdir.environment") }
 
         assertContains(e.message!!, "digdir.environment")
     }

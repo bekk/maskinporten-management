@@ -10,7 +10,6 @@ caller's `X-Forwarded-Client-Cert` header to the filtering service, which decide
 | --- | --- |
 | `maskinporten-management-client` | Kotlin library for other services: calls Digdir and gets Maskinporten tokens. |
 | `maskinporten-management-rest-server` | Ktor server exposing the client as a REST/JSON API. Shipped as a Docker image built with Jib. |
-| `digdir-maskinporten-mock-api` | Mock of Digdir and Maskinporten, for running locally. |
 
 Kotlin 2.4, Ktor 3, kotlinx.serialization (Jackson only in the server's `ScopeJson.kt`, to read a new scope strictly),
 Gradle with two version catalogs: `gradle/libs.versions.toml`, and Ktor's own `ktorLibs`, whose version is set in
@@ -20,31 +19,26 @@ CI, `.java-version` and the server's image use Java 25.
 ## Commands
 
 ```bash
-./gradlew build                              # compile, ktlint and all tests except the mock API's
-./gradlew ktlintFormat                       # fix formatting
+./gradlew build                     # compile, ktlint and all tests
+./gradlew ktlintFormat              # fix formatting
 ./gradlew :maskinporten-management-rest-server:test --tests '*.ScopesTest'   # one test class
-./gradlew :digdir-maskinporten-mock-api:test # the mock API's tests, while its Postgres is up (docker compose -f digdir-maskinporten-mock-api/docker-compose.yml up -d db)
-./gradlew generateOpenApiSpec                # rewrite openapi.json after an API change
-scripts/dev.sh                               # run the server on :8080 with the variables in .env
+./gradlew generateOpenApiSpec       # rewrite openapi.json after an API change
+scripts/dev.sh                      # run the server on :8080 with fakes for Digdir and the filtering service
 ```
 
 Before you finish a change:
 
 1. Run `./gradlew generateOpenApiSpec`. It is quick, and `openapi.json` only changes if the spec did.
 2. Run `./gradlew build`. It must pass.
-3. If you changed `digdir-maskinporten-mock-api`, also run `./gradlew :digdir-maskinporten-mock-api:test`, as
-   [its README](digdir-maskinporten-mock-api/README.md#tests) describes.
 
 ## Running locally
 
-Follow README.md's [Getting started](README.md#-getting-started). It starts the mock API in
-`digdir-maskinporten-mock-api`, which plays Digdir and Maskinporten. `scripts/dev.sh` runs the server from its `local`
-source set, with a fake filtering service in `FakeFilteringService.kt`.
+Follow README.md's [Getting started](README.md#-getting-started). `scripts/dev.sh` runs the server from its `local`
+source set, with a fake Digdir in `FakeDigdir.kt` and a fake filtering service in `FakeFilteringService.kt`. When the
+server starts calling Digdir in a new way, the fake must answer it as Digdir does, see Digdir's spec in
+`maskinporten-management-client/maskinporten-api.json`.
 
 ## Conventions
-
-These conventions and the tests below are for the client and the server. `digdir-maskinporten-mock-api` has its own
-style; for its tests, see [its README](digdir-maskinporten-mock-api/README.md#tests).
 
 - **Strong types.** A domain value is a `value class` with a private constructor and an `of()`. Where the value has
   rules, `of()` rejects invalid input with `require`, as in `Scope.kt` and `OrganizationNumber.kt`. `AccessToken.of`
@@ -94,8 +88,8 @@ style; for its tests, see [its README](digdir-maskinporten-mock-api/README.md#te
   `(see .env.example)`. Write any other error about a setting the same way. The Logback path (`logback.configFile`)
   is the exception: `main()` sets it before `AppConfig.load(...)`, since Logback only reads it when the first logger
   is created, and ignores it after that without an error.
-- **Formatting** in every module, `digdir-maskinporten-mock-api` too, is ktlint with the rules in `.editorconfig`. Run
-  `ktlintFormat` instead of formatting by hand.
+- **Formatting** in every module is ktlint with the rules in `.editorconfig`. Run `ktlintFormat` instead of formatting
+  by hand.
 
 ## Tests
 

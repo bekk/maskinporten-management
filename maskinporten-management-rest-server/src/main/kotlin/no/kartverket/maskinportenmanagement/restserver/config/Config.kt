@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import java.io.File
 import java.net.URI
 import java.security.cert.CertificateException
@@ -11,7 +12,7 @@ import java.time.Duration
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
-    val digdirEnvironment: DigdirEnvironmentSetting,
+    val digdirEnvironment: DigdirEnvironment,
     val maskinportenClientId: String,
     val digdirAdminCertChain: String,
     val digdirAdminCloudKmsKeyPath: String?,

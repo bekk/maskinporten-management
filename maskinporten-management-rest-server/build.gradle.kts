@@ -62,7 +62,6 @@ tasks.withType<Test>().configureEach {
 tasks.test {
     // OpenApiSpecFileTest compares the served spec with this file, so a changed file must rerun the tests
     inputs.file("openapi.json")
-    inputs.file(rootProject.file("digdir-maskinporten-mock-api/init.sql"))
 }
 
 tasks.register<Test>("generateOpenApiSpec") {

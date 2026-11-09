@@ -1,6 +1,7 @@
 package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.MapApplicationConfig
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import java.io.File
 import java.net.URI
 import java.time.Duration
@@ -14,11 +15,11 @@ class ConfigTest {
     @Test
     fun `a misspelled environment names the valid values`() {
         val e = assertFailsWith<IllegalStateException> {
-            MapApplicationConfig("digdir.environment" to "test").enum<DigdirEnvironmentSetting>("digdir.environment")
+            MapApplicationConfig("digdir.environment" to "test").enum<DigdirEnvironment>("digdir.environment")
         }
 
         assertContains(e.message!!, "digdir.environment")
-        assertContains(e.message!!, "TEST, PROD, LOCAL")
+        assertContains(e.message!!, "TEST, PROD")
     }
 
     @Test

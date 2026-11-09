@@ -1,10 +1,11 @@
 package no.kartverket.maskinportenmanagement.restserver
 
 import kotlinx.coroutines.runBlocking
+import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
+import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.filtering.ScopeFilter
-import java.io.File
 import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -58,10 +59,10 @@ class FakeFilteringServiceTest {
     }
 
     @Test
-    fun `the test apps only reference scopes the mock seeds`() {
+    fun `the test apps only reference scopes the fake Digdir seeds`() {
         testApps.forEach { (app, filter) ->
             filter.exact.forEach { scope ->
-                assertContains(seededScopes, scope, "$app references $scope, which the mock does not seed")
+                assertContains(seededScopes, scope, "$app references $scope, which the fake Digdir does not seed")
             }
             filter.prefix.forEach { prefix ->
                 assertTrue(
@@ -72,10 +73,8 @@ class FakeFilteringServiceTest {
         }
     }
 
-    private val seededScopes: Set<String> = run {
-        val initSql = generateSequence(File("").absoluteFile) { it.parentFile }
-            .map { File(it, "digdir-maskinporten-mock-api/init.sql") }
-            .first(File::exists)
-        Regex("""kartverk:[\w./-]+""").findAll(initSql.readText()).map { it.value }.toSet()
+    private val seededScopes: Set<String> = runBlocking {
+        MaskinportenManagementClient(URI("http://digdir.local"), FakeDigdir()) { AccessToken.of("local") }
+            .listScopes().map { it.name.value }.toSet()
     }
 }

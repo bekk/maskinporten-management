@@ -1,3 +1,4 @@
 package no.kartverket.maskinportenmanagement.client
 
-public class DigdirException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
+public class DigdirException internal constructor(message: String, cause: Throwable? = null) :
+    MaskinportenManagementException(message, cause)

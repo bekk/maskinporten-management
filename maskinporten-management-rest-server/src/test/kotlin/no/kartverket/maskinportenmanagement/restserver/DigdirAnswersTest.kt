@@ -1,5 +1,9 @@
 package no.kartverket.maskinportenmanagement.restserver
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
@@ -21,11 +25,30 @@ import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
+import org.slf4j.LoggerFactory
 import java.io.IOException
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class DigdirAnswersTest {
+
+    private lateinit var appender: ListAppender<ILoggingEvent>
+
+    private val root get() = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
+
+    @BeforeTest
+    fun attachAppender() {
+        appender = ListAppender<ILoggingEvent>().apply { start() }
+        root.addAppender(appender)
+    }
+
+    @AfterTest
+    fun detachAppender() {
+        root.detachAppender(appender)
+    }
 
     private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String, val body: String? = null) {
         override fun toString() = "${method.value} $pathAndQuery"
@@ -94,7 +117,7 @@ class DigdirAnswersTest {
         digdirAnswering({ answer }) {
             for (endpoint in endpoints) {
                 for (status in listOf(400, 403, 404, 409)) {
-                    answer = OutgoingResponse(status, "application/json;charset=ISO-8859-1", rejection.toByteArray(Charsets.ISO_8859_1))
+                    answer = json(status, rejection)
                     val response = call(endpoint)
 
                     val case = "$endpoint, Digdir answered $status"
@@ -111,16 +134,10 @@ class DigdirAnswersTest {
     }
 
     @Test
-    fun `explains a rejection with Digdir's error_description, else its error, else only that Digdir rejected it`() {
+    fun `explains a rejection with Digdir's explanation, else only that Digdir rejected it`() {
         val cases = listOf(
             json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}""") to "Scope finnes ikke",
-            json(404, """{"error":"not_found","error_description":" "}""") to "not_found",
-            json(404, """{"error":"not_found"}""") to "not_found",
-            OutgoingResponse(404, "text", """{"error_description":"Scope finnes ikke"}""".toByteArray()) to "Scope finnes ikke",
-            json(404, """{"error_description":42}""") to "Digdir rejected the request",
-            json(404, "[]") to "Digdir rejected the request",
             OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()) to "Digdir rejected the request",
-            OutgoingResponse(404, null, ByteArray(0)) to "Digdir rejected the request",
         )
         var answer = cases.first().first
         digdirAnswering({ answer }) {
@@ -146,6 +163,31 @@ class DigdirAnswersTest {
             }
         }
     }
+
+    @Test
+    fun `a rejection from Digdir is logged with Digdir's whole answer, in one line`() {
+        val answer = """{"error_description":"finnes allerede","correlation_id":"abc-123"}"""
+        digdirAnswering({ json(409, answer) }) {
+            val response = call(endpoints.first())
+
+            assertEquals(HttpStatusCode.Conflict, response.status)
+            val logged = appender.list.single { it.formattedMessage.startsWith("Digdir rejected") }
+            assertEquals(Level.INFO, logged.level)
+            assertEquals("Digdir rejected the request with HTTP 409: $answer", logged.formattedMessage)
+            assertNull(logged.throwableProxy)
+        }
+    }
+
+    @Test
+    fun `a failure at Digdir is logged as an error with Digdir's whole answer`() =
+        digdirAnswering({ OutgoingResponse(503, "text/plain", "Service Unavailable".toByteArray()) }) {
+            val response = call(endpoints.first())
+
+            assertEquals(HttpStatusCode.BadGateway, response.status)
+            val logged = appender.list.single { it.formattedMessage.startsWith("Digdir answered") }
+            assertEquals(Level.ERROR, logged.level)
+            assertEquals("Digdir answered HTTP 503: Service Unavailable", logged.formattedMessage)
+        }
 
     @Test
     fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =

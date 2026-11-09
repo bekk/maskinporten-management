@@ -2,10 +2,12 @@ package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
+import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.kms.Kms
 import java.io.IOException
 import java.net.URI
 import java.net.URLEncoder
@@ -15,11 +17,37 @@ import java.net.URLEncoder
  * [DigdirException] means Digdir could not be called, refused this client's own token with a 401, or gave an answer
  * this client cannot read.
  */
-public class MaskinportenManagementClient(
+public class MaskinportenManagementClient private constructor(
     baseUrl: URI,
     private val httpClient: OutgoingHttpClient,
     private val accessTokenProvider: AccessTokenProvider,
-) {
+    private val ownsTokenProvider: Boolean,
+) : AutoCloseable {
+    public constructor(
+        environment: DigdirEnvironment,
+        clientId: String,
+        kms: Kms,
+        certificateChainPem: String,
+        httpClient: OutgoingHttpClient,
+    ) : this(environment.digdirBaseUrl, environment.maskinportenWellKnownUrl, clientId, kms, certificateChainPem, httpClient)
+
+    public constructor(
+        baseUrl: URI,
+        maskinportenWellKnownUrl: URI,
+        clientId: String,
+        kms: Kms,
+        certificateChainPem: String,
+        httpClient: OutgoingHttpClient,
+    ) : this(
+        baseUrl,
+        httpClient,
+        MaskinportenTokenProvider(maskinportenWellKnownUrl, clientId, DIGDIR_SCOPES, kms, certificateChainPem, httpClient),
+        ownsTokenProvider = true,
+    )
+
+    public constructor(baseUrl: URI, httpClient: OutgoingHttpClient, accessTokenProvider: AccessTokenProvider) :
+        this(baseUrl, httpClient, accessTokenProvider, ownsTokenProvider = false)
+
     public constructor(environment: DigdirEnvironment, httpClient: OutgoingHttpClient, accessTokenProvider: AccessTokenProvider) :
         this(environment.digdirBaseUrl, httpClient, accessTokenProvider)
 
@@ -89,11 +117,18 @@ public class MaskinportenManagementClient(
         throw DigdirException("Digdir answered $statusCode with something this client cannot read: ${e.message}", e)
     }
 
+    override fun close() {
+        if (ownsTokenProvider) (accessTokenProvider as AutoCloseable).close()
+    }
+
     internal companion object {
         const val SCOPES_PATH = "/api/v1/scopes"
 
         const val SCOPE_ACCESS_PATH = "/api/v1/scopes/access"
 
         val json = Json { ignoreUnknownKeys = true }
+
+        // Digdir's API requires idporten:scopes.read to read scope access and idporten:scopes.write to change it
+        val DIGDIR_SCOPES = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))
     }
 }

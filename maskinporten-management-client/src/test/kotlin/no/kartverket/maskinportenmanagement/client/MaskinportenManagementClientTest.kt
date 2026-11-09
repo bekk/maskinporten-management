@@ -1,16 +1,27 @@
 package no.kartverket.maskinportenmanagement.client
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.client.auth.AccessTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
+import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
+import no.kartverket.maskinportenmanagement.client.kms.LocalKms
+import no.kartverket.maskinportenmanagement.client.kms.certificateChain
+import no.kartverket.maskinportenmanagement.client.kms.pem
+import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import java.io.IOException
 import java.net.ConnectException
 import java.net.URI
+import java.net.URLDecoder
+import java.security.interfaces.RSAPrivateCrtKey
+import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -368,6 +379,50 @@ class MaskinportenManagementClientTest {
 
         assertContains(e.message!!, "401")
         assertEquals(listOf(AccessToken.of("test-token")), refused)
+    }
+
+    private val keyPair = rsaKeyPair()
+
+    private fun clientWithKey(environment: DigdirEnvironment, httpClient: OutgoingHttpClient) = MaskinportenManagementClient(
+        environment = environment,
+        clientId = "test-client",
+        kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
+        certificateChainPem = certificateChain(keyPair.public).joinToString("") { pem(it) },
+        httpClient = httpClient,
+    )
+
+    @Test
+    fun `a client made with a key asks Maskinporten for Digdir's scopes and sends the token to Digdir`() {
+        val http = recording(sent) { request ->
+            when (request.url.path) {
+                "/.well-known/oauth-authorization-server" ->
+                    json(200, """{"issuer":"https://test.maskinporten.no/","token_endpoint":"https://test.maskinporten.no/token"}""")
+
+                "/token" -> json(200, """{"access_token":"own-token","expires_in":120}""")
+
+                else -> json(200, "[]")
+            }
+        }
+
+        clientWithKey(DigdirEnvironment.TEST, http).use { runBlocking { it.listScopes() } }
+
+        val assertion = URLDecoder.decode(sent[1].body!!.decodeToString().substringAfter("assertion="), Charsets.UTF_8)
+        val claims = Json.parseToJsonElement(Base64.getUrlDecoder().decode(assertion.split('.')[1]).decodeToString()).jsonObject
+        assertEquals("idporten:scopes.read idporten:scopes.write", claims.getValue("scope").jsonPrimitive.content)
+        assertEquals("Bearer own-token", sent.last().headers["Authorization"])
+        assertEquals("${DigdirEnvironment.TEST.digdirBaseUrl}/api/v1/scopes", sent.last().url.toString())
+    }
+
+    @Test
+    fun `a client made with a key for an environment gets its tokens from Maskinporten in that environment`() {
+        for (environment in DigdirEnvironment.entries) {
+            sent.clear()
+            val unavailable = recording(sent) { OutgoingResponse(503, null, ByteArray(0)) }
+
+            clientWithKey(environment, unavailable).use { assertFailsWith<DigdirException> { runBlocking { it.listScopes() } } }
+
+            assertEquals(listOf(environment.maskinportenWellKnownUrl), sent.map { it.url }, environment.name)
+        }
     }
 
     @Test

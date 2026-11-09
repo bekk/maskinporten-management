@@ -4,8 +4,6 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.log
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
-import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.JavaOutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
@@ -17,25 +15,21 @@ import java.net.http.HttpClient
 import java.time.Duration
 
 internal fun Application.maskinportenManagementClient(config: AppConfig): MaskinportenManagementClient {
-    val httpClient = httpClient()
     val kms = config.digdirAdminCloudKmsKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(checkNotNull(config.digdirAdminLocalKey))
-    val tokenProvider = MaskinportenTokenProvider(
-        wellKnownUrl = config.digdirEnvironment.maskinportenWellKnownUrl,
+    val client = MaskinportenManagementClient(
+        baseUrl = config.digdirEnvironment.digdirBaseUrl,
+        maskinportenWellKnownUrl = config.digdirEnvironment.maskinportenWellKnownUrl,
         clientId = config.maskinportenClientId,
-        scopes = DIGDIR_SCOPES,
         kms = kms,
         certificateChainPem = config.digdirAdminCertChain,
-        httpClient = httpClient,
+        httpClient = httpClient(),
     )
     monitor.subscribe(ApplicationStopped) {
-        tokenProvider.close()
+        client.close()
         (kms as? AutoCloseable)?.close()
     }
-    return MaskinportenManagementClient(config.digdirEnvironment.digdirBaseUrl, httpClient, tokenProvider)
+    return client
 }
-
-// Digdir's API requires idporten:scopes.read to read scope access and idporten:scopes.write to change it
-private val DIGDIR_SCOPES = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write"))
 
 internal fun Application.externalFiltering(config: AppConfig, httpClient: OutgoingHttpClient = httpClient()): ExternalFiltering {
     val url = config.externalFilteringUrl

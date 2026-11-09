@@ -110,7 +110,9 @@ internal fun ApplicationConfig.file(path: String): String? {
 // The client parses the chain too, but its errors cannot name the setting
 private fun ApplicationConfig.pemCertificateChain(path: String): String {
     val pem = required(path)
-    val error = "$path must be the certificate chain itself in PEM, but was \"$pem\" (see .env.example)"
+    // A PEM value can be a private key pasted in the wrong place, so only a value that is not PEM is shown
+    val was = if ("-----BEGIN" in pem) "" else ", but was \"$pem\""
+    val error = "$path must be the certificate chain itself in PEM$was (see .env.example)"
     val certificates = try {
         CertificateFactory.getInstance("X.509").generateCertificates(pem.byteInputStream())
     } catch (e: CertificateException) {

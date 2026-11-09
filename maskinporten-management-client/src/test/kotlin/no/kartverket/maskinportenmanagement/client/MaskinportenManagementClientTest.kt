@@ -1,6 +1,10 @@
 package no.kartverket.maskinportenmanagement.client
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -22,11 +26,14 @@ import java.net.URI
 import java.net.URLDecoder
 import java.security.interfaces.RSAPrivateCrtKey
 import java.util.Base64
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -411,6 +418,47 @@ class MaskinportenManagementClientTest {
         assertEquals("idporten:scopes.read idporten:scopes.write", claims.getValue("scope").jsonPrimitive.content)
         assertEquals("Bearer own-token", sent.last().headers["Authorization"])
         assertEquals("${DigdirEnvironment.TEST.digdirBaseUrl}/api/v1/scopes", sent.last().url.toString())
+    }
+
+    @Test
+    fun `closing a client that gets its own tokens stops the token fetch a call is waiting for`(): Unit = runBlocking {
+        val fetching = CompletableDeferred<Unit>()
+        val maskinporten = OutgoingHttpClient { request ->
+            when (request.url.path) {
+                "/.well-known/oauth-authorization-server" ->
+                    json(200, """{"issuer":"https://test.maskinporten.no/","token_endpoint":"https://test.maskinporten.no/token"}""")
+
+                else -> {
+                    fetching.complete(Unit)
+                    awaitCancellation()
+                }
+            }
+        }
+        val client = clientWithKey(DigdirEnvironment.TEST, maskinporten)
+        val call = async { runCatching { client.listScopes() } }
+        fetching.await()
+
+        client.close()
+
+        val result = withTimeoutOrNull(5_000) { call.await() }
+        call.cancel()
+        assertIs<CancellationException>(result?.exceptionOrNull())
+    }
+
+    @Test
+    fun `closing a client leaves a token provider it was given open`() {
+        var closed = false
+        val provider = object : AccessTokenProvider, AutoCloseable {
+            override suspend fun accessToken() = AccessToken.of("test-token")
+
+            override fun close() {
+                closed = true
+            }
+        }
+
+        MaskinportenManagementClient(URI("https://digdir.test"), recording(sent) { json(200, "[]") }, provider).close()
+
+        assertFalse(closed)
     }
 
     @Test

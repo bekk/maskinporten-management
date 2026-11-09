@@ -4,7 +4,9 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import kotlinx.coroutines.runBlocking
-import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
+import no.kartverket.maskinportenmanagement.client.http.HttpMethod
+import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
+import no.kartverket.maskinportenmanagement.client.http.json
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.URI
@@ -14,6 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class LoggingOutgoingHttpClientTest {
@@ -35,29 +38,35 @@ class LoggingOutgoingHttpClientTest {
         outgoing.detachAppender(appender)
     }
 
+    private val request = OutgoingRequest(
+        method = HttpMethod.POST,
+        url = URI("https://digdir.test/api/v1/scopes"),
+        headers = mapOf("Authorization" to "Bearer secret-token"),
+        body = "secret-body".toByteArray(),
+    )
+
     @Test
-    fun `logs the call before it is sent and its status after, but not its headers`() = runBlocking {
+    fun `logs the call before it is sent and its status after, but not its headers or body`() = runBlocking {
         val client = LoggingOutgoingHttpClient {
-            assertEquals(listOf("Calling POST https://filtering.test/filter"), lines)
-            OutgoingResponse(200, "application/json", """{"result":{"exact":[],"prefix":[]}}""".toByteArray())
+            assertEquals(listOf("Calling POST https://digdir.test/api/v1/scopes"), lines)
+            json(200, "{}")
         }
 
-        ExternalFilteringClient(URI("https://filtering.test/filter"), client).filterFor("URI=spiffe://cluster.local/ns/a/sa/b")
+        client.send(request)
 
-        assertEquals(2, lines.size)
-        assertTrue(lines[1].startsWith("POST https://filtering.test/filter answered 200 in "), lines[1])
-        assertTrue(lines.none { "spiffe" in it }, "a header was logged: $lines")
+        assertEquals(2, lines.size, "$lines")
+        assertTrue(lines[1].startsWith("POST https://digdir.test/api/v1/scopes answered 200 in "), lines[1])
+        assertTrue(lines.none { "secret" in it }, "a header or body was logged: $lines")
     }
 
     @Test
     fun `logs a call that got no answer, and passes the failure on`() {
-        val client = LoggingOutgoingHttpClient { throw IOException("Connection refused") }
+        val failure = IOException("Connection refused")
+        val client = LoggingOutgoingHttpClient { throw failure }
 
-        assertFailsWith<ExternalFilteringException> {
-            runBlocking { ExternalFilteringClient(URI("https://filtering.test/filter"), client).filterFor("certificate") }
-        }
+        assertSame(failure, assertFailsWith<IOException> { runBlocking { client.send(request) } })
 
-        assertTrue(lines.last().startsWith("POST https://filtering.test/filter failed after "), lines.last())
+        assertTrue(lines.last().startsWith("POST https://digdir.test/api/v1/scopes failed after "), lines.last())
         assertContains(lines.last(), "Connection refused")
     }
 }

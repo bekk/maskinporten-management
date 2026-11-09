@@ -15,8 +15,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
+import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
@@ -240,36 +239,31 @@ class LoggingTest {
                 "/.well-known/oauth-authorization-server" ->
                     json(200, """{"issuer":"https://maskinporten.test/","token_endpoint":"https://maskinporten.test/token"}""")
 
-                else -> json(200, """{"access_token":"test-token","expires_in":120}""")
+                "/token" -> json(200, """{"access_token":"test-token","expires_in":120}""")
+
+                else -> json(200, "[]")
             }
         }
-        val tokenProvider = MaskinportenTokenProvider(
-            wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
+        val digdir = MaskinportenManagementClient(
+            baseUrl = URI("https://digdir.test"),
+            maskinportenWellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
             clientId = "test-client",
-            scopes = listOf(Scope.of("idporten:scopes.read")),
             kms = LocalKms(keyPair.private as RSAPrivateCrtKey),
             certificateChainPem = certificateChain(keyPair.public).joinToString("") { pem(it) },
             httpClient = maskinporten,
         )
-        testApplication {
-            application {
-                module(testClient(), ExternalFiltering(null))
-                routing {
-                    get("/token") {
-                        tokenProvider.accessToken()
-                        call.respond(HttpStatusCode.OK)
-                    }
+        digdir.use {
+            testApplication {
+                application { module(digdir, ExternalFiltering(null)) }
+                client.get("/api/scopes") {
+                    header(CLIENT_CERTIFICATE_HEADER, certificate)
+                    header(HttpHeaders.XRequestId, "token-call")
                 }
             }
-            client.get("/token") {
-                header(CLIENT_CERTIFICATE_HEADER, certificate)
-                header(HttpHeaders.XRequestId, "token-call")
-            }
         }
-        tokenProvider.close()
 
         val events = appender.list.filter { it.loggerName == "outgoing" }
-        assertEquals(4, events.size, "expected a call and an answer for the metadata and for the token, got: $events")
+        assertEquals(6, events.size, "expected a call and an answer for the metadata, the token and Digdir, got: $events")
         events.forEach {
             assertEquals(workload, it.mdcPropertyMap["workload"], "for: $it")
             assertEquals("token-call", it.requestId, "for: $it")

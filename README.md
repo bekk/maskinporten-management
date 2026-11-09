@@ -162,23 +162,23 @@ val httpClient = JavaOutgoingHttpClient(
     requestTimeout = Duration.ofSeconds(10),
 )
 
-val tokenProvider = MaskinportenTokenProvider(
+val client = MaskinportenManagementClient(
     environment = DigdirEnvironment.TEST,
     clientId = "<client id>",
-    scopes = listOf(Scope.of("idporten:scopes.read"), Scope.of("idporten:scopes.write")),
     kms = LocalKms.fromPem(privateKeyPem),
     certificateChainPem = certificateChainPem,
     httpClient = httpClient,
 )
-
-val client = MaskinportenManagementClient(DigdirEnvironment.TEST, httpClient, tokenProvider)
 ```
 
-To call other URLs, like the mock API's, give `wellKnownUrl` and `baseUrl` instead of `environment`.
+To call other URLs, like the mock API's, give `baseUrl` and `maskinportenWellKnownUrl` instead of `environment`.
 
-Build one client and reuse it. The token provider signs a JWT grant that carries the business certificate chain,
-leaf first, and reuses each token until shortly before it expires, fetching the next one in the background. Close it
-when you are done with it.
+Build one client and reuse it. It gets its own tokens from Maskinporten for `idporten:scopes.read` and
+`idporten:scopes.write`, with a JWT grant that carries the business certificate chain, leaf first. It reuses each token
+until shortly before it expires, fetching the next one in the background. Close it when you are done with it.
+
+If you get tokens some other way, give the client an `AccessTokenProvider` instead of `clientId`, `kms` and
+`certificateChainPem`.
 
 `LocalKms` signs with a private key you hold, in PKCS #8 PEM. To keep the key in a key management service, implement
 `Kms` on it, as the server does for Cloud KMS.

@@ -21,8 +21,6 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
-import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.client.auth.MaskinportenTokenProvider
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
@@ -81,17 +79,17 @@ class CloudKmsTest {
         }
 
         CloudKms(keyName, client(fake)).use { kms ->
-            val tokenProvider = MaskinportenTokenProvider(
-                wellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
+            val digdir = MaskinportenManagementClient(
+                baseUrl = URI("https://digdir.test"),
+                maskinportenWellKnownUrl = URI("https://maskinporten.test/.well-known/oauth-authorization-server"),
                 clientId = "client-id",
-                scopes = listOf(Scope.of("idporten:scopes.write")),
                 kms = kms,
                 certificateChainPem = certificateChain(keyPair.public).joinToString("") { pem(it) },
                 httpClient = maskinporten,
             )
             testApplication {
                 application {
-                    module(MaskinportenManagementClient(URI("https://digdir.test"), maskinporten, tokenProvider), ExternalFiltering(null))
+                    module(digdir, ExternalFiltering(null))
                 }
 
                 val response = client.get("/api/scopeaccess/orgs?scope=kartverk:matrikkel.read")

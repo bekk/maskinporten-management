@@ -51,6 +51,7 @@ tasks.register<JavaExec>("runLocal") {
     description = "Runs the server with a fake filtering service."
     classpath = local.runtimeClasspath
     mainClass = "no.kartverket.maskinportenmanagement.restserver.LocalMainKt"
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
     workingDir = rootProject.projectDir
 }
 

@@ -103,7 +103,7 @@ dependencies {
 
 jib {
     from {
-        image = "dhi.io/eclipse-temurin:25-alpine3.24@sha256:a808a0f6b885c3dac11c43dc70e26d94748190248ae2408f45783545b79d2b91"
+        image = "dhi.io/eclipse-temurin:25-alpine3.24@sha256:8da329a70f7794dd59467841e7476fd96a22fa5d3146c36811d3589b5205a5d0"
     }
     to {
         image = dockerImage.get()

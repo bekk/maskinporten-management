@@ -17,6 +17,8 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
+import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
+import no.kartverket.maskinportenmanagement.restserver.kms.CloudKmsException
 import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest

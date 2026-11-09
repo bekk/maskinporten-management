@@ -1,0 +1,16 @@
+# Build stage. The mock is a subproject of the root build, so the build context is the repository root.
+FROM eclipse-temurin:25-jdk AS builder
+WORKDIR /app
+
+COPY . .
+RUN ./gradlew :digdir-maskinporten-mock-api:buildFatJar --no-daemon
+
+# Run stage
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+
+COPY --from=builder /app/digdir-maskinporten-mock-api/build/libs/digdir-maskinporten-mock-api-all.jar app.jar
+
+EXPOSE 8090
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

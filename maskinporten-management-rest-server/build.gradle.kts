@@ -39,6 +39,22 @@ tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
 }
 
+// Runs the server with a fake filtering service, for running locally. Jib only packs main, so the fake is not in the
+// image.
+val local: SourceSet by sourceSets.creating
+kotlin.target.compilations.named(local.name) { associateWith(kotlin.target.compilations.getByName("main")) }
+kotlin.target.compilations.named("test") { associateWith(kotlin.target.compilations.getByName(local.name)) }
+tasks.check { dependsOn(local.classesTaskName) }
+
+tasks.register<JavaExec>("runLocal") {
+    group = "application"
+    description = "Runs the server with a fake filtering service."
+    classpath = local.runtimeClasspath
+    mainClass = "no.kartverket.maskinportenmanagement.restserver.LocalMainKt"
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+    workingDir = rootProject.projectDir
+}
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
@@ -46,6 +62,7 @@ tasks.withType<Test>().configureEach {
 tasks.test {
     // OpenApiSpecFileTest compares the served spec with this file, so a changed file must rerun the tests
     inputs.file("openapi.json")
+    inputs.file(rootProject.file("digdir-maskinporten-mock-api/init.sql"))
 }
 
 tasks.register<Test>("generateOpenApiSpec") {

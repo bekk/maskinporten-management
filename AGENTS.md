@@ -75,7 +75,7 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
   they can hold our Maskinporten token. A request the caller got wrong is logged as one line at most. A stack trace
   is only for a real failure, like Digdir out of reach, Cloud KMS or the filtering service failing, or an unhandled
   exception.
-- **Server setup.** `main()` reads the settings into `AppConfig` and starts the server. `Application.module(...)`
+- **Server setup.** `main()` reads the settings into `AppConfig` and `DigdirConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.
 - **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
@@ -83,9 +83,9 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
   server's models. `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and
   `OpenApiSpecFileTest` fails when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
-  it once, into `AppConfig` in `config/Config.kt`, with the helpers there, like `required` and `seconds`: they treat an
-  empty value as unset, and their errors name the `application.yaml` key, like `digdirAdmin.certChain`, and end with
-  `(see .env.example)`. Write any other error about a setting the same way. The Logback path (`logback.configFile`)
+  it once, into `AppConfig` in `config/Config.kt`, or into `DigdirConfig` there if only calling Digdir needs it, with
+  the helpers there, like `required` and `seconds`: they treat an empty value as unset, and their errors name the
+  `application.yaml` key, like `digdirAdmin.certChain`, and end with `(see .env.example)`. Write any other error about a setting the same way. The Logback path (`logback.configFile`)
   is the exception: `main()` sets it before `AppConfig.load(...)`, since Logback only reads it when the first logger
   is created, and ignores it after that without an error.
 - **Formatting** in every module is ktlint with the rules in `.editorconfig`. Run `ktlintFormat` instead of formatting
@@ -97,7 +97,7 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
 - No mocking library. Fake an `OutgoingHttpClient` with a lambda. `json(...)` and `recording(...)` in the client's
   `src/testFixtures` help, in the tests of both modules.
 - Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake
-  Digdir. Tests of settings call `AppConfig.load(...)`.
+  Digdir. Tests of settings call `AppConfig.load(...)` and `DigdirConfig.load(...)`.
 - Shared test helpers live in the client's `src/testFixtures`: `DigdirJson.kt`, `TestKeys.kt` and `FakeHttp.kt`.
 - `DigdirJsonTest` checks the answers in `DigdirJson.kt` against Digdir's spec, the client's `maskinporten-api.json`,
   with `DigdirSpec`. A field the spec does not have fails the test. A new kind of Digdir answer goes in `DigdirJson.kt`

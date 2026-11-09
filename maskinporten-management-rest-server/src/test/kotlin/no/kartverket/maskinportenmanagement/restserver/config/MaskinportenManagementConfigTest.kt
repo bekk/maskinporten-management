@@ -38,12 +38,14 @@ class MaskinportenManagementConfigTest {
         "externalFiltering.url" to "http://localhost:8080/filtering",
     )
 
-    private fun load(settings: Map<String, String>) = AppConfig.load(MapApplicationConfig(*settings.toList().toTypedArray()))
+    private fun applicationConfig(settings: Map<String, String>) = MapApplicationConfig(*settings.toList().toTypedArray())
+
+    private fun load(settings: Map<String, String>) = AppConfig.load(applicationConfig(settings))
 
     private fun start(settings: Map<String, String>) = testApplication {
         application {
             val config = load(settings)
-            module(maskinportenManagementClient(config), externalFiltering(config), config.accessLog)
+            module(maskinportenManagementClient(DigdirConfig.load(applicationConfig(settings))), externalFiltering(config), config.accessLog)
         }
         startApplication()
     }

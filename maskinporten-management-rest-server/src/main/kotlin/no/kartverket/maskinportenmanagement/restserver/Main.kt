@@ -28,6 +28,7 @@ import io.ktor.utils.io.ExperimentalKtorApi
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.MaskinportenManagementClient
 import no.kartverket.maskinportenmanagement.restserver.config.AppConfig
+import no.kartverket.maskinportenmanagement.restserver.config.DigdirConfig
 import no.kartverket.maskinportenmanagement.restserver.config.externalFiltering
 import no.kartverket.maskinportenmanagement.restserver.config.file
 import no.kartverket.maskinportenmanagement.restserver.config.loadApplicationConfig
@@ -46,10 +47,11 @@ fun main() {
     // Logback reads this when the first logger is created, so it is set before anything that could log.
     applicationConfig.file("logback.configFile")?.let { System.setProperty("logback.configurationFile", it) }
     val config = AppConfig.load(applicationConfig)
+    val digdirConfig = DigdirConfig.load(applicationConfig)
 
     embeddedServer(Netty, port = config.port) {
         module(
-            client = maskinportenManagementClient(config),
+            client = maskinportenManagementClient(digdirConfig),
             externalFiltering = externalFiltering(config),
             accessLog = config.accessLog,
         )

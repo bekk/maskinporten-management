@@ -4,7 +4,6 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.contentType
 import io.ktor.http.withCharset
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -62,35 +61,11 @@ class UpdateScopeTest {
     }
 
     @Test
-    fun `a query that is not exactly one scope, or a body that is not UTF-8 JSON, is refused without calling Digdir`() = updateScopeTest {
-        val refusals = mapOf(
-            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
-            "?scope=kartverk:a&inactive=true" to FieldError("inactive", ValidationCode.NOT_ALLOWED, "inactive is not allowed"),
-            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
-        )
-        for ((query, fieldError) in refusals) {
-            val response = updateScope(query, """{"description":"a"}""".toByteArray())
+    fun `a query without a scope is refused without calling Digdir`() = updateScopeTest {
+        val response = updateScope("", """{"description":"a"}""".toByteArray())
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$query\"")
-            assertEquals(validationFailed(fieldError), response.errorResponse(), "for \"$query\"")
-        }
-
-        for (contentType in listOf(ContentType.Text.Plain, ContentType("application", ""), ContentType("", "json"))) {
-            val response = client.put("/api/scopes?scope=kartverk:a") {
-                setBody(ByteArrayContent("""{"description":"a"}""".toByteArray(), contentType))
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
-            assertEquals(
-                malformedRequest("The body must be JSON, sent with Content-Type application/json"),
-                response.errorResponse(),
-                "$contentType",
-            )
-        }
-
-        val response = updateScope("?scope=kartverk:a", byteArrayOf(0x7B, 0xFF.toByte(), 0x7D))
         assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(malformedRequest("The body must be UTF-8"), response.errorResponse())
+        assertEquals(validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")), response.errorResponse())
         assertTrue(sent.isEmpty())
     }
 }

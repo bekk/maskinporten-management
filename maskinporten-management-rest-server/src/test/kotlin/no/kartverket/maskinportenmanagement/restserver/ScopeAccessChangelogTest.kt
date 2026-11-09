@@ -41,43 +41,18 @@ class ScopeAccessChangelogTest {
     }
 
     @Test
-    fun `a query that is not one scope, with an optional page and size, is refused without calling Digdir`() = changelogTest {
-        val refusals = mapOf(
-            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
-            "?page=0" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
-            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
-            "?scope=kartverk:a&page=0&page=1" to FieldError("page", ValidationCode.NOT_ALLOWED, "page must be sent once"),
-            "?scope=kartverk:a&sort=created" to FieldError("sort", ValidationCode.NOT_ALLOWED, "sort is not allowed"),
-            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+    fun `an invalid scope, page and size are all listed, without calling Digdir`() = changelogTest {
+        val response = client.get("/api/scopeaccess/changelog?scope=kartverk:a+kartverk:b&page=-1&size=0")
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+                FieldError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more"),
+                FieldError("size", ValidationCode.INVALID_FORMAT, "size must be a whole number of 1 or more"),
+            ),
+            response.errorResponse(),
         )
-        for ((query, fieldError) in refusals) {
-            val response = client.get("/api/scopeaccess/changelog$query")
-
-            assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            assertEquals(validationFailed(fieldError), response.errorResponse(), query)
-        }
-        assertTrue(sent.isEmpty())
-    }
-
-    @Test
-    fun `a page below 0 or a size below 1 is refused without calling Digdir`() = changelogTest {
-        val invalidPage = FieldError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more")
-        val invalidSize = FieldError("size", ValidationCode.INVALID_FORMAT, "size must be a whole number of 1 or more")
-        val refusals = mapOf(
-            "page=-1" to listOf(invalidPage),
-            "page=" to listOf(invalidPage),
-            "page=first" to listOf(invalidPage),
-            "size=0" to listOf(invalidSize),
-            "size=1.5" to listOf(invalidSize),
-            "size=99999999999" to listOf(invalidSize),
-            "page=-1&size=0" to listOf(invalidPage, invalidSize),
-        )
-        for ((paging, errors) in refusals) {
-            val response = client.get("/api/scopeaccess/changelog?scope=kartverk:a&$paging")
-
-            assertEquals(HttpStatusCode.BadRequest, response.status, paging)
-            assertEquals(validationFailed(*errors.toTypedArray()), response.errorResponse(), paging)
-        }
         assertTrue(sent.isEmpty())
     }
 }

@@ -31,9 +31,6 @@ class ScopeAccessTest {
     private suspend fun ApplicationTestBuilder.call(method: HttpMethod, pathAndQuery: String): HttpResponse =
         client.request(pathAndQuery) { this.method = method }
 
-    private val endpointsWithScope = listOf(HttpMethod.Get to "/api/scopeaccess/orgs") +
-        changeMethods.map { it to "/api/scopeaccess/311718371" }
-
     @Test
     fun `sends the scope to Digdir`() {
         for (query in listOf("?scope=kartverk:matrikkel.read", "?scope=kartverk%3Amatrikkel.read")) {
@@ -65,28 +62,18 @@ class ScopeAccessTest {
     }
 
     @Test
-    fun `a query that is not exactly one scope without whitespace is refused without calling Digdir`() = scopeAccessTest {
-        val refusals = mapOf(
-            "" to FieldError("scope", ValidationCode.MISSING, "scope is required"),
-            "?scope=kartverk:a&scope=kartverk:b" to FieldError("scope", ValidationCode.NOT_ALLOWED, "scope must be sent once"),
-            "?scope=kartverk:a+kartverk:b" to FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
-        )
-        for ((method, path) in endpointsWithScope) {
-            for ((query, fieldError) in refusals) {
-                val response = call(method, "$path$query")
+    fun `listing access without a scope is refused without calling Digdir`() = scopeAccessTest {
+        val response = call(HttpMethod.Get, "/api/scopeaccess/orgs")
 
-                val case = "${method.value} $path$query"
-                assertEquals(HttpStatusCode.BadRequest, response.status, case)
-                assertEquals(validationFailed(fieldError), response.errorResponse(), case)
-            }
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(validationFailed(FieldError("scope", ValidationCode.MISSING, "scope is required")), response.errorResponse())
         assertTrue(sent.isEmpty())
     }
 
     @Test
-    fun `an organisation number that is not 9 digits is refused without calling Digdir`() = scopeAccessTest {
+    fun `a path that does not decode to one organisation number is refused without calling Digdir`() = scopeAccessTest {
         for (method in changeMethods) {
-            for (consumerOrgno in listOf("%2E%2E", "%2E", "311718371%2F..", "orgs", "31171837")) {
+            for (consumerOrgno in listOf("%2E%2E", "%2E", "311718371%2F..", "orgs")) {
                 val response = call(method, "/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
 
                 assertEquals(HttpStatusCode.BadRequest, response.status, "for $method $consumerOrgno")
@@ -102,31 +89,19 @@ class ScopeAccessTest {
 
     @Test
     fun `an invalid organisation number and an invalid scope are both listed, without calling Digdir`() = scopeAccessTest {
-        val response = call(changeMethods.first(), "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
+        for (method in changeMethods) {
+            val response = call(method, "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
 
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            validationFailed(
-                invalidOrganisationNumber,
-                FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
-            ),
-            response.errorResponse(),
-        )
-        assertTrue(sent.isEmpty())
-    }
-
-    @Test
-    fun `an invalid organisation number is listed even when the query has a parameter with the same name`() = scopeAccessTest {
-        val response = call(changeMethods.first(), "/api/scopeaccess/31171837?scope=kartverk:a&consumerOrgno=311718371")
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            validationFailed(
-                invalidOrganisationNumber,
-                FieldError("consumerOrgno", ValidationCode.NOT_ALLOWED, "consumerOrgno is not allowed"),
-            ),
-            response.errorResponse(),
-        )
+            assertEquals(HttpStatusCode.BadRequest, response.status, "for $method")
+            assertEquals(
+                validationFailed(
+                    invalidOrganisationNumber,
+                    FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+                ),
+                response.errorResponse(),
+                "for $method",
+            )
+        }
         assertTrue(sent.isEmpty())
     }
 

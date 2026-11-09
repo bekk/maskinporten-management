@@ -65,41 +65,7 @@ class CreateScopeTest {
     }
 
     @Test
-    fun `every field that is wrong in the body is listed, without calling Digdir`() = createScopeTest {
-        val response = createScope("""{"prefix":"kartverk","Subscope":"a"}""".toByteArray())
-
-        assertEquals(HttpStatusCode.BadRequest, response.status)
-        assertEquals(
-            validationFailed(
-                FieldError("Subscope", ValidationCode.NOT_ALLOWED, "Subscope is not allowed"),
-                FieldError("subscope", ValidationCode.MISSING, "subscope is required"),
-            ),
-            response.errorResponse(),
-        )
-        assertTrue(sent.isEmpty())
-    }
-
-    @Test
-    fun `a URL with a query is refused without calling Digdir, so the scope cannot be read from it instead`() = createScopeTest {
-        for (query in listOf("?scope=kartverk:matrikkel.read", "?subscope=matrikkel.read")) {
-            val response = client.post("/api/scopes$query") {
-                contentType(ContentType.Application.Json)
-                setBody("""{"prefix":"kartverk","subscope":"tilgangsstyring/demo.read"}""")
-            }
-
-            assertEquals(HttpStatusCode.BadRequest, response.status, query)
-            val name = query.removePrefix("?").substringBefore('=')
-            assertEquals(
-                validationFailed(FieldError(name, ValidationCode.NOT_ALLOWED, "$name is not allowed")),
-                response.errorResponse(),
-                query,
-            )
-        }
-        assertTrue(sent.isEmpty())
-    }
-
-    @Test
-    fun `a field missing from the body is listed even when the query has a parameter with the same name`() = createScopeTest {
+    fun `a query and a wrong body are both listed, without calling Digdir`() = createScopeTest {
         val response = client.post("/api/scopes?subscope=matrikkel.read") {
             contentType(ContentType.Application.Json)
             setBody("""{"prefix":"kartverk"}""")

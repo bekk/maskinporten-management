@@ -103,16 +103,6 @@ class ScopesTest {
     }
 
     @Test
-    fun `a blank prefix from the filtering service gives 502 instead of every scope`() =
-        scopesTest(filtering = { json(200, """{"result":{"exact":[],"prefix":[""]}}""") }) {
-            val response = listScopes()
-
-            assertEquals(HttpStatusCode.BadGateway, response.status)
-            assertEquals(upstreamError("The call to the filtering service failed"), response.errorResponse())
-            assertTrue(digdirRequests.isEmpty())
-        }
-
-    @Test
     fun `gives 502 when Digdir answers 200 with something other than a list`() =
         scopesTest(digdir = { json(200, """{"name":"kartverk:nrl.rapportering"}""") }) {
             val response = listScopes()

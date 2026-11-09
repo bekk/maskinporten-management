@@ -18,6 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class MaskinportenManagementClientTest {
@@ -378,6 +379,17 @@ class MaskinportenManagementClientTest {
         }
 
         assertSame(failure, e.cause)
+    }
+
+    @Test
+    fun `a token that could not be fetched becomes a DigdirException, and Digdir is not called`() {
+        val failure = IOException("Maskinporten did not answer")
+        val client = MaskinportenManagementClient(URI("https://digdir.test"), recording(sent) { json(200, "[]") }) { throw failure }
+
+        val e = assertFailsWith<DigdirException> { runBlocking { client.listScopes() } }
+
+        assertSame(failure, e.cause)
+        assertTrue(sent.isEmpty(), "Digdir was called: $sent")
     }
 
     @Test

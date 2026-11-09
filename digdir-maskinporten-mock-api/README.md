@@ -2,8 +2,9 @@
 
 A mock for running maskinporten-management locally. It plays the two services the server calls at Digdir:
 
-- Digdir's API for managing Maskinporten scopes (`/api/v1/...`), from the contract in `maskinporten-api.json`, with
-  schema and seed data in `init.sql`
+- Digdir's API for managing Maskinporten scopes (`/api/v1/...`), from the contract the client keeps in
+  [`maskinporten-api.json`](../maskinporten-management-client/maskinporten-api.json), with schema and seed data in
+  `init.sql`
 - Maskinporten, which issues the tokens for Digdir's API (see [Maskinporten](#maskinporten))
 
 It is built with Ktor and Exposed on Postgres, as a subproject of the root Gradle build: run the commands below from

@@ -105,6 +105,9 @@ style; for its tests, see [its README](digdir-maskinporten-mock-api/README.md#te
 - Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake
   Digdir. Tests of settings call `AppConfig.load(...)`.
 - Shared test helpers live in the client's `src/testFixtures`: `DigdirJson.kt`, `TestKeys.kt` and `FakeHttp.kt`.
+- `DigdirJsonTest` checks the answers in `DigdirJson.kt` against Digdir's spec, the client's `maskinporten-api.json`,
+  with `DigdirSpec`. A field the spec does not have fails the test. A new kind of Digdir answer goes in `DigdirJson.kt`
+  and gets a check there.
 
 ## Decisions (ADRs)
 

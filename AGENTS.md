@@ -23,7 +23,7 @@ CI, `.java-version` and the server's image use Java 25.
 ./gradlew build                     # compile, ktlint and all tests except the mock API's
 ./gradlew ktlintFormat              # fix formatting
 ./gradlew :maskinporten-management-rest-server:test --tests '*.ScopesTest'   # one test class
-./gradlew :mock-api:test            # the mock API's tests, while the mock is up
+./gradlew :mock-api:test            # the mock API's tests, while its Postgres is up (docker compose up -d db)
 ./gradlew generateOpenApiSpec       # rewrite openapi.json after an API change
 scripts/dev.sh                      # run the server on :8080 with the variables in .env
 ```

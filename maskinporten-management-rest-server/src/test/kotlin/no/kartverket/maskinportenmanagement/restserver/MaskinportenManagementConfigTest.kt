@@ -125,4 +125,14 @@ class MaskinportenManagementConfigTest {
             "digdirAdmin.certChain must be the certificate chain itself in PEM",
         )
     }
+
+    @Test
+    fun `a private key given as the certificate chain stays out of the error`() {
+        val key = pem("PRIVATE KEY", keyPair.private.encoded)
+
+        val failure = startupFailure(complete + ("digdirAdmin.certChain" to key))
+
+        assertContains(failure, "digdirAdmin.certChain must be the certificate chain itself in PEM")
+        assertFalse(key.lines()[1] in failure, "the key is in the error: $failure")
+    }
 }

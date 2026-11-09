@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver.models
+package no.kartverket.maskinportenmanagement.restserver.scopes
 
 import io.ktor.openapi.JsonSchema
 import io.ktor.openapi.JsonType

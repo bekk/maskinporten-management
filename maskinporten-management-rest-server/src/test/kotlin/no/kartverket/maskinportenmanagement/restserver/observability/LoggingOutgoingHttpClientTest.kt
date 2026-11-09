@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver.http
+package no.kartverket.maskinportenmanagement.restserver.observability
 
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent

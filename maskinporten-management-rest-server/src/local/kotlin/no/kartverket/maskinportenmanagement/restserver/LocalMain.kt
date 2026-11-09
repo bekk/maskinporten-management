@@ -8,7 +8,7 @@ import no.kartverket.maskinportenmanagement.restserver.config.AppConfig
 import no.kartverket.maskinportenmanagement.restserver.config.externalFiltering
 import no.kartverket.maskinportenmanagement.restserver.config.file
 import no.kartverket.maskinportenmanagement.restserver.config.loadApplicationConfig
-import no.kartverket.maskinportenmanagement.restserver.http.LoggingOutgoingHttpClient
+import no.kartverket.maskinportenmanagement.restserver.observability.LoggingOutgoingHttpClient
 import java.net.URI
 
 // main(), but with fakes for Digdir and the filtering service, since nothing plays them locally. The fake Digdir takes

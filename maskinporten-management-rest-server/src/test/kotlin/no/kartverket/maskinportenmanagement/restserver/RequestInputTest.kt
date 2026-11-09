@@ -2,8 +2,8 @@ package no.kartverket.maskinportenmanagement.restserver
 
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
+import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

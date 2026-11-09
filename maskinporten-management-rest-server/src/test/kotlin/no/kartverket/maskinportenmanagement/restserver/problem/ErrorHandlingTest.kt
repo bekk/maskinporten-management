@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.problem
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
@@ -18,6 +18,8 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
 import no.kartverket.maskinportenmanagement.restserver.kms.CloudKmsException
+import no.kartverket.maskinportenmanagement.restserver.module
+import no.kartverket.maskinportenmanagement.restserver.testClient
 import org.slf4j.LoggerFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest

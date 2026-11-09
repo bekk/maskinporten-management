@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.problem
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -13,11 +13,10 @@ import io.ktor.server.response.respondText
 import kotlinx.serialization.json.Json
 import no.kartverket.maskinportenmanagement.client.DigdirErrorResponseException
 import no.kartverket.maskinportenmanagement.client.DigdirException
+import no.kartverket.maskinportenmanagement.restserver.InvalidRequestException
+import no.kartverket.maskinportenmanagement.restserver.MalformedRequestException
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.kms.CloudKmsException
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
 
 internal fun StatusPagesConfig.errorResponses() {
     exception<BadRequestException> { call, cause ->

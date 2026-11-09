@@ -103,7 +103,7 @@ dependencies {
 
 jib {
     from {
-        image = "ghcr.io/kartverket/emudhra-images/jre/dhi:jre-25.0-alpine3.24@sha256:0560e1680f602893991ce298a03975ebf3cc467fc0b01275ed1d83d03e013044"
+        image = "dhi.io/eclipse-temurin:25-alpine3.24@sha256:a808a0f6b885c3dac11c43dc70e26d94748190248ae2408f45783545b79d2b91"
     }
     to {
         image = dockerImage.get()

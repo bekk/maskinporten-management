@@ -58,7 +58,7 @@ app has access to.
 
 | Module                                                                       | What it is                                                                  | Published as                                                                  |
 | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
-| [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin library that talks to Maskinporten and Digdir's API directly         | a package, for other services to depend on                                    |
+| [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin library that talks to Maskinporten and Digdir's API directly         | nothing yet, as only the server uses it                                       |
 | [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API over the client                        | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
 | [`mock-api`](mock-api)                                                       | Mock of Digdir, Maskinporten and the filtering service, for running locally | nothing, as it is only for local development                                  |
 

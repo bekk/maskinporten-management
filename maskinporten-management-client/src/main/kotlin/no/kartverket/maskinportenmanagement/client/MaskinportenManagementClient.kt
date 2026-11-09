@@ -12,7 +12,8 @@ import java.net.URLEncoder
 
 /**
  * When Digdir answers with an error, a call throws a [DigdirErrorResponseException] that holds Digdir's answer. A
- * [DigdirException] means Digdir could not be called, or gave an answer this client cannot read.
+ * [DigdirException] means Digdir could not be called, refused this client's own token with a 401, or gave an answer
+ * this client cannot read.
  */
 public class MaskinportenManagementClient(
     baseUrl: URI,

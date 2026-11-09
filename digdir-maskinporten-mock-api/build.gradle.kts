@@ -17,9 +17,9 @@ application {
     mainClass = "io.ktor.server.netty.EngineMain"
 }
 
-// Bundle the API contract on the classpath so Swagger UI can serve it from the fat jar too.
+// Bundle the client's copy of Digdir's contract on the classpath so Swagger UI can serve it from the fat jar too.
 tasks.processResources {
-    from("maskinporten-api.json") { into("openapi") }
+    from(rootProject.file("maskinporten-management-client/maskinporten-api.json")) { into("openapi") }
 }
 
 tasks.withType<Test>().configureEach {

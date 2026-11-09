@@ -26,4 +26,7 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    val digdirSpec = file("maskinporten-api.json")
+    inputs.file(digdirSpec).withPathSensitivity(PathSensitivity.NONE).withPropertyName("digdirSpec")
+    systemProperty("digdirSpec", digdirSpec.path)
 }

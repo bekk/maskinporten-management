@@ -9,7 +9,7 @@
         "/api/scopes": {
             "put": {
                 "summary": "Update a scope",
-                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation, except a `401`, which this API answers with `502`.",
+                "description": "Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole\nscope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The\nscope's name cannot be changed: `scope` in the query decides which scope is updated. A value shown as\n`UNKNOWN` is one this API does not know yet, and Digdir does not accept it back.\n\nWhen Digdir rejects the request, the answer has Digdir's status and explanation, except a `401`, which this API answers with `502`.",
                 "parameters": [
                     {
                         "name": "scope",
@@ -34,7 +34,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScopeDetails"
+                                "$ref": "#/components/schemas/ScopeUpdate"
                             },
                             "examples": {
                                 "ScopeUpdate": {
@@ -2138,6 +2138,133 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "ScopeUpdate": {
+                "type": "object",
+                "title": "ScopeUpdate",
+                "properties": {
+                    "prefix": {
+                        "type": "string",
+                        "description": "Digdir's prefix for the owner, `kartverk` for Kartverket: only the part before the colon."
+                    },
+                    "subscope": {
+                        "type": "string",
+                        "description": "The part after the colon, which the owner chose. It cannot be changed."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A short description in Norwegian Bokmål."
+                    },
+                    "long_description": {
+                        "type": "string",
+                        "description": "A longer description in Norwegian Bokmål. Left out, or empty, if the owner has not written one."
+                    },
+                    "description#en": {
+                        "type": "string",
+                        "description": "`description` in English. Left out if the owner has not written one."
+                    },
+                    "description#nn": {
+                        "type": "string",
+                        "description": "`description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "description#se": {
+                        "type": "string",
+                        "description": "`description` in Northern Sami. Left out if the owner has not written one."
+                    },
+                    "long_description#en": {
+                        "type": "string",
+                        "description": "`long_description` in English. Left out if the owner has not written one."
+                    },
+                    "long_description#nn": {
+                        "type": "string",
+                        "description": "`long_description` in Norwegian Nynorsk. Left out if the owner has not written one."
+                    },
+                    "long_description#se": {
+                        "type": "string",
+                        "description": "`long_description` in Northern Sami. Left out if the owner has not written one."
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "description": "Always `true` in `GET /api/scopes`, which lists only active scopes, and `false` once the scope is deleted."
+                    },
+                    "allowed_integration_types": {
+                        "type": "array",
+                        "description": "The kinds of client that can use the scope. A Maskinporten client needs `maskinporten`, or an empty list, which allows every kind. `unknown` is a kind Digdir has added that this API does not know yet.",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "ansattporten",
+                                "api_klient",
+                                "eformidling",
+                                "idporten",
+                                "idporten_saml2",
+                                "krr",
+                                "maskinporten"
+                            ]
+                        }
+                    },
+                    "owner_orgno": {
+                        "type": "string",
+                        "description": "The organisation that owns the scope: Kartverket."
+                    },
+                    "token_type": {
+                        "type": "string",
+                        "description": "The kind of access token issued for the scope.\n\n- `SELF_CONTAINED`: a JWT that the API can verify itself. Maskinporten only issues these.\n- `OPAQUE`: a token that the API has to look up with Digdir.\n- `UNKNOWN`: a kind Digdir has added that this API does not know yet.",
+                        "enum": [
+                            "SELF_CONTAINED",
+                            "OPAQUE"
+                        ]
+                    },
+                    "visibility": {
+                        "type": "string",
+                        "description": "Who can see the scope.\n\n- `PUBLIC`: anyone, in Digdir's list of all scopes.\n- `PRIVATE`: only the owner and the organisations given access.\n- `INTERNAL`: Digdir's own use.\n- `UNKNOWN`: a value Digdir has added that this API does not know yet.",
+                        "enum": [
+                            "INTERNAL",
+                            "PRIVATE",
+                            "PUBLIC"
+                        ]
+                    },
+                    "requires_user_consent": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must consent before a client gets a token."
+                    },
+                    "requires_user_authentication": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: a person must log in again, even with an active session."
+                    },
+                    "requires_pseudonymous_tokens": {
+                        "type": "boolean",
+                        "description": "Only for logins with ID-porten, not for Maskinporten: tokens leave out the person's national identity number."
+                    },
+                    "delegation_source": {
+                        "type": "string",
+                        "description": "Where an organisation with access can delegate it to a supplier, such as `https://www.altinn.no/`. Left out when the scope cannot be delegated."
+                    },
+                    "at_max_age": {
+                        "type": "integer",
+                        "description": "The most seconds an access token for the scope can live. `0` means Digdir's default."
+                    },
+                    "authorization_max_lifetime": {
+                        "type": "integer",
+                        "description": "The most seconds an authorization for the scope can live. `0` means Digdir's default."
+                    },
+                    "accessible_for_all": {
+                        "type": "boolean",
+                        "description": "If `true`, every organisation can get tokens for the scope without being given access."
+                    },
+                    "enforced_aud_for_access_token": {
+                        "type": "string",
+                        "description": "Digdir does not document this field."
+                    },
+                    "protected": {
+                        "type": "boolean",
+                        "description": "Digdir does not document this field."
+                    },
+                    "supports_european_businesses": {
+                        "type": "boolean",
+                        "description": "Digdir does not document this field. Its name matches Digdir's feature that lets European businesses get tokens with an eIDAS seal, without being given access."
+                    }
+                }
             },
             "ScopeAccess": {
                 "type": "object",

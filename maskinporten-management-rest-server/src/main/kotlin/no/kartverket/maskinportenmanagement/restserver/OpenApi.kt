@@ -259,19 +259,24 @@ private val newScopeDescriptions = mapOf(
     "visibility" to VISIBILITIES,
 )
 
-// The body is sent on to Digdir as it is, so it has no type of its own: it is a scope without the fields Digdir sets
-private val newScopeSchema = KotlinxSerializerJsonSchemaInference.Default.jsonSchema<ScopeDetails>().run {
-    copy(
-        title = "NewScope",
-        properties = properties
-            ?.filterKeys { it !in setOf("name", "created", "last_updated") }
-            ?.mapValues { (field, schema) ->
-                schema.mapValue { it.withoutUnknown().copy(description = newScopeDescriptions[field] ?: it.description) }
-            },
-        required = listOf("prefix", "subscope"),
-        additionalProperties = AdditionalProperties.Allowed(false),
-    )
-}
+// A body is sent on to Digdir as it is, so it has no type of its own: it is a scope without the fields Digdir sets
+private fun scopeBodySchema(title: String, descriptions: Map<String, String> = emptyMap()) =
+    KotlinxSerializerJsonSchemaInference.Default.jsonSchema<ScopeDetails>().run {
+        copy(
+            title = title,
+            properties = properties
+                ?.filterKeys { it !in setOf("name", "created", "last_updated") }
+                ?.mapValues { (field, schema) ->
+                    schema.mapValue { it.withoutUnknown().copy(description = descriptions[field] ?: it.description) }
+                },
+            required = null,
+        )
+    }
+
+private val newScopeSchema = scopeBodySchema("NewScope", newScopeDescriptions)
+    .copy(required = listOf("prefix", "subscope"), additionalProperties = AdditionalProperties.Allowed(false))
+
+private val scopeUpdateSchema = scopeBodySchema("ScopeUpdate")
 
 private val exampleNewScope = buildJsonObject {
     put("prefix", "kartverk")
@@ -332,7 +337,8 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
     description = """
         Asks Digdir to update `scope`. Get the scope first, change the fields you want to change, and send the whole
         scope back in the body. The body is sent on to Digdir unchanged, and Digdir decides what it accepts. The
-        scope's name cannot be changed: `scope` in the query decides which scope is updated.
+        scope's name cannot be changed: `scope` in the query decides which scope is updated. A value shown as
+        `UNKNOWN` is one this API does not know yet, and Digdir does not accept it back.
 
         $DIGDIR_ERRORS
     """.trimIndent()
@@ -345,7 +351,7 @@ internal val scopeUpdateOperation: Operation.Builder.() -> Unit = {
     requestBody {
         required = true
         ContentType.Application.Json {
-            schema = jsonSchema<ScopeDetails>()
+            schema = scopeUpdateSchema
             example("ScopeUpdate", exampleUpdatedScope)
         }
     }

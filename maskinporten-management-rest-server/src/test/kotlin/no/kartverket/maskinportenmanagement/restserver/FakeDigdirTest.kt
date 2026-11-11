@@ -92,6 +92,20 @@ class FakeDigdirTest {
     }
 
     @Test
+    fun `pages the changelog, also for the largest page and size`() = runBlocking {
+        val scope = Scope.of("kartverk:matrikkel.read")
+        digdir.grantScopeAccess(consumer, scope)
+        digdir.removeScopeAccess(consumer, scope)
+
+        val second = digdir.getScopeAccessChangelog(scope, page = 1, size = 1)
+        assertEquals(listOf("Scope access deleted"), second.content.map { it.message })
+        assertEquals(2, second.page.totalPages)
+
+        assertEquals(emptyList(), digdir.getScopeAccessChangelog(scope, page = Int.MAX_VALUE).content)
+        assertEquals(1, digdir.getScopeAccessChangelog(scope, size = Int.MAX_VALUE).page.totalPages)
+    }
+
+    @Test
     fun `answers 404 for a scope it does not have`() {
         val e = assertFailsWith<DigdirErrorResponseException> {
             runBlocking { digdir.grantScopeAccess(consumer, Scope.of("kartverk:finnes.ikke")) }

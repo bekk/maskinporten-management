@@ -140,16 +140,17 @@ internal class FakeDigdir : OutgoingHttpClient {
 
     private fun changelogPage(scope: String, page: Int, size: Int): OutgoingResponse {
         val entries = changelog.filter { (it["scope"] as JsonPrimitive).content == scope }.map { JsonObject(it - "scope") }
+        val pages = entries.chunked(size)
         return ok(
             buildJsonObject {
-                put("content", JsonArray(entries.drop(page * size).take(size)))
+                put("content", JsonArray(pages.getOrElse(page) { emptyList() }))
                 put(
                     "page",
                     buildJsonObject {
                         put("size", size)
                         put("number", page)
                         put("totalElements", entries.size)
-                        put("totalPages", (entries.size + size - 1) / size)
+                        put("totalPages", pages.size)
                     },
                 )
             },

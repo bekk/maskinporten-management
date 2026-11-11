@@ -58,6 +58,9 @@ class FakeDigdirTest {
         val refused = listOf<suspend () -> Unit>(
             { digdir.createScope("""{"prefix":"kartverk","subscope":"med mellomrom"}""") },
             { digdir.updateScope(scope, """{"active":"ja"}""") },
+            { digdir.updateScope(scope, """{"token_type":"invalid"}""") },
+            { digdir.updateScope(scope, """{"visibility":"invalid"}""") },
+            { digdir.updateScope(scope, """{"allowed_integration_types":["invalid"]}""") },
             { digdir.updateScope(scope, "{") },
         )
 

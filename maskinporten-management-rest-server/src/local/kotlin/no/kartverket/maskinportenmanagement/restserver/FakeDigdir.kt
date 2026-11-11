@@ -10,7 +10,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import no.kartverket.maskinportenmanagement.client.IntegrationType
 import no.kartverket.maskinportenmanagement.client.ScopeDetails
+import no.kartverket.maskinportenmanagement.client.TokenType
+import no.kartverket.maskinportenmanagement.client.Visibility
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
@@ -100,9 +103,8 @@ internal class FakeDigdir : OutgoingHttpClient {
 
     // Digdir refuses a scope that does not fit its model, which ScopeDetails mirrors
     private fun stored(name: String, scope: JsonObject): OutgoingResponse {
-        if (runCatching { ignoringUnknownKeys.decodeFromJsonElement(ScopeDetails.serializer(), scope) }.isFailure) {
-            return badRequest("The scope does not fit Digdir's model")
-        }
+        val details = runCatching { ignoringUnknownKeys.decodeFromJsonElement(ScopeDetails.serializer(), scope) }.getOrNull()
+        if (details == null || details.hasUnknownValue) return badRequest("The scope does not fit Digdir's model")
         scopes[name] = scope
         return ok(scope)
     }
@@ -210,6 +212,11 @@ internal class FakeDigdir : OutgoingHttpClient {
         val ignoringUnknownKeys = Json { ignoreUnknownKeys = true }
 
         val JsonObject.isActive: Boolean get() = this["active"] == JsonPrimitive(true)
+
+        // ScopeDetails reads a value Digdir does not have as UNKNOWN, where Digdir refuses it
+        val ScopeDetails.hasUnknownValue: Boolean get() = tokenType == TokenType.UNKNOWN ||
+            visibility == Visibility.UNKNOWN ||
+            IntegrationType.UNKNOWN in allowedIntegrationTypes
 
         fun newScope(name: String, description: String) = buildJsonObject {
             put("name", name)

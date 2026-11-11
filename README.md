@@ -60,7 +60,6 @@ app has access to.
 | :--------------------------------------------------------------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
 | [`maskinporten-management-client`](maskinporten-management-client)           | Kotlin library that talks to Maskinporten and Digdir's API directly         | nothing yet, as only the server uses it                                       |
 | [`maskinporten-management-rest-server`](maskinporten-management-rest-server) | Ktor server exposing a REST/JSON API over the client                        | a Docker image, built with [Jib](https://github.com/GoogleContainerTools/jib) |
-| [`digdir-maskinporten-mock-api`](digdir-maskinporten-mock-api)               | Mock of Digdir and Maskinporten, for running locally                         | nothing, as it is only for local development                                  |
 
 `maskinporten-management-rest-server` is the intended consumer of `maskinporten-management-client`, so other systems
 can manage scopes over plain JSON without speaking Maskinporten and Digdir's API themselves.
@@ -70,7 +69,6 @@ can manage scopes over plain JSON without speaking Maskinporten and Digdir's API
 ## 📦 Prerequisites
 
 - JDK 25, or let the Gradle toolchain resolver provision one
-- Docker, for the mock API
 - To call Digdir: a Maskinporten client with `idporten:scopes.read` and `idporten:scopes.write`, which Digdir adds by
   hand (servicedesk@digdir.no), and the business certificate, with its private key in Cloud KMS
 
@@ -79,25 +77,21 @@ can manage scopes over plain JSON without speaking Maskinporten and Digdir's API
 ## 🚀 Getting started
 
 ```bash
-./gradlew build                                                                 # compile, ktlint and tests
-digdir-maskinporten-mock-api/scripts/setup-local-kms.sh                         # create the local key and fake business certificate
-docker compose -f digdir-maskinporten-mock-api/docker-compose.yml up -d --build # start the mock API on http://localhost:8090
+./gradlew build                # compile, ktlint and tests
 cp .env.example .env
-scripts/dev.sh                                                                  # run the server on http://localhost:8080
-curl -i localhost:8080/health/live
+scripts/dev.sh                 # run the server on http://localhost:8080
+curl -i localhost:8080/api/scopes
 ```
 
-`setup-local-kms.sh` and the mock API need Docker. See the mock's [README](digdir-maskinporten-mock-api/README.md) for
-more.
-`.env.example` sets `DIGDIR_ENVIRONMENT` to `LOCAL`: the mock API then plays both Digdir and Maskinporten, and the
-server signs its requests for Maskinporten tokens with a key from a file instead of Cloud KMS.
+`dev.sh` runs the server with fakes for Digdir and the filtering service, from the server's `src/local`, which is not
+in the image. The fake Digdir keeps everything in memory, starts from a few of Kartverket's scopes each time, and takes
+any token, so a local run needs no Maskinporten client, key or Docker.
 
 `dev.sh` is what turns `.env` into real environment variables. The server itself only reads the environment, so
 starting it any other way, like an IDE run configuration or `./gradlew :maskinporten-management-rest-server:runLocal`,
 means setting them yourself.
 
-`dev.sh` runs the server with a fake filtering service, from the server's `src/local`, which is not in the image. To
-try filtering, set `EXTERNAL_FILTERING_ENABLED=true` in `.env` and restart the server. The fake answers in place of
+To try filtering, set `EXTERNAL_FILTERING_ENABLED=true` in `.env` and restart the server. The fake answers in place of
 `EXTERNAL_FILTERING_URL`, and takes the app from the last SPIFFE URI in the `X-Forwarded-Client-Cert` header. Unknown
 apps see no scopes:
 
@@ -171,7 +165,7 @@ val client = MaskinportenManagementClient(
 )
 ```
 
-To call other URLs, like the mock API's, give `baseUrl` and `maskinportenWellKnownUrl` instead of `environment`.
+To call other URLs, give `baseUrl` and `maskinportenWellKnownUrl` instead of `environment`.
 
 Build one client and reuse it. It gets its own tokens from Maskinporten for `idporten:scopes.read` and
 `idporten:scopes.write`, with a JWT grant that carries the business certificate chain, leaf first. It reuses each token
@@ -213,8 +207,7 @@ The server connects within 2 s and waits at most 10 s per call, since Digdir can
 | `TEST`      | `https://api.test.samarbeid.digdir.no` | `https://test.maskinporten.no/.well-known/oauth-authorization-server` |
 | `PROD`      | `https://api.samarbeid.digdir.no`      | `https://maskinporten.no/.well-known/oauth-authorization-server`      |
 
-The server also has `LOCAL`, the mock API in `digdir-maskinporten-mock-api` on `http://localhost:8090`. It picks one
-with `DIGDIR_ENVIRONMENT`.
+The server picks one with `DIGDIR_ENVIRONMENT`.
 
 ---
 
@@ -222,7 +215,7 @@ with `DIGDIR_ENVIRONMENT`.
 
 | Variable                              | Required             | Default | What it is                                                                       |
 | :------------------------------------ | :------------------- | :------ | :------------------------------------------------------------------------------- |
-| `DIGDIR_ENVIRONMENT`                  | yes                  | -       | Which Digdir and Maskinporten to call: `TEST`, `PROD` or `LOCAL`                 |
+| `DIGDIR_ENVIRONMENT`                  | yes                  | -       | Which Digdir and Maskinporten to call: `TEST` or `PROD`                          |
 | `MASKINPORTEN_CLIENT_ID`              | yes                  | -       | Our Maskinporten client at Digdir                                                |
 | `DIGDIR_ADMIN_CERT_CHAIN`             | yes                  | -       | The business certificate chain itself, in PEM, leaf first                        |
 | `DIGDIR_ADMIN_GCP_CLOUD_KMS_KEY_PATH` | one of these two     | -       | The certificate's private key in Cloud KMS, in SKIP                              |
@@ -255,12 +248,10 @@ your own file. The server refuses to start if that path is not a file.
 ## 🧪 Testing
 
 ```bash
-./gradlew build                              # compile, ktlint, and the tests of the client and the server
-./gradlew :digdir-maskinporten-mock-api:test # the mock API's tests, while its Postgres is up
+./gradlew build # compile, ktlint, and the tests of the client and the server
 ```
 
-`./gradlew build` leaves out the mock API's tests, since they need the Postgres in the mock's Docker Compose. See the
-mock's [README](digdir-maskinporten-mock-api/README.md#tests). CI runs `./gradlew build` on every pull request.
+CI runs `./gradlew build` on every pull request.
 
 The build fails if the checked-in `openapi.json` is stale. Regenerate it after changing the API:
 

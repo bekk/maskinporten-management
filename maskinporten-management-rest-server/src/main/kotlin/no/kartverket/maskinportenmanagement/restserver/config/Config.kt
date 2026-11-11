@@ -2,6 +2,7 @@ package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.yaml.YamlConfig
+import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
 import java.io.File
 import java.net.URI
 import java.security.cert.CertificateException
@@ -11,36 +12,47 @@ import java.time.Duration
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
-    val digdirEnvironment: DigdirEnvironmentSetting,
-    val maskinportenClientId: String,
-    val digdirAdminCertChain: String,
-    val digdirAdminCloudKmsKeyPath: String?,
-    val digdirAdminLocalKey: String?,
     val externalFilteringUrl: URI?,
     val externalFilteringCacheDuration: Duration,
 ) {
     companion object {
         fun load(config: ApplicationConfig = loadApplicationConfig()): AppConfig {
-            val cloudKmsKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
-            val localKeyPath = config.file("digdirAdmin.localKeyPath")
-            check((cloudKmsKeyPath == null) != (localKeyPath == null)) {
-                "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
-            }
             val externalFiltering = config.boolean("externalFiltering.enabled", default = false)
             return AppConfig(
                 port = config.port("server.port"),
                 accessLog = config.boolean("accessLog.enabled", default = true),
-                digdirEnvironment = config.enum("digdir.environment"),
-                maskinportenClientId = config.required("maskinporten.clientId"),
-                digdirAdminCertChain = config.pemCertificateChain("digdirAdmin.certChain"),
-                digdirAdminCloudKmsKeyPath = cloudKmsKeyPath,
-                digdirAdminLocalKey = localKeyPath?.let { File(it).readText() },
                 externalFilteringUrl = if (externalFiltering) config.url("externalFiltering.url") else null,
                 externalFilteringCacheDuration = if (externalFiltering) {
                     config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1))
                 } else {
                     Duration.ZERO
                 },
+            )
+        }
+    }
+}
+
+// Apart from AppConfig, since a local run plays Digdir with a fake and needs none of these
+internal class DigdirConfig(
+    val digdirEnvironment: DigdirEnvironment,
+    val maskinportenClientId: String,
+    val digdirAdminCertChain: String,
+    val digdirAdminCloudKmsKeyPath: String?,
+    val digdirAdminLocalKey: String?,
+) {
+    companion object {
+        fun load(config: ApplicationConfig): DigdirConfig {
+            val cloudKmsKeyPath = config.optional("digdirAdmin.gcpCloudKmsKeyPath")
+            val localKeyPath = config.file("digdirAdmin.localKeyPath")
+            check((cloudKmsKeyPath == null) != (localKeyPath == null)) {
+                "Set exactly one of digdirAdmin.gcpCloudKmsKeyPath (Cloud KMS) and digdirAdmin.localKeyPath (a local key) (see .env.example)"
+            }
+            return DigdirConfig(
+                digdirEnvironment = config.enum("digdir.environment"),
+                maskinportenClientId = config.required("maskinporten.clientId"),
+                digdirAdminCertChain = config.pemCertificateChain("digdirAdmin.certChain"),
+                digdirAdminCloudKmsKeyPath = cloudKmsKeyPath,
+                digdirAdminLocalKey = localKeyPath?.let { File(it).readText() },
             )
         }
     }

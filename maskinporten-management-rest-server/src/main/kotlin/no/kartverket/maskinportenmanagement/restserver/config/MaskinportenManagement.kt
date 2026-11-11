@@ -14,7 +14,7 @@ import no.kartverket.maskinportenmanagement.restserver.kms.CloudKms
 import java.net.http.HttpClient
 import java.time.Duration
 
-internal fun Application.maskinportenManagementClient(config: AppConfig): MaskinportenManagementClient {
+internal fun Application.maskinportenManagementClient(config: DigdirConfig): MaskinportenManagementClient {
     val kms = config.digdirAdminCloudKmsKeyPath?.let(::CloudKms) ?: LocalKms.fromPem(checkNotNull(config.digdirAdminLocalKey))
     val client = MaskinportenManagementClient(
         baseUrl = config.digdirEnvironment.digdirBaseUrl,

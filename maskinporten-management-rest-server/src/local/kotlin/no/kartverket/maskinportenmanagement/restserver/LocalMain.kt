@@ -24,6 +24,7 @@ fun main() {
             client = MaskinportenManagementClient(URI("http://digdir.local"), digdir) { AccessToken.of("local") },
             externalFiltering = externalFiltering(config, LoggingOutgoingHttpClient(fakeFilteringService)),
             accessLog = config.accessLog,
+            accessLogHealth = config.accessLogHealth,
         )
     }.start(wait = true)
 }

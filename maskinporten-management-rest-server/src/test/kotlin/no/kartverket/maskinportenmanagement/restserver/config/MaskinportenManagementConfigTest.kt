@@ -77,6 +77,12 @@ class MaskinportenManagementConfigTest {
     }
 
     @Test
+    fun `the access log leaves out the health checks unless they are switched on`() {
+        assertFalse(load(complete).accessLogHealth)
+        assertTrue(load(complete + ("accessLog.healthEnabled" to "true")).accessLogHealth)
+    }
+
+    @Test
     fun `filtering is off unless turned on, and then needs no URL`() = start(complete - "externalFiltering.url")
 
     @Test

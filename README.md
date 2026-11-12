@@ -225,6 +225,7 @@ The server picks one with `DIGDIR_ENVIRONMENT`.
 | `EXTERNAL_FILTERING_CACHE_SECONDS`    | no                   | `60`    | How long the server remembers what each caller has access to. `0` turns it off   |
 | `PORT`                                | no                   | `8080`  | The port the server listens on                                                   |
 | `ACCESS_LOG_ENABLED`                  | no                   | `true`  | Whether the server logs one line per call                                        |
+| `ACCESS_LOG_HEALTH_ENABLED`           | no                   | `false` | Whether the access log also has the calls to `/health/...`                       |
 | `LOGBACK_CONFIG_FILE`                 | no                   | -       | A `logback.xml` that replaces the bundled one                                    |
 | `APPLICATION_CONFIG_FILE`             | no                   | -       | An `application.yaml` that replaces the bundled one                              |
 

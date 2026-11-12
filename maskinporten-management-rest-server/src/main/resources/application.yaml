@@ -19,6 +19,7 @@ externalFiltering:
 
 accessLog:
   enabled: "$?ACCESS_LOG_ENABLED"
+  healthEnabled: "$?ACCESS_LOG_HEALTH_ENABLED"
 
 logback:
   configFile: "$?LOGBACK_CONFIG_FILE"

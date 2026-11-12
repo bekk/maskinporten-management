@@ -12,6 +12,7 @@ import java.time.Duration
 internal class AppConfig(
     val port: Int,
     val accessLog: Boolean,
+    val accessLogHealth: Boolean,
     val externalFilteringUrl: URI?,
     val externalFilteringCacheDuration: Duration,
 ) {
@@ -21,6 +22,7 @@ internal class AppConfig(
             return AppConfig(
                 port = config.port("server.port"),
                 accessLog = config.boolean("accessLog.enabled", default = true),
+                accessLogHealth = config.boolean("accessLog.healthEnabled", default = false),
                 externalFilteringUrl = if (externalFiltering) config.url("externalFiltering.url") else null,
                 externalFilteringCacheDuration = if (externalFiltering) {
                     config.seconds("externalFiltering.cacheSeconds", default = Duration.ofMinutes(1))

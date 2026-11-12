@@ -14,6 +14,7 @@ import io.ktor.server.plugins.callid.callIdMdc
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.path
 import io.ktor.server.request.queryString
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -54,6 +55,7 @@ fun main() {
             client = maskinportenManagementClient(digdirConfig),
             externalFiltering = externalFiltering(config),
             accessLog = config.accessLog,
+            accessLogHealth = config.accessLogHealth,
         )
     }.start(wait = true)
 }
@@ -63,6 +65,7 @@ fun Application.module(
     client: MaskinportenManagementClient,
     externalFiltering: ExternalFiltering,
     accessLog: Boolean = true,
+    accessLogHealth: Boolean = false,
 ) {
     install(CallId) {
         header(HttpHeaders.XRequestId)
@@ -75,7 +78,7 @@ fun Application.module(
 
         logger = LoggerFactory.getLogger("access")
         disableDefaultColors()
-        filter { accessLog }
+        filter { accessLog && (accessLogHealth || !it.request.path().startsWith("/health/")) }
     }
     install(ContentNegotiation) { json(Json(DefaultJson) { explicitNulls = false }) }
     install(StatusPages) { errorResponses() }

@@ -363,8 +363,28 @@ class MaskinportenManagementClientTest {
             }
 
             assertEquals(status, e.statusCode)
-            assertEquals("application/json;charset=UTF-8", e.contentType)
-            assertContentEquals(answer.body, e.body)
+            assertEquals("""{"status":$status,"error":"æøå"}""", e.responseBody)
+            assertEquals("æøå", e.explanation)
+        }
+    }
+
+    @Test
+    fun `Digdir's error is explained by its error_description, else its error, else not at all`() {
+        val cases = listOf(
+            json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}""") to "Scope finnes ikke",
+            json(404, """{"error":"not_found","error_description":" "}""") to "not_found",
+            json(404, """{"error":"not_found"}""") to "not_found",
+            OutgoingResponse(404, "text", """{"error_description":"Scope finnes ikke"}""".toByteArray()) to "Scope finnes ikke",
+            json(404, """{"error_description":42}""") to null,
+            json(404, "[]") to null,
+            OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()) to null,
+            OutgoingResponse(404, null, ByteArray(0)) to null,
+        )
+        for ((answer, explanation) in cases) {
+            val case = answer.body.decodeToString()
+            val e = assertFailsWith<DigdirErrorResponseException>(case) { runBlocking { clientAnswering { answer }.listScopes() } }
+
+            assertEquals(explanation, e.explanation, case)
         }
     }
 

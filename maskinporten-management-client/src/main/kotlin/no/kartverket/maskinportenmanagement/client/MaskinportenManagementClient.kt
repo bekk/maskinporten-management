@@ -97,10 +97,10 @@ public class MaskinportenManagementClient private constructor(
         // Our token is wrong, not the caller's request, so the caller must not get the 401
         if (response.statusCode == 401) {
             accessTokenProvider.refused(token)
-            throw DigdirException("Digdir refused our Maskinporten token with HTTP 401: ${response.body.decodeToString()}")
+            throw DigdirException("Digdir refused our Maskinporten token with HTTP 401: ${response.text()}")
         }
         if (response.statusCode !in 200..299) {
-            throw DigdirErrorResponseException(response.statusCode, response.contentType, response.body)
+            throw DigdirErrorResponseException(response)
         }
         return response
     }

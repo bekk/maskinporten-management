@@ -185,8 +185,9 @@ val consumers = client.listScopeAccess(Scope.of("kartverk:matrikkel.read"))
 client.grantScopeAccess(OrganizationNumber.of("311718371"), Scope.of("kartverk:matrikkel.read"))
 ```
 
-When Digdir answers with an error, a call throws a `DigdirErrorResponseException` with Digdir's status, body and
-content type. A `DigdirException` means Digdir could not be called, refused the client's own token with a `401`, or
+When Digdir answers with an error, a call throws a `DigdirErrorResponseException` with Digdir's status
+(`statusCode`), its answer as text (`responseBody`), and its `error_description`, else its `error` (`explanation`).
+A `DigdirException` means Digdir could not be called, refused the client's own token with a `401`, or
 gave an answer the client cannot read.
 
 ### HTTP client

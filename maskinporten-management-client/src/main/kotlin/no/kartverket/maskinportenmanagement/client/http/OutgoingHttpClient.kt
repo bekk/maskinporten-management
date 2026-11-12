@@ -17,4 +17,6 @@ public class OutgoingResponse(
     public val statusCode: Int,
     public val contentType: String?,
     public val body: ByteArray,
-)
+) {
+    internal fun text(): String = body.decodeToString()
+}

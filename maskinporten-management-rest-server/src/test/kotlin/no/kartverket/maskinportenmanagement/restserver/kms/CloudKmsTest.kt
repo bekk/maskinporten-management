@@ -34,6 +34,7 @@ import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.Signature
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -41,6 +42,8 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 class CloudKmsTest {
 
@@ -101,6 +104,17 @@ class CloudKmsTest {
     }
 
     @Test
+    fun `gives up when KMS does not answer a signing`() {
+        val fake = FakeKms(keyPair, CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256, answersSign = false)
+
+        CloudKms(keyName, client(fake)).use { kms ->
+            val waited = measureTime { assertFailsWith<CloudKmsException> { kms.sign("header.payload".toByteArray()) } }
+
+            assertTrue(waited < 5.seconds, "waited $waited")
+        }
+    }
+
+    @Test
     fun `reads the public key from KMS`() {
         val fake = FakeKms(keyPair, CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_3072_SHA256)
 
@@ -137,6 +151,7 @@ class CloudKmsTest {
             KeyManagementServiceSettings.newBuilder()
                 .setTransportChannelProvider(FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel)))
                 .setCredentialsProvider(NoCredentialsProvider.create())
+                .giveUpAfter(Duration.ofSeconds(1))
                 .build(),
         )
     }
@@ -147,6 +162,7 @@ private class FakeKms(
     private val keyPair: KeyPair,
     private val algorithm: CryptoKeyVersionAlgorithm,
     private val signFailure: Status? = null,
+    private val answersSign: Boolean = true,
 ) : KeyManagementServiceGrpc.KeyManagementServiceImplBase() {
     val signRequests = mutableListOf<AsymmetricSignRequest>()
 
@@ -163,6 +179,7 @@ private class FakeKms(
 
     override fun asymmetricSign(request: AsymmetricSignRequest, response: StreamObserver<AsymmetricSignResponse>) {
         signRequests += request
+        if (!answersSign) return
         if (signFailure != null) return response.onError(signFailure.asRuntimeException())
         val signature = Signature.getInstance("NONEwithRSA").run {
             initSign(keyPair.private)

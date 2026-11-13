@@ -5,6 +5,9 @@ import no.kartverket.maskinportenmanagement.client.http.HttpMethod.DELETE
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod.GET
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod.POST
 import no.kartverket.maskinportenmanagement.client.http.HttpMethod.PUT
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -14,22 +17,19 @@ class DigdirJsonTest {
     private val spec = DigdirSpec.load()
 
     private fun assertMatchesSpec(method: HttpMethod, path: String, body: String) {
-        assertEquals(emptyList(), spec.mismatches(method, path, 200, body), "$method $path")
+        assertEquals(emptyList(), spec.mismatches(method, path, 200, body))
     }
 
-    private val scope = digdirScope("kartverk:nrl.rapportering")
-    private val access = digdirScopeAccess("kartverk:nrl.rapportering")
-
-    @Test
-    fun `a test scope matches every answer from Digdir that holds scopes`() {
-        for (method in listOf(POST, PUT, DELETE)) assertMatchesSpec(method, "/api/v1/scopes", scope)
-        assertMatchesSpec(GET, "/api/v1/scopes", jsonList(scope, digdirScope("kartverk:tilgangsstyring/demo.read")))
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("answersWithScopes")
+    fun `a test scope matches every answer from Digdir that holds scopes`(method: HttpMethod, path: String, body: String) {
+        assertMatchesSpec(method, path, body)
     }
 
-    @Test
-    fun `a test scope access matches every answer from Digdir that holds scope access`() {
-        for (method in listOf(PUT, DELETE)) assertMatchesSpec(method, "/api/v1/scopes/access/{consumer_orgno}", access)
-        assertMatchesSpec(GET, "/api/v1/scopes/access", jsonList(access, digdirScopeAccess("kartverk:nrl.rapportering", "910000000")))
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("answersWithScopeAccess")
+    fun `a test scope access matches every answer from Digdir that holds scope access`(method: HttpMethod, path: String, body: String) {
+        assertMatchesSpec(method, path, body)
     }
 
     @Test
@@ -74,5 +74,25 @@ class DigdirJsonTest {
     fun `refuses an answer the spec does not describe`() {
         assertFailsWith<IllegalArgumentException> { spec.mismatches(GET, "/api/v1/scopes/unknown", 200, "{}") }
         assertFailsWith<IllegalArgumentException> { spec.mismatches(PUT, "/api/v1/scopes", 201, scope) }
+    }
+
+    companion object {
+        private val scope = digdirScope("kartverk:nrl.rapportering")
+        private val access = digdirScopeAccess("kartverk:nrl.rapportering")
+
+        @JvmStatic
+        fun answersWithScopes(): List<Arguments> = listOf(
+            Arguments.of(POST, "/api/v1/scopes", scope),
+            Arguments.of(PUT, "/api/v1/scopes", scope),
+            Arguments.of(DELETE, "/api/v1/scopes", scope),
+            Arguments.of(GET, "/api/v1/scopes", jsonList(scope, digdirScope("kartverk:tilgangsstyring/demo.read"))),
+        )
+
+        @JvmStatic
+        fun answersWithScopeAccess(): List<Arguments> = listOf(
+            Arguments.of(PUT, "/api/v1/scopes/access/{consumer_orgno}", access),
+            Arguments.of(DELETE, "/api/v1/scopes/access/{consumer_orgno}", access),
+            Arguments.of(GET, "/api/v1/scopes/access", jsonList(access, digdirScopeAccess("kartverk:nrl.rapportering", "910000000"))),
+        )
     }
 }

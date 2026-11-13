@@ -16,6 +16,8 @@ import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
 import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.testServer
 import no.kartverket.maskinportenmanagement.restserver.validationFailed
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -34,23 +36,21 @@ class UpdateScopeTest {
             setBody(body)
         }
 
-    @Test
-    fun `sends the scope in the query and the body byte for byte to Digdir`() {
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["?scope=kartverk:tilgangsstyring/demo.read", "?scope=kartverk%3Atilgangsstyring%2Fdemo.read"])
+    fun `sends the scope in the query and the body byte for byte to Digdir`(query: String) {
         val body = digdirScope("kartverk:tilgangsstyring/demo.read").replace("Tilgang til", "Ny tilgang til, æøå")
             .toByteArray(Charsets.UTF_8)
-        for (query in listOf("?scope=kartverk:tilgangsstyring/demo.read", "?scope=kartverk%3Atilgangsstyring%2Fdemo.read")) {
-            sent.clear()
-            updateScopeTest {
-                assertEquals(HttpStatusCode.OK, updateScope(query, body).status, "for $query")
-            }
-
-            val request = sent.single()
-            assertEquals("PUT", request.method.name)
-            assertEquals("/api/v1/scopes", request.url.path)
-            assertEquals("scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.rawQuery, "for $query")
-            assertEquals("application/json", request.headers["Content-Type"])
-            assertContentEquals(body, request.body)
+        updateScopeTest {
+            assertEquals(HttpStatusCode.OK, updateScope(query, body).status)
         }
+
+        val request = sent.single()
+        assertEquals("PUT", request.method.name)
+        assertEquals("/api/v1/scopes", request.url.path)
+        assertEquals("scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.rawQuery)
+        assertEquals("application/json", request.headers["Content-Type"])
+        assertContentEquals(body, request.body)
     }
 
     @Test

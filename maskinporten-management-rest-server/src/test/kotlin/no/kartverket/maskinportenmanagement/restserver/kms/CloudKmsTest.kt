@@ -30,6 +30,9 @@ import no.kartverket.maskinportenmanagement.restserver.errorResponse
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
 import no.kartverket.maskinportenmanagement.restserver.module
 import no.kartverket.maskinportenmanagement.restserver.upstreamError
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.ValueSource
 import java.net.URI
 import java.security.KeyPair
 import java.security.MessageDigest
@@ -109,24 +112,22 @@ class CloudKmsTest {
         assertContentEquals(keyPair.public.encoded, publicKey.encoded)
     }
 
-    @Test
-    fun `refuses a key that does not sign with RS256`() {
-        for (algorithm in listOf(CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_4096_SHA512, CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_2048_SHA256)) {
-            val fake = FakeKms(keyPair, algorithm)
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(CryptoKeyVersionAlgorithm::class, names = ["RSA_SIGN_PKCS1_4096_SHA512", "RSA_SIGN_PSS_2048_SHA256"])
+    fun `refuses a key that does not sign with RS256`(algorithm: CryptoKeyVersionAlgorithm) {
+        val fake = FakeKms(keyPair, algorithm)
 
-            val e = assertFailsWith<IllegalArgumentException>(algorithm.name) { CloudKms(keyName, client(fake)) }
+        val e = assertFailsWith<IllegalArgumentException> { CloudKms(keyName, client(fake)) }
 
-            assertContains(e.message!!, algorithm.name)
-        }
+        assertContains(e.message!!, algorithm.name)
     }
 
-    @Test
-    fun `refuses a name that is not a key version`() {
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["projects/p/locations/europe-north1/keyRings/maskinporten/cryptoKeys/jwt-grant", ""])
+    fun `refuses a name that is not a key version`(name: String) {
         val fake = FakeKms(keyPair, CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256)
 
-        for (name in listOf("projects/p/locations/europe-north1/keyRings/maskinporten/cryptoKeys/jwt-grant", "")) {
-            assertFailsWith<IllegalArgumentException>(name) { CloudKms(name, client(fake)) }
-        }
+        assertFailsWith<IllegalArgumentException> { CloudKms(name, client(fake)) }
     }
 
     private fun client(fake: FakeKms): KeyManagementServiceClient {

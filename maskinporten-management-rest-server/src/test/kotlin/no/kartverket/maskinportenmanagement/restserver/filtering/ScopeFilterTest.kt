@@ -1,6 +1,8 @@
 package no.kartverket.maskinportenmanagement.restserver.filtering
 
 import no.kartverket.maskinportenmanagement.client.Scope
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
@@ -25,20 +27,18 @@ class ScopeFilterTest {
         assertTrue(filter.allows(Scope.of("kartverk:dokument:bestilling")))
     }
 
-    @Test
-    fun `allows nothing else`() {
-        for (scope in listOf("kartverk:nrl.rapportering.ny", "kartverk:dokumentbestilling", "kartverk:tilgangsstyring")) {
-            assertFalse(filter.allows(Scope.of(scope)), scope)
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["kartverk:nrl.rapportering.ny", "kartverk:dokumentbestilling", "kartverk:tilgangsstyring"])
+    fun `allows nothing else`(scope: String) {
+        assertFalse(filter.allows(Scope.of(scope)))
     }
 
-    @Test
-    fun `refuses a blank prefix, which would allow every scope`() {
-        for (prefix in listOf("", " ")) {
-            val e = assertFailsWith<IllegalArgumentException>("\"$prefix\"") { ScopeFilter(emptyList(), listOf(prefix)) }
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["", " "])
+    fun `refuses a blank prefix, which would allow every scope`(prefix: String) {
+        val e = assertFailsWith<IllegalArgumentException> { ScopeFilter(emptyList(), listOf(prefix)) }
 
-            assertContains(e.message!!, "must not be blank", message = "\"$prefix\"")
-        }
+        assertContains(e.message!!, "must not be blank")
     }
 
     @Test

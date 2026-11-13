@@ -14,6 +14,10 @@ import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
 import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.testServer
 import no.kartverket.maskinportenmanagement.restserver.validationFailed
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -29,39 +33,33 @@ class ScopeAccessTest {
             block,
         )
 
-    private val changeMethods = listOf(HttpMethod.Put, HttpMethod.Delete)
-
     private suspend fun ApplicationTestBuilder.call(method: HttpMethod, pathAndQuery: String): HttpResponse =
         client.request(pathAndQuery) { this.method = method }
 
-    @Test
-    fun `sends the scope to Digdir`() {
-        for (query in listOf("?scope=kartverk:matrikkel.read", "?scope=kartverk%3Amatrikkel.read")) {
-            sent.clear()
-            scopeAccessTest {
-                assertEquals(HttpStatusCode.OK, call(HttpMethod.Get, "/api/scopeaccess/orgs$query").status, "for $query")
-            }
-
-            val request = sent.single()
-            assertEquals("GET", request.method.name)
-            assertEquals("/api/v1/scopes/access", request.url.path)
-            assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $query")
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["?scope=kartverk:matrikkel.read", "?scope=kartverk%3Amatrikkel.read"])
+    fun `sends the scope to Digdir`(query: String) {
+        scopeAccessTest {
+            assertEquals(HttpStatusCode.OK, call(HttpMethod.Get, "/api/scopeaccess/orgs$query").status)
         }
+
+        val request = sent.single()
+        assertEquals("GET", request.method.name)
+        assertEquals("/api/v1/scopes/access", request.url.path)
+        assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery)
     }
 
-    @Test
-    fun `giving and removing access send the method, the organisation and the scope to Digdir`() {
-        for (method in changeMethods) {
-            sent.clear()
-            scopeAccessTest {
-                assertEquals(HttpStatusCode.OK, call(method, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read").status)
-            }
-
-            val request = sent.single()
-            assertEquals(method.value, request.method.name)
-            assertEquals("/api/v1/scopes/access/311718371", request.url.path, "for $method")
-            assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery, "for $method")
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["PUT", "DELETE"])
+    fun `giving and removing access send the method, the organisation and the scope to Digdir`(method: String) {
+        scopeAccessTest {
+            assertEquals(HttpStatusCode.OK, call(HttpMethod.parse(method), "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read").status)
         }
+
+        val request = sent.single()
+        assertEquals(method, request.method.name)
+        assertEquals("/api/v1/scopes/access/311718371", request.url.path)
+        assertEquals("scope=kartverk%3Amatrikkel.read", request.url.rawQuery)
     }
 
     @Test
@@ -73,41 +71,42 @@ class ScopeAccessTest {
         assertTrue(sent.isEmpty())
     }
 
-    @Test
-    fun `a path that does not decode to one organisation number is refused without calling Digdir`() = scopeAccessTest {
-        for (method in changeMethods) {
-            for (consumerOrgno in listOf("%2E%2E", "%2E", "311718371%2F..", "orgs")) {
-                val response = call(method, "/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
+    @ParameterizedTest(name = "{0} /api/scopeaccess/{1}")
+    @MethodSource("changeMethodsAndPathsThatAreNotAnOrganisationNumber")
+    fun `a path that does not decode to one organisation number is refused without calling Digdir`(
+        method: String,
+        consumerOrgno: String,
+    ) = scopeAccessTest {
+        val response = call(HttpMethod.parse(method), "/api/scopeaccess/$consumerOrgno?scope=kartverk:matrikkel.read")
 
-                assertEquals(HttpStatusCode.BadRequest, response.status, "for $method $consumerOrgno")
-                assertEquals(
-                    validationFailed(invalidOrganisationNumber),
-                    response.errorResponse(),
-                    "for $method $consumerOrgno",
-                )
-            }
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(validationFailed(invalidOrganisationNumber), response.errorResponse())
         assertTrue(sent.isEmpty())
     }
 
-    @Test
-    fun `an invalid organisation number and an invalid scope are both listed, without calling Digdir`() = scopeAccessTest {
-        for (method in changeMethods) {
-            val response = call(method, "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["PUT", "DELETE"])
+    fun `an invalid organisation number and an invalid scope are both listed, without calling Digdir`(method: String) = scopeAccessTest {
+        val response = call(HttpMethod.parse(method), "/api/scopeaccess/31171837?scope=kartverk:a+kartverk:b")
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "for $method")
-            assertEquals(
-                validationFailed(
-                    invalidOrganisationNumber,
-                    FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
-                ),
-                response.errorResponse(),
-                "for $method",
-            )
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(
+                invalidOrganisationNumber,
+                FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace"),
+            ),
+            response.errorResponse(),
+        )
         assertTrue(sent.isEmpty())
     }
 
     private val invalidOrganisationNumber =
         FieldError("consumerOrgno", ValidationCode.INVALID_FORMAT, "consumerOrgno must be an organisation number of 9 digits")
+
+    companion object {
+        @JvmStatic
+        fun changeMethodsAndPathsThatAreNotAnOrganisationNumber(): List<Arguments> = listOf("PUT", "DELETE").flatMap { method ->
+            listOf("%2E%2E", "%2E", "311718371%2F..", "orgs").map { Arguments.of(method, it) }
+        }
+    }
 }

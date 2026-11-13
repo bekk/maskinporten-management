@@ -25,6 +25,9 @@ import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.jsonList
 import no.kartverket.maskinportenmanagement.restserver.problem.ErrorResponse
 import no.kartverket.maskinportenmanagement.restserver.problem.ProblemType
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import kotlin.test.AfterTest
@@ -50,33 +53,9 @@ class DigdirAnswersTest {
         root.detachAppender(appender)
     }
 
-    private class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String, val body: String? = null) {
+    class Endpoint(val method: HttpMethod, val pathAndQuery: String, val digdirSuccess: String, val body: String? = null) {
         override fun toString() = "${method.value} $pathAndQuery"
     }
-
-    private val access = digdirScopeAccess("kartverk:matrikkel.read")
-
-    private val endpoints = listOf(
-        Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
-        Endpoint(
-            HttpMethod.Post,
-            "/api/scopes",
-            digdirScope("kartverk:matrikkel.read"),
-            body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
-        ),
-        Endpoint(
-            HttpMethod.Put,
-            "/api/scopes?scope=kartverk:matrikkel.read",
-            digdirScope("kartverk:matrikkel.read"),
-            body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
-        ),
-        Endpoint(HttpMethod.Delete, "/api/scopes?scope=kartverk:matrikkel.read", digdirScope("kartverk:matrikkel.read")),
-        Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
-        Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
-        Endpoint(HttpMethod.Get, "/api/scopeaccess/changelog?scope=kartverk:matrikkel.read", digdirScopeAccessChangelog()),
-        Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
-        Endpoint(HttpMethod.Delete, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
-    )
 
     private fun digdirAnswering(answer: (OutgoingRequest) -> OutgoingResponse, block: suspend ApplicationTestBuilder.() -> Unit) =
         testServer(
@@ -95,74 +74,50 @@ class DigdirAnswersTest {
             }
         }
 
-    @Test
-    fun `answers with Digdir's data in this API's model`() {
-        var answer = json(200, "[]")
-        digdirAnswering({ answer }) {
-            for (endpoint in endpoints) {
-                answer = json(200, endpoint.digdirSuccess)
-                val response = call(endpoint)
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endpoints")
+    fun `answers with Digdir's data in this API's model`(endpoint: Endpoint) =
+        digdirAnswering({ json(200, endpoint.digdirSuccess) }) {
+            val response = call(endpoint)
 
-                assertEquals(HttpStatusCode.OK, response.status, "$endpoint")
-                assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters(), "$endpoint")
-                assertEquals(Json.parseToJsonElement(endpoint.digdirSuccess), Json.parseToJsonElement(response.bodyAsText()), "$endpoint")
-            }
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(ContentType.Application.Json, response.contentType()?.withoutParameters())
+            assertEquals(Json.parseToJsonElement(endpoint.digdirSuccess), Json.parseToJsonElement(response.bodyAsText()))
         }
+
+    @ParameterizedTest(name = "{0}, Digdir answers {1}")
+    @MethodSource("endpointsAndRejections")
+    fun `a rejection from Digdir keeps Digdir's status, with Digdir's explanation as upstream-rejected`(endpoint: Endpoint, status: Int) =
+        digdirAnswering({ json(status, """{"status":409,"error":"Conflict","error_description":"finnes allerede: æøå"}""") }) {
+            val response = call(endpoint)
+
+            assertEquals(status, response.status.value)
+            assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters())
+            assertEquals(
+                ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.fromValue(status), "finnes allerede: æøå"),
+                response.errorResponse(),
+            )
+        }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("explainedRejections")
+    fun `explains a rejection with Digdir's explanation, else only that Digdir rejected it`(
+        case: String,
+        answer: OutgoingResponse,
+        detail: String,
+    ) = digdirAnswering({ answer }) {
+        val response = call(endpoints.first())
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.NotFound, detail), response.errorResponse())
     }
 
-    @Test
-    fun `a rejection from Digdir keeps Digdir's status, with Digdir's explanation as upstream-rejected`() {
-        val rejection = """{"status":409,"error":"Conflict","error_description":"finnes allerede: æøå"}"""
-        var answer = json(200, "[]")
-        digdirAnswering({ answer }) {
-            for (endpoint in endpoints) {
-                for (status in listOf(400, 403, 404, 409)) {
-                    answer = json(status, rejection)
-                    val response = call(endpoint)
-
-                    val case = "$endpoint, Digdir answered $status"
-                    assertEquals(status, response.status.value, case)
-                    assertEquals(ContentType.Application.ProblemJson, response.contentType()?.withoutParameters(), case)
-                    assertEquals(
-                        ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.fromValue(status), "finnes allerede: æøå"),
-                        response.errorResponse(),
-                        case,
-                    )
-                }
-            }
+    @ParameterizedTest(name = "{0}, Digdir answers {1}")
+    @MethodSource("endpointsAndFailures")
+    fun `any other error status from Digdir gives 502, since the caller did not cause it`(endpoint: Endpoint, status: Int) =
+        digdirAnswering({ OutgoingResponse(status, "text", "Service Unavailable".toByteArray()) }) {
+            assertDigdirFailed(call(endpoint))
         }
-    }
-
-    @Test
-    fun `explains a rejection with Digdir's explanation, else only that Digdir rejected it`() {
-        val cases = listOf(
-            json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}""") to "Scope finnes ikke",
-            OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()) to "Digdir rejected the request",
-        )
-        var answer = cases.first().first
-        digdirAnswering({ answer }) {
-            for ((digdirAnswer, detail) in cases) {
-                answer = digdirAnswer
-                val response = call(endpoints.first())
-
-                assertEquals(HttpStatusCode.NotFound, response.status, detail)
-                assertEquals(ErrorResponse.of(ProblemType.UPSTREAM_REJECTED, HttpStatusCode.NotFound, detail), response.errorResponse(), detail)
-            }
-        }
-    }
-
-    @Test
-    fun `any other error status from Digdir gives 502, since the caller did not cause it`() {
-        var answer = json(200, "[]")
-        digdirAnswering({ answer }) {
-            for (endpoint in endpoints) {
-                for (status in listOf(302, 500, 503)) {
-                    answer = OutgoingResponse(status, "text", "Service Unavailable".toByteArray())
-                    assertDigdirFailed(call(endpoint), endpoint)
-                }
-            }
-        }
-    }
 
     @Test
     fun `a rejection from Digdir is logged with Digdir's whole answer, in one line`() {
@@ -189,37 +144,84 @@ class DigdirAnswersTest {
             assertEquals("Digdir answered HTTP 503: Service Unavailable", logged.formattedMessage)
         }
 
-    @Test
-    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`() =
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endpoints")
+    fun `a 401 from Digdir gives 502, since it means our token is wrong, not the caller`(endpoint: Endpoint) =
         digdirAnswering({ json(401, """{"error":"invalid_token"}""") }) {
-            for (endpoint in endpoints) {
-                assertDigdirFailed(call(endpoint), endpoint)
-            }
+            assertDigdirFailed(call(endpoint))
         }
 
-    @Test
-    fun `gives 502 when Digdir answers with something this API cannot read`() {
-        var answer = json(200, "[]")
+    @ParameterizedTest(name = "{0}, Digdir answers {1}")
+    @MethodSource("endpointsAndUnreadableAnswers")
+    fun `gives 502 when Digdir answers with something this API cannot read`(endpoint: Endpoint, case: String, answer: OutgoingResponse) =
         digdirAnswering({ answer }) {
-            for (endpoint in endpoints) {
-                for (unreadable in listOf(json(200, """{"unexpected":true}"""), OutgoingResponse(204, null, ByteArray(0)))) {
-                    answer = unreadable
-                    assertDigdirFailed(call(endpoint), endpoint)
-                }
-            }
+            assertDigdirFailed(call(endpoint))
         }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endpoints")
+    fun `gives 502 when Digdir cannot be reached`(endpoint: Endpoint) =
+        digdirAnswering({ throw IOException("Connection refused") }) {
+            assertDigdirFailed(call(endpoint))
+        }
+
+    private suspend fun assertDigdirFailed(response: HttpResponse) {
+        assertEquals(HttpStatusCode.BadGateway, response.status)
+        assertEquals(upstreamError("The call to Digdir failed"), response.errorResponse())
     }
 
-    @Test
-    fun `gives 502 when Digdir cannot be reached`() =
-        digdirAnswering({ throw IOException("Connection refused") }) {
-            for (endpoint in endpoints) {
-                assertDigdirFailed(call(endpoint), endpoint)
-            }
+    companion object {
+        private val access = digdirScopeAccess("kartverk:matrikkel.read")
+
+        private val endpoints = listOf(
+            Endpoint(HttpMethod.Get, "/api/scopes", jsonList(digdirScope("kartverk:matrikkel.read"))),
+            Endpoint(
+                HttpMethod.Post,
+                "/api/scopes",
+                digdirScope("kartverk:matrikkel.read"),
+                body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
+            ),
+            Endpoint(
+                HttpMethod.Put,
+                "/api/scopes?scope=kartverk:matrikkel.read",
+                digdirScope("kartverk:matrikkel.read"),
+                body = """{"prefix":"kartverk","subscope":"matrikkel.read"}""",
+            ),
+            Endpoint(HttpMethod.Delete, "/api/scopes?scope=kartverk:matrikkel.read", digdirScope("kartverk:matrikkel.read")),
+            Endpoint(HttpMethod.Get, "/api/scopeaccess/orgs?scope=kartverk:matrikkel.read", jsonList(access)),
+            Endpoint(HttpMethod.Get, "/api/scopeaccess/scopes?orgnr=311718371", jsonList(access)),
+            Endpoint(HttpMethod.Get, "/api/scopeaccess/changelog?scope=kartverk:matrikkel.read", digdirScopeAccessChangelog()),
+            Endpoint(HttpMethod.Put, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
+            Endpoint(HttpMethod.Delete, "/api/scopeaccess/311718371?scope=kartverk:matrikkel.read", access),
+        )
+
+        @JvmStatic
+        fun endpoints(): List<Endpoint> = endpoints
+
+        @JvmStatic
+        fun endpointsAndRejections(): List<Arguments> =
+            endpoints.flatMap { endpoint -> listOf(400, 403, 404, 409).map { Arguments.of(endpoint, it) } }
+
+        @JvmStatic
+        fun endpointsAndFailures(): List<Arguments> =
+            endpoints.flatMap { endpoint -> listOf(302, 500, 503).map { Arguments.of(endpoint, it) } }
+
+        @JvmStatic
+        fun endpointsAndUnreadableAnswers(): List<Arguments> = endpoints.flatMap { endpoint ->
+            listOf(
+                Arguments.of(endpoint, "an object this API does not know", json(200, """{"unexpected":true}""")),
+                Arguments.of(endpoint, "204 with no body", OutgoingResponse(204, null, ByteArray(0))),
+            )
         }
 
-    private suspend fun assertDigdirFailed(response: HttpResponse, endpoint: Endpoint) {
-        assertEquals(HttpStatusCode.BadGateway, response.status, "$endpoint")
-        assertEquals(upstreamError("The call to Digdir failed"), response.errorResponse(), "$endpoint")
+        @JvmStatic
+        fun explainedRejections(): List<Arguments> = listOf(
+            Arguments.of(
+                "error_description",
+                json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}"""),
+                "Scope finnes ikke",
+            ),
+            Arguments.of("an HTML page", OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()), "Digdir rejected the request"),
+        )
     }
 }

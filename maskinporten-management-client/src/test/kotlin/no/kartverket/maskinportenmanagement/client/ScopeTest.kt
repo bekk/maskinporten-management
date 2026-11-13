@@ -1,5 +1,7 @@
 package no.kartverket.maskinportenmanagement.client
 
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -12,12 +14,11 @@ class ScopeTest {
         assertEquals("kartverk:matrikkel.read", Scope.of("kartverk:matrikkel.read").toString())
     }
 
-    @Test
-    fun `refuses empty and whitespace`() {
-        for (raw in listOf("", " ", "kartverk:a kartverk:b", "kartverk:a\tkartverk:b", " kartverk:a", "kartverk:a\n")) {
-            val e = assertFailsWith<IllegalArgumentException>(raw) { Scope.of(raw) }
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["", " ", "kartverk:a kartverk:b", "kartverk:a\tkartverk:b", " kartverk:a", "kartverk:a\n"])
+    fun `refuses empty and whitespace`(raw: String) {
+        val e = assertFailsWith<IllegalArgumentException> { Scope.of(raw) }
 
-            assertContains(e.message!!, "whitespace", message = raw)
-        }
+        assertContains(e.message!!, "whitespace")
     }
 }

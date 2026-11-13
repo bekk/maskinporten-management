@@ -6,6 +6,8 @@ import no.kartverket.maskinportenmanagement.client.auth.AccessToken
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringClient
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringException
 import no.kartverket.maskinportenmanagement.restserver.filtering.ScopeFilter
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.net.URI
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -44,11 +46,10 @@ class FakeFilteringServiceTest {
         )
     }
 
-    @Test
-    fun `refuses a certificate without a SPIFFE URI`() {
-        for (cert in listOf("", "By=spiffe://cluster.local/ns/tilgangsstyring/sa/demo")) {
-            assertFailsWith<ExternalFilteringException>(cert) { runBlocking { filtering.filterFor(cert) } }
-        }
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["", "By=spiffe://cluster.local/ns/tilgangsstyring/sa/demo"])
+    fun `refuses a certificate without a SPIFFE URI`(cert: String) {
+        assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(cert) } }
     }
 
     @Test

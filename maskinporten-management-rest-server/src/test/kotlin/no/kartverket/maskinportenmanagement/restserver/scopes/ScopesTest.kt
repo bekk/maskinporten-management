@@ -25,6 +25,9 @@ import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.testServer
 import no.kartverket.maskinportenmanagement.restserver.upstreamError
 import no.kartverket.maskinportenmanagement.restserver.validationFailed
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.NullSource
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -83,18 +86,17 @@ class ScopesTest {
             assertEquals(JsonArray(emptyList()), Json.parseToJsonElement(response.bodyAsText()))
         }
 
-    @Test
-    fun `a call without the certificate header is refused before anything else is called`() = scopesTest {
-        for (value in listOf(null, "", " ")) {
-            val response = client.get("/api/scopes") { if (value != null) header("X-Forwarded-Client-Cert", value) }
+    @ParameterizedTest(name = "\"{0}\"")
+    @NullSource
+    @ValueSource(strings = ["", " "])
+    fun `a call without the certificate header is refused before anything else is called`(value: String?) = scopesTest {
+        val response = client.get("/api/scopes") { if (value != null) header("X-Forwarded-Client-Cert", value) }
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "for \"$value\"")
-            assertEquals(
-                validationFailed(FieldError("X-Forwarded-Client-Cert", ValidationCode.MISSING, "X-Forwarded-Client-Cert is required")),
-                response.errorResponse(),
-                "for \"$value\"",
-            )
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            validationFailed(FieldError("X-Forwarded-Client-Cert", ValidationCode.MISSING, "X-Forwarded-Client-Cert is required")),
+            response.errorResponse(),
+        )
         assertTrue(filteringRequests.isEmpty())
         assertTrue(digdirRequests.isEmpty())
     }

@@ -7,12 +7,14 @@ import com.google.cloud.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SI
 import com.google.cloud.kms.v1.CryptoKeyVersionName
 import com.google.cloud.kms.v1.Digest
 import com.google.cloud.kms.v1.KeyManagementServiceClient
+import com.google.cloud.kms.v1.KeyManagementServiceSettings
 import com.google.protobuf.ByteString
 import no.kartverket.maskinportenmanagement.client.kms.Kms
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PublicKey
 import java.security.spec.X509EncodedKeySpec
+import java.time.Duration
 import java.util.Base64
 
 internal class CloudKms(
@@ -20,7 +22,10 @@ internal class CloudKms(
     private val client: KeyManagementServiceClient,
 ) : Kms,
     AutoCloseable {
-    constructor(keyVersionName: String) : this(keyVersionName, KeyManagementServiceClient.create())
+    constructor(keyVersionName: String) : this(
+        keyVersionName,
+        KeyManagementServiceClient.create(KeyManagementServiceSettings.newBuilder().giveUpAfter(CALL_TIMEOUT).build()),
+    )
 
     private val name: CryptoKeyVersionName
     override val publicKey: PublicKey
@@ -53,6 +58,20 @@ internal class CloudKms(
 
     private companion object {
         val RS256 = setOf(RSA_SIGN_PKCS1_2048_SHA256, RSA_SIGN_PKCS1_3072_SHA256, RSA_SIGN_PKCS1_4096_SHA256)
+        val CALL_TIMEOUT: Duration = Duration.ofSeconds(10)
+    }
+}
+
+// Google's defaults keep retrying a call for up to 60 s, and a caller of this API would wait that long for a token
+internal fun KeyManagementServiceSettings.Builder.giveUpAfter(timeout: Duration): KeyManagementServiceSettings.Builder = apply {
+    for (call in listOf(getPublicKeySettings(), asymmetricSignSettings())) {
+        call.setRetrySettings(
+            call.retrySettings.toBuilder()
+                .setInitialRpcTimeoutDuration(timeout)
+                .setMaxRpcTimeoutDuration(timeout)
+                .setTotalTimeoutDuration(timeout)
+                .build(),
+        )
     }
 }
 

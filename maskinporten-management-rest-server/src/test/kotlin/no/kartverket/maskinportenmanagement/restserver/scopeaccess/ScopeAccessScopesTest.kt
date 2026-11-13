@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.scopeaccess
 
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -16,8 +16,14 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
 import no.kartverket.maskinportenmanagement.client.jsonList
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.CLIENT_CERTIFICATE
+import no.kartverket.maskinportenmanagement.restserver.certificateSentToFiltering
+import no.kartverket.maskinportenmanagement.restserver.errorResponse
+import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
+import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.testServer
+import no.kartverket.maskinportenmanagement.restserver.upstreamError
+import no.kartverket.maskinportenmanagement.restserver.validationFailed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver.http
+package no.kartverket.maskinportenmanagement.restserver.observability
 
 import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest

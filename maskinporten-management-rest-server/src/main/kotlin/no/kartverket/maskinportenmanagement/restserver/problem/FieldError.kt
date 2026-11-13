@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver.models
+package no.kartverket.maskinportenmanagement.restserver.problem
 
 import io.ktor.openapi.JsonSchema
 import kotlinx.serialization.Serializable

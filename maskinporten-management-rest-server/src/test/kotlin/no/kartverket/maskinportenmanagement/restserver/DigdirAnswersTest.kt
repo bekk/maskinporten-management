@@ -23,8 +23,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.jsonList
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
-import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
+import no.kartverket.maskinportenmanagement.restserver.problem.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.problem.ProblemType
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import kotlin.test.AfterTest

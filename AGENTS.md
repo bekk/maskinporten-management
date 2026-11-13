@@ -50,7 +50,7 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
 - **Explicit API in the client.** The client module uses `explicitApi()`, so declarations need an explicit
   visibility. Make `public` only what other services need.
 - **Our model of Digdir's answers.** The client models Digdir's API, and the server models its own API. The server
-  answers with the classes in `restserver/models`. They use Digdir's field names, but hold only the fields we describe.
+  answers with the models in `scopes/` and `scopeaccess/`. They use Digdir's field names, but hold only the fields we describe.
   The routes make them from the client's classes with `from(...)`, and they reuse the client's enums and value types.
   To answer with a field Digdir adds, add it to both classes and to `from(...)`. A 4xx from Digdir's API keeps its
   status, as the type `upstream-rejected` with Digdir's `error_description` (or else `error`) as `detail`, and
@@ -65,7 +65,7 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
   its query, path parameters, headers and body through one `RequestInput`, which collects every invalid field, and
   calls `requireValid()` before calling Digdir, so a caller gets all the errors at once. `RequestInput` throws
   `InvalidRequestException` with a `FieldError` for each field that failed, or `MalformedRequestException` for a
-  request that cannot be read. `errorResponses()` in `ErrorHandling.kt` answers them with `respondProblem(...)`:
+  request that cannot be read. `errorResponses()` in `problem/ErrorHandling.kt` answers them with `respondProblem(...)`:
   `type` is a `tag:kartverket.no,2026:` name from `ProblemType` that says what went wrong, `title` comes from the
   type, and `status` from the HTTP status.
 - **Logging.** The logger `access` writes one line per incoming call, unless `accessLog.enabled` is off. Every line
@@ -78,10 +78,15 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
 - **Server setup.** `main()` reads the settings into `AppConfig` and `DigdirConfig` and starts the server. `Application.module(...)`
   installs the plugins and adds the routes, and gets the client and the filtering as parameters. Keep that wiring in
   `module(...)`, so that tests and production run the same code.
-- **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in `OpenApi.kt`, except
-  `/openapi` and `/health/live`, which use `.hide()`. Fields are described with `@JsonSchema` annotations on the
-  server's models. `maskinporten-management-rest-server/openapi.json` comes from `generateOpenApiSpec`, and
-  `OpenApiSpecFileTest` fails when it is stale.
+- **Packages.** The server's code is grouped by feature: `scopes/` and `scopeaccess/` each hold their routes
+  (`Route.scopes(...)`, `Route.scopeAccess(...)`), their OpenAPI operations and their models. `problem/` holds the
+  error answers, `observability/` the call logging and the outgoing call log, and `config/`, `filtering/` and `kms/`
+  the settings, the filtering service and Cloud KMS. The root keeps `Main.kt`, `OpenApi.kt` with the parts the
+  operations share, and `RequestInput.kt`. Tests sit in the package of the code they test.
+- **The OpenAPI spec is generated.** Every route has `.describe(...)`, with the operations in each feature's
+  `*OpenApi.kt`, except `/openapi` and `/health/live`, which use `.hide()`. Fields are described with `@JsonSchema`
+  annotations on the server's models. `maskinporten-management-rest-server/openapi.json` comes from
+  `generateOpenApiSpec`, and `OpenApiSpecFileTest` fails when it is stale.
 - **Settings.** A new setting goes in `application.yaml` as `"$?ENV_VAR"` and is documented in `.env.example`. Read
   it once, into `AppConfig` in `config/Config.kt`, or into `DigdirConfig` there if only calling Digdir needs it, with
   the helpers there, like `required` and `seconds`: they treat an empty value as unset, and their errors name the

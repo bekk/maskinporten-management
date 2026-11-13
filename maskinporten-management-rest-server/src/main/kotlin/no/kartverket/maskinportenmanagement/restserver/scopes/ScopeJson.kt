@@ -1,7 +1,9 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.scopes
 
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.InvalidRequestException
+import no.kartverket.maskinportenmanagement.restserver.MalformedRequestException
+import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
+import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import tools.jackson.core.JacksonException
 import tools.jackson.core.StreamReadFeature
 import tools.jackson.databind.DeserializationFeature

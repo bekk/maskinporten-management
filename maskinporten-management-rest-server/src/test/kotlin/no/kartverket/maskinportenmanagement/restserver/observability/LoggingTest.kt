@@ -1,4 +1,4 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.observability
 
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -24,7 +24,8 @@ import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
-import no.kartverket.maskinportenmanagement.restserver.http.LoggingOutgoingHttpClient
+import no.kartverket.maskinportenmanagement.restserver.module
+import no.kartverket.maskinportenmanagement.restserver.testClient
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.security.interfaces.RSAPrivateCrtKey

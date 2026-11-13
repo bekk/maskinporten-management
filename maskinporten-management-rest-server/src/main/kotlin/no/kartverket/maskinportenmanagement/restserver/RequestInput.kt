@@ -11,8 +11,9 @@ import io.ktor.server.request.receive
 import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.restserver.filtering.CLIENT_CERTIFICATE_HEADER
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
+import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.scopes.ScopeJson
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import kotlin.properties.ReadOnlyProperty

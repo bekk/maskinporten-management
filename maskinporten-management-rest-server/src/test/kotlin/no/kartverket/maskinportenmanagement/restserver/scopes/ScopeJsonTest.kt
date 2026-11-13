@@ -1,6 +1,8 @@
-package no.kartverket.maskinportenmanagement.restserver
+package no.kartverket.maskinportenmanagement.restserver.scopes
 
-import no.kartverket.maskinportenmanagement.restserver.models.ValidationCode
+import no.kartverket.maskinportenmanagement.restserver.InvalidRequestException
+import no.kartverket.maskinportenmanagement.restserver.MalformedRequestException
+import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

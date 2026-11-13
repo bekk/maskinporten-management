@@ -13,9 +13,9 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingHttpClient
 import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFiltering
 import no.kartverket.maskinportenmanagement.restserver.filtering.ExternalFilteringClient
-import no.kartverket.maskinportenmanagement.restserver.models.ErrorResponse
-import no.kartverket.maskinportenmanagement.restserver.models.FieldError
-import no.kartverket.maskinportenmanagement.restserver.models.ProblemType
+import no.kartverket.maskinportenmanagement.restserver.problem.ErrorResponse
+import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
+import no.kartverket.maskinportenmanagement.restserver.problem.ProblemType
 import java.net.URI
 
 internal const val CLIENT_CERTIFICATE =

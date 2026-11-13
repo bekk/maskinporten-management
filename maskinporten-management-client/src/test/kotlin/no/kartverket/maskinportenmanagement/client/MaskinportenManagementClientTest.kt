@@ -20,6 +20,11 @@ import no.kartverket.maskinportenmanagement.client.kms.LocalKms
 import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.IOException
 import java.net.ConnectException
 import java.net.URI
@@ -50,16 +55,14 @@ class MaskinportenManagementClientTest {
 
     private fun answering(body: String) = clientAnswering { json(200, body) }
 
-    @Test
-    fun `a client made for an environment calls Digdir in that environment`() = runBlocking {
-        for (environment in DigdirEnvironment.entries) {
-            sent.clear()
-            val httpClient = recording(sent) { json(200, "[]") }
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(DigdirEnvironment::class)
+    fun `a client made for an environment calls Digdir in that environment`(environment: DigdirEnvironment): Unit = runBlocking {
+        val httpClient = recording(sent) { json(200, "[]") }
 
-            MaskinportenManagementClient(environment, httpClient) { AccessToken.of("test-token") }.listScopes()
+        MaskinportenManagementClient(environment, httpClient) { AccessToken.of("test-token") }.listScopes()
 
-            assertEquals("${environment.digdirBaseUrl}/api/v1/scopes", sent.single().url.toString(), environment.name)
-        }
+        assertEquals("${environment.digdirBaseUrl}/api/v1/scopes", sent.single().url.toString())
     }
 
     @Test
@@ -125,21 +128,12 @@ class MaskinportenManagementClientTest {
         )
     }
 
-    @Test
-    fun `an answer this client cannot read becomes a DigdirException`() {
-        val answers = listOf(
-            "not json",
-            "",
-            digdirScope("kartverk:nrl.rapportering"),
-            "[" + digdirScope("kartverk:nrl.rapportering").replace(""""description":"Tilgang til kartverk:nrl.rapportering",""", "") + "]",
-            "[" + digdirScope("kartverk:nrl.rapportering").replace("971040238", "97104023") + "]",
-            jsonList(digdirScope("kartverk:nrl rapportering")),
-        )
-        for (answer in answers) {
-            val e = assertFailsWith<DigdirException>(answer) { runBlocking { answering(answer).listScopes() } }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unreadableAnswers")
+    fun `an answer this client cannot read becomes a DigdirException`(case: String, answer: String) {
+        val e = assertFailsWith<DigdirException> { runBlocking { answering(answer).listScopes() } }
 
-            assertContains(e.message!!, "cannot read", message = answer)
-        }
+        assertContains(e.message!!, "cannot read")
     }
 
     @Test
@@ -353,39 +347,30 @@ class MaskinportenManagementClientTest {
         assertEquals("/api/v1/scopes/access", sent.single().url.path)
     }
 
-    @Test
-    fun `an error from Digdir becomes a DigdirErrorResponseException that holds Digdir's answer`() {
-        for (status in listOf(302, 400, 403, 404, 500)) {
-            val answer = OutgoingResponse(status, "application/json;charset=UTF-8", """{"status":$status,"error":"æøå"}""".toByteArray())
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(ints = [302, 400, 403, 404, 500])
+    fun `an error from Digdir becomes a DigdirErrorResponseException that holds Digdir's answer`(status: Int) {
+        val answer = OutgoingResponse(status, "application/json;charset=UTF-8", """{"status":$status,"error":"æøå"}""".toByteArray())
 
-            val e = assertFailsWith<DigdirErrorResponseException>("for $status") {
-                runBlocking { clientAnswering { answer }.listScopeAccess(Scope.of("kartverk:x")) }
-            }
-
-            assertEquals(status, e.statusCode)
-            assertEquals("""{"status":$status,"error":"æøå"}""", e.responseBody)
-            assertEquals("æøå", e.explanation)
+        val e = assertFailsWith<DigdirErrorResponseException> {
+            runBlocking { clientAnswering { answer }.listScopeAccess(Scope.of("kartverk:x")) }
         }
+
+        assertEquals(status, e.statusCode)
+        assertEquals("""{"status":$status,"error":"æøå"}""", e.responseBody)
+        assertEquals("æøå", e.explanation)
     }
 
-    @Test
-    fun `Digdir's error is explained by its error_description, else its error, else not at all`() {
-        val cases = listOf(
-            json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}""") to "Scope finnes ikke",
-            json(404, """{"error":"not_found","error_description":" "}""") to "not_found",
-            json(404, """{"error":"not_found"}""") to "not_found",
-            OutgoingResponse(404, "text", """{"error_description":"Scope finnes ikke"}""".toByteArray()) to "Scope finnes ikke",
-            json(404, """{"error_description":42}""") to null,
-            json(404, "[]") to null,
-            OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()) to null,
-            OutgoingResponse(404, null, ByteArray(0)) to null,
-        )
-        for ((answer, explanation) in cases) {
-            val case = answer.body.decodeToString()
-            val e = assertFailsWith<DigdirErrorResponseException>(case) { runBlocking { clientAnswering { answer }.listScopes() } }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("explainedErrors")
+    fun `Digdir's error is explained by its error_description, else its error, else not at all`(
+        case: String,
+        answer: OutgoingResponse,
+        explanation: String?,
+    ) {
+        val e = assertFailsWith<DigdirErrorResponseException> { runBlocking { clientAnswering { answer }.listScopes() } }
 
-            assertEquals(explanation, e.explanation, case)
-        }
+        assertEquals(explanation, e.explanation)
     }
 
     @Test
@@ -481,16 +466,14 @@ class MaskinportenManagementClientTest {
         assertFalse(closed)
     }
 
-    @Test
-    fun `a client made with a key for an environment gets its tokens from Maskinporten in that environment`() {
-        for (environment in DigdirEnvironment.entries) {
-            sent.clear()
-            val unavailable = recording(sent) { OutgoingResponse(503, null, ByteArray(0)) }
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(DigdirEnvironment::class)
+    fun `a client made with a key for an environment gets its tokens from Maskinporten in that environment`(environment: DigdirEnvironment) {
+        val unavailable = recording(sent) { OutgoingResponse(503, null, ByteArray(0)) }
 
-            clientWithKey(environment, unavailable).use { assertFailsWith<DigdirException> { runBlocking { it.listScopes() } } }
+        clientWithKey(environment, unavailable).use { assertFailsWith<DigdirException> { runBlocking { it.listScopes() } } }
 
-            assertEquals(listOf(environment.maskinportenWellKnownUrl), sent.map { it.url }, environment.name)
-        }
+        assertEquals(listOf(environment.maskinportenWellKnownUrl), sent.map { it.url })
     }
 
     @Test
@@ -522,5 +505,39 @@ class MaskinportenManagementClientTest {
         }
 
         assertContains(e.message!!, "ConnectException")
+    }
+
+    companion object {
+        @JvmStatic
+        fun unreadableAnswers(): List<Arguments> = listOf(
+            Arguments.of("not JSON", "not json"),
+            Arguments.of("an empty body", ""),
+            Arguments.of("one scope where Digdir answers with a list", digdirScope("kartverk:nrl.rapportering")),
+            Arguments.of(
+                "a scope without a description",
+                "[" + digdirScope("kartverk:nrl.rapportering").replace(""""description":"Tilgang til kartverk:nrl.rapportering",""", "") + "]",
+            ),
+            Arguments.of(
+                "an owner organisation number of 8 digits",
+                "[" + digdirScope("kartverk:nrl.rapportering").replace("971040238", "97104023") + "]",
+            ),
+            Arguments.of("a scope name with whitespace", jsonList(digdirScope("kartverk:nrl rapportering"))),
+        )
+
+        @JvmStatic
+        fun explainedErrors(): List<Arguments> = listOf(
+            Arguments.of("error_description", json(404, """{"error":"not_found","error_description":"Scope finnes ikke"}"""), "Scope finnes ikke"),
+            Arguments.of("a blank error_description", json(404, """{"error":"not_found","error_description":" "}"""), "not_found"),
+            Arguments.of("only error", json(404, """{"error":"not_found"}"""), "not_found"),
+            Arguments.of(
+                "JSON not sent as JSON",
+                OutgoingResponse(404, "text", """{"error_description":"Scope finnes ikke"}""".toByteArray()),
+                "Scope finnes ikke",
+            ),
+            Arguments.of("an error_description that is not text", json(404, """{"error_description":42}"""), null),
+            Arguments.of("a JSON array", json(404, "[]"), null),
+            Arguments.of("an HTML page", OutgoingResponse(404, "text/html", "<h1>Not Found</h1>".toByteArray()), null),
+            Arguments.of("no body", OutgoingResponse(404, null, ByteArray(0)), null),
+        )
     }
 }

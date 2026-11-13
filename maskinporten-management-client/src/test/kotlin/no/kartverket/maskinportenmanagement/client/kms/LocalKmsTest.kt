@@ -1,5 +1,8 @@
 package no.kartverket.maskinportenmanagement.client.kms
 
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.interfaces.RSAPrivateCrtKey
@@ -34,14 +37,20 @@ class LocalKmsTest {
         assertContentEquals(keyPair.public.encoded, kms.publicKey.encoded)
     }
 
-    @Test
-    fun `refuses a PEM that is not an RSA private key`() {
-        val ecKey = KeyPairGenerator.getInstance("EC").generateKeyPair().private
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("notRsaPrivateKeys")
+    fun `refuses a PEM that is not an RSA private key`(kind: String, pem: String) {
+        val e = assertFailsWith<IllegalArgumentException> { LocalKms.fromPem(pem) }
 
-        for (pem in listOf(pem("PRIVATE KEY", ecKey.encoded), pem("PUBLIC KEY", keyPair.public.encoded), "not a key")) {
-            val e = assertFailsWith<IllegalArgumentException>(pem) { LocalKms.fromPem(pem) }
+        assertContains(e.message!!, "PRIVATE KEY", ignoreCase = true)
+    }
 
-            assertContains(e.message!!, "PRIVATE KEY", ignoreCase = true, message = pem)
-        }
+    companion object {
+        @JvmStatic
+        fun notRsaPrivateKeys(): List<Arguments> = listOf(
+            Arguments.of("an EC private key", pem("PRIVATE KEY", KeyPairGenerator.getInstance("EC").generateKeyPair().private.encoded)),
+            Arguments.of("an RSA public key", pem("PUBLIC KEY", rsaKeyPair().public.encoded)),
+            Arguments.of("not a PEM", "not a key"),
+        )
     }
 }

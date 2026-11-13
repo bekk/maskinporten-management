@@ -14,6 +14,7 @@ google-cloud-kms = "2.104.0"
 nimbus-jose-jwt = "10.10"
 bouncycastle = "1.86"
 zstd-jni = "1.5.7-25"
+junit = "5.10.1"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
@@ -28,6 +29,8 @@ google-cloud-kms-grpc = { module = "com.google.api.grpc:grpc-google-cloud-kms-v1
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstd-jni" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

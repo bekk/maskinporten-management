@@ -12,6 +12,8 @@ import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
 import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.testServer
 import no.kartverket.maskinportenmanagement.restserver.validationFailed
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -23,19 +25,17 @@ class DeleteScopeTest {
     private fun deleteScopeTest(block: suspend ApplicationTestBuilder.() -> Unit) =
         testServer(recording(sent) { json(200, digdirScope("kartverk:tilgangsstyring/demo.read")) }, filtering = null, block)
 
-    @Test
-    fun `sends the scope to Digdir`() {
-        for (query in listOf("?scope=kartverk:tilgangsstyring/demo.read", "?scope=kartverk%3Atilgangsstyring%2Fdemo.read")) {
-            sent.clear()
-            deleteScopeTest {
-                assertEquals(HttpStatusCode.OK, client.delete("/api/scopes$query").status, "for $query")
-            }
-
-            val request = sent.single()
-            assertEquals("DELETE", request.method.name)
-            assertEquals("/api/v1/scopes", request.url.path)
-            assertEquals("scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.rawQuery, "for $query")
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["?scope=kartverk:tilgangsstyring/demo.read", "?scope=kartverk%3Atilgangsstyring%2Fdemo.read"])
+    fun `sends the scope to Digdir`(query: String) {
+        deleteScopeTest {
+            assertEquals(HttpStatusCode.OK, client.delete("/api/scopes$query").status)
         }
+
+        val request = sent.single()
+        assertEquals("DELETE", request.method.name)
+        assertEquals("/api/v1/scopes", request.url.path)
+        assertEquals("scope=kartverk%3Atilgangsstyring%2Fdemo.read", request.url.rawQuery)
     }
 
     @Test

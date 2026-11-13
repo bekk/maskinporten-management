@@ -10,6 +10,8 @@ import no.kartverket.maskinportenmanagement.client.kms.certificateChain
 import no.kartverket.maskinportenmanagement.client.kms.pem
 import no.kartverket.maskinportenmanagement.client.kms.rsaKeyPair
 import no.kartverket.maskinportenmanagement.restserver.module
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.slf4j.LoggerFactory
 import java.nio.file.Path
 import kotlin.io.path.createTempFile
@@ -58,16 +60,10 @@ class MaskinportenManagementConfigTest {
     @Test
     fun `the server starts with a complete configuration`() = start(complete)
 
-    @Test
-    fun `the server does not start without a Digdir or Maskinporten setting, and names it`() {
-        val settings = listOf(
-            "digdir.environment",
-            "maskinporten.clientId",
-            "digdirAdmin.certChain",
-        )
-        for (setting in settings) {
-            assertContains(startupFailure(complete - setting), setting)
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["digdir.environment", "maskinporten.clientId", "digdirAdmin.certChain"])
+    fun `the server does not start without a Digdir or Maskinporten setting, and names it`(setting: String) {
+        assertContains(startupFailure(complete - setting), setting)
     }
 
     @Test

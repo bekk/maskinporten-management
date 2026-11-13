@@ -99,6 +99,8 @@ server starts calling Digdir in a new way, the fake must answer it as Digdir doe
 ## Tests
 
 - `kotlin.test` on JUnit 5. Name a test with a sentence in backticks that states the behaviour.
+- JUnit silently skips a test that returns a value. A test written `= runBlocking { ... }` returns what its last line
+  returns, so declare `: Unit` or use a block body.
 - No mocking library. Fake an `OutgoingHttpClient` with a lambda. `json(...)` and `recording(...)` in the client's
   `src/testFixtures` help, in the tests of both modules.
 - Server tests start the app with `testServer(...)` from `TestServer.kt`, which runs `module(...)` with a fake

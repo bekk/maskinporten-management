@@ -13,7 +13,7 @@ netty = "4.2.20.Final"
 google-cloud-kms = "2.105.0"
 nimbus-jose-jwt = "10.10"
 bouncycastle = "1.87"
-zstd-jni = "1.5.7-25"
+zstd-jni = "1.5.7-26"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }

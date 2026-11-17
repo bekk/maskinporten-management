@@ -18,6 +18,9 @@ import no.kartverket.maskinportenmanagement.restserver.problem.ProblemType
 import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
 import no.kartverket.maskinportenmanagement.restserver.testServer
 import no.kartverket.maskinportenmanagement.restserver.validationFailed
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -50,21 +53,15 @@ class CreateScopeTest {
         assertContentEquals(body, request.body)
     }
 
-    @Test
-    fun `a body that is not a JSON object is refused without calling Digdir`() = createScopeTest {
-        val refusals = mapOf(
-            "[]" to "Expected a scope as a JSON object",
-            """{"prefix":"kartverk","active":True}""" to "The body is not valid JSON: ",
-            """{"subscope":"a","subscope":"b"}""" to "The body is not valid JSON: ",
-        )
-        for ((body, detail) in refusals) {
-            val response = createScope(body.toByteArray())
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("bodiesThatAreNotAJsonObject")
+    fun `a body that is not a JSON object is refused without calling Digdir`(body: String, detail: String) = createScopeTest {
+        val response = createScope(body.toByteArray())
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, body)
-            val answer = response.errorResponse()
-            assertEquals(ProblemType.MALFORMED_REQUEST, answer.type, body)
-            assertTrue(answer.detail.orEmpty().startsWith(detail), "$body: ${answer.detail}")
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        val answer = response.errorResponse()
+        assertEquals(ProblemType.MALFORMED_REQUEST, answer.type)
+        assertTrue(answer.detail.orEmpty().startsWith(detail), answer.detail)
         assertTrue(sent.isEmpty())
     }
 
@@ -86,37 +83,55 @@ class CreateScopeTest {
         assertTrue(sent.isEmpty())
     }
 
-    @Test
-    fun `a body that is not UTF-8 JSON is refused without calling Digdir`() = createScopeTest {
-        val scope = """{"prefix":"kartverk"}""".toByteArray()
-        val refusals = listOf(
-            Triple(scope, null, "The body must be JSON, sent with Content-Type application/json"),
-            Triple(scope, ContentType.Text.Plain, "The body must be JSON, sent with Content-Type application/json"),
-            Triple(byteArrayOf(0x7B, 0xFF.toByte(), 0x7D), ContentType.Application.Json, "The body must be UTF-8"),
-        )
-        for ((body, contentType, error) in refusals) {
-            val response = createScope(body, contentType)
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("bodiesThatAreNotUtf8Json")
+    fun `a body that is not UTF-8 JSON is refused without calling Digdir`(
+        case: String,
+        body: ByteArray,
+        contentType: ContentType?,
+        error: String,
+    ) = createScopeTest {
+        val response = createScope(body, contentType)
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
-            assertEquals(malformedRequest(error), response.errorResponse(), "$contentType")
-        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(malformedRequest(error), response.errorResponse())
         assertTrue(sent.isEmpty())
     }
 
-    @Test
-    fun `a Content-Type that cannot be read is refused without calling Digdir`() = createScopeTest {
-        for (contentType in listOf(ContentType("application", ""), ContentType("", "json"))) {
-            val response = client.post("/api/scopes") {
-                setBody(ByteArrayContent("""{"prefix":"kartverk"}""".toByteArray(), contentType))
-            }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unreadableContentTypes")
+    fun `a Content-Type that cannot be read is refused without calling Digdir`(contentType: ContentType) = createScopeTest {
+        val response = client.post("/api/scopes") {
+            setBody(ByteArrayContent("""{"prefix":"kartverk"}""".toByteArray(), contentType))
+        }
 
-            assertEquals(HttpStatusCode.BadRequest, response.status, "$contentType")
-            assertEquals(
-                malformedRequest("The body must be JSON, sent with Content-Type application/json"),
-                response.errorResponse(),
-                "$contentType",
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(
+            malformedRequest("The body must be JSON, sent with Content-Type application/json"),
+            response.errorResponse(),
+        )
+        assertTrue(sent.isEmpty())
+    }
+
+    companion object {
+        @JvmStatic
+        fun bodiesThatAreNotAJsonObject(): List<Arguments> = listOf(
+            Arguments.of("[]", "Expected a scope as a JSON object"),
+            Arguments.of("""{"prefix":"kartverk","active":True}""", "The body is not valid JSON: "),
+            Arguments.of("""{"subscope":"a","subscope":"b"}""", "The body is not valid JSON: "),
+        )
+
+        @JvmStatic
+        fun bodiesThatAreNotUtf8Json(): List<Arguments> {
+            val scope = """{"prefix":"kartverk"}""".toByteArray()
+            return listOf(
+                Arguments.of("no Content-Type", scope, null, "The body must be JSON, sent with Content-Type application/json"),
+                Arguments.of("text/plain", scope, ContentType.Text.Plain, "The body must be JSON, sent with Content-Type application/json"),
+                Arguments.of("bytes that are not UTF-8", byteArrayOf(0x7B, 0xFF.toByte(), 0x7D), ContentType.Application.Json, "The body must be UTF-8"),
             )
         }
-        assertTrue(sent.isEmpty())
+
+        @JvmStatic
+        fun unreadableContentTypes(): List<ContentType> = listOf(ContentType("application", ""), ContentType("", "json"))
     }
 }

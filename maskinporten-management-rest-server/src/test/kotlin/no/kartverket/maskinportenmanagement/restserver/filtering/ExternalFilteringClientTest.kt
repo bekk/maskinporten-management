@@ -8,6 +8,8 @@ import no.kartverket.maskinportenmanagement.client.http.OutgoingRequest
 import no.kartverket.maskinportenmanagement.client.http.OutgoingResponse
 import no.kartverket.maskinportenmanagement.client.http.json
 import no.kartverket.maskinportenmanagement.client.http.recording
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.IOException
 import java.net.URI
 import kotlin.test.Test
@@ -70,20 +72,12 @@ class ExternalFilteringClientTest {
         assertEquals(ScopeFilter(emptyList(), emptyList()), filtering.filterFor(certificate))
     }
 
-    @Test
-    fun `fails when the answer is not exact and prefix`() {
-        for (body in listOf(
-            """{"result":{"exact":[]}}""",
-            """{"result":{"exact":[null],"prefix":[]}}""",
-            """{"result":[]}""",
-            "[]",
-            "not json",
-            "",
-        )) {
-            val filtering = filteringAnswering { json(200, body) }
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["""{"result":{"exact":[]}}""", """{"result":{"exact":[null],"prefix":[]}}""", """{"result":[]}""", "[]", "not json", ""])
+    fun `fails when the answer is not exact and prefix`(body: String) {
+        val filtering = filteringAnswering { json(200, body) }
 
-            assertFailsWith<ExternalFilteringException>(body) { runBlocking { filtering.filterFor(certificate) } }
-        }
+        assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
     }
 
     @Test
@@ -96,15 +90,14 @@ class ExternalFilteringClientTest {
         assertContains(e.message!!, "must not be blank")
     }
 
-    @Test
-    fun `fails when the filtering service answers with an error`() {
-        for (status in listOf(400, 403, 404, 500, 503)) {
-            val filtering = filteringAnswering { json(status, """{"result":{"exact":[],"prefix":[]}}""") }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(ints = [400, 403, 404, 500, 503])
+    fun `fails when the filtering service answers with an error`(status: Int) {
+        val filtering = filteringAnswering { json(status, """{"result":{"exact":[],"prefix":[]}}""") }
 
-            val e = assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
+        val e = assertFailsWith<ExternalFilteringException> { runBlocking { filtering.filterFor(certificate) } }
 
-            assertContains(e.message!!, "$status")
-        }
+        assertContains(e.message!!, "$status")
     }
 
     @Test

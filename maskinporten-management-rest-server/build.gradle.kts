@@ -95,6 +95,8 @@ dependencies {
     implementation(libs.google.cloud.kms)
 
     testImplementation(kotlin("test"))
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter.params)
     testImplementation(ktorLibs.server.testHost)
     testImplementation(libs.google.cloud.kms.grpc)
     testImplementation(testFixtures(project(":maskinporten-management-client")))

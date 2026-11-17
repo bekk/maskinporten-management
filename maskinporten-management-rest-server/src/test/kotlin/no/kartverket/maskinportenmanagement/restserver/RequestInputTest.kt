@@ -4,6 +4,11 @@ import no.kartverket.maskinportenmanagement.client.OrganizationNumber
 import no.kartverket.maskinportenmanagement.client.Scope
 import no.kartverket.maskinportenmanagement.restserver.problem.FieldError
 import no.kartverket.maskinportenmanagement.restserver.problem.ValidationCode
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import org.junit.jupiter.params.provider.NullSource
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -13,10 +18,10 @@ class RequestInputTest {
 
     private fun read(query: String, vararg names: String) = RequestInput().queryParameters(query, *names)
 
-    private fun errors(case: String = "", read: RequestInput.() -> Unit): List<FieldError> =
-        assertFailsWith<InvalidRequestException>(case) { RequestInput().apply(read).requireValid() }.errors
+    private fun errors(read: RequestInput.() -> Unit): List<FieldError> =
+        assertFailsWith<InvalidRequestException> { RequestInput().apply(read).requireValid() }.errors
 
-    private fun queryErrors(query: String, vararg names: String) = errors(query.take(60)) { queryParameters(query, *names) }
+    private fun queryErrors(query: String, vararg names: String) = errors { queryParameters(query, *names) }
 
     @Test
     fun `returns the decoded values of the parameters that are there, in any order`() {
@@ -29,57 +34,34 @@ class RequestInputTest {
         assertEquals(emptyMap(), read("", "scope"))
     }
 
-    @Test
-    fun `refuses a query that cannot be read as names and values, since another parser could read it differently`() {
-        val padding = List(1023) { "a" }.joinToString("&")
-        val queries = listOf(
-            "=scope=kartverk:annet",
-            "=scope=kartverk:annet&$padding&scope=kartverk:matrikkel.read",
-            "scope=kartverk:a&",
-            "&scope=kartverk:a",
-            "scope=kartverk:a&&page=0",
-            "scope=kartverk:a&page",
-            "scope",
-        )
-        for (query in queries) {
-            assertFailsWith<MalformedRequestException>(query.take(60)) { read(query, "scope", "page") }
-        }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unreadableQueries")
+    fun `refuses a query that cannot be read as names and values, since another parser could read it differently`(
+        case: String,
+        query: String,
+    ) {
+        assertFailsWith<MalformedRequestException> { read(query, "scope", "page") }
     }
 
-    @Test
-    fun `tells which parameters a query that cannot be read may contain`() {
-        val messages = mapOf(
-            arrayOf<String>() to "The query must be empty",
-            arrayOf("scope") to "The query must contain only the parameter scope, sent once",
-            arrayOf("scope", "page", "size") to "The query must contain only the parameters scope, page and size, each sent once",
-        )
-        for ((names, message) in messages) {
-            assertEquals(message, assertFailsWith<MalformedRequestException> { read("scope", *names) }.message)
-        }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("allowedParameters")
+    fun `tells which parameters a query that cannot be read may contain`(names: List<String>, message: String) {
+        assertEquals(message, assertFailsWith<MalformedRequestException> { read("scope", *names.toTypedArray()) }.message)
     }
 
-    @Test
-    fun `refuses a parameter that is not listed, is spelled differently or is sent twice`() {
-        val refusals = mapOf(
-            "scope=kartverk:a&page=0&page=1" to FieldError("page", ValidationCode.NOT_ALLOWED, "page must be sent once"),
-            "scope=kartverk:a&sort=created" to FieldError("sort", ValidationCode.NOT_ALLOWED, "sort is not allowed"),
-            "scope=kartverk:a&Page=0" to FieldError("Page", ValidationCode.NOT_ALLOWED, "Page is not allowed"),
-            "scope=kartverk:a&p%61ge=0" to FieldError("p%61ge", ValidationCode.NOT_ALLOWED, "p%61ge is not allowed"),
-        )
-        for ((query, error) in refusals) {
-            assertEquals(listOf(error), queryErrors(query, "scope", "page"), query)
-        }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("refusedParameters")
+    fun `refuses a parameter that is not listed, is spelled differently or is sent twice`(query: String, error: FieldError) {
+        assertEquals(listOf(error), queryErrors(query, "scope", "page"))
     }
 
-    @Test
-    fun `refuses a value that is not URL-encoded correctly`() {
-        for (query in listOf("scope=%zz", "scope=kartverk%3", "scope=%")) {
-            assertEquals(
-                listOf(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope is not URL-encoded correctly")),
-                queryErrors(query, "scope"),
-                query,
-            )
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["scope=%zz", "scope=kartverk%3", "scope=%"])
+    fun `refuses a value that is not URL-encoded correctly`(query: String) {
+        assertEquals(
+            listOf(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope is not URL-encoded correctly")),
+            queryErrors(query, "scope"),
+        )
     }
 
     @Test
@@ -101,14 +83,18 @@ class RequestInputTest {
         assertEquals(Scope.of("kartverk:matrikkel.read"), scope)
     }
 
+    @ParameterizedTest(name = "\"{0}\"")
+    @NullSource
+    @ValueSource(strings = ["", " "])
+    fun `refuses a missing or blank scope`(value: String?) {
+        assertEquals(
+            listOf(FieldError("scope", ValidationCode.MISSING, "scope is required")),
+            errors { scope(Location.QUERY, "scope", value) },
+        )
+    }
+
     @Test
-    fun `refuses a missing or blank scope, or one with whitespace`() {
-        for (value in listOf(null, "", " ")) {
-            assertEquals(
-                listOf(FieldError("scope", ValidationCode.MISSING, "scope is required")),
-                errors("\"$value\"") { scope(Location.QUERY, "scope", value) },
-            )
-        }
+    fun `refuses a scope with whitespace`() {
         assertEquals(
             listOf(FieldError("scope", ValidationCode.INVALID_FORMAT, "scope must not contain whitespace")),
             errors { scope(Location.QUERY, "scope", "kartverk:a kartverk:b") },
@@ -141,14 +127,17 @@ class RequestInputTest {
         assertNull(size)
     }
 
+    @ParameterizedTest(name = "\"{0}\"")
+    @ValueSource(strings = ["-1", "", "first", "1.5", "99999999999"])
+    fun `refuses a whole number below the minimum, or anything else`(value: String) {
+        assertEquals(
+            listOf(FieldError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more")),
+            errors { wholeNumber(Location.QUERY, "page", value, min = 0) },
+        )
+    }
+
     @Test
-    fun `refuses a whole number below the minimum, or anything else`() {
-        for (value in listOf("-1", "", "first", "1.5", "99999999999")) {
-            assertEquals(
-                listOf(FieldError("page", ValidationCode.INVALID_FORMAT, "page must be a whole number of 0 or more")),
-                errors(value) { wholeNumber(Location.QUERY, "page", value, min = 0) },
-            )
-        }
+    fun `names the minimum a whole number is below`() {
         assertEquals(
             listOf(FieldError("size", ValidationCode.INVALID_FORMAT, "size must be a whole number of 1 or more")),
             errors { wholeNumber(Location.QUERY, "size", "0", min = 1) },
@@ -167,6 +156,40 @@ class RequestInputTest {
                 invalid(Location.QUERY, "subscope", ValidationCode.INVALID_FORMAT, "subscope is wrong again")
                 invalid(Location.BODY, "subscope", ValidationCode.MISSING, "subscope is required")
             },
+        )
+    }
+
+    companion object {
+        @JvmStatic
+        fun unreadableQueries(): List<Arguments> = listOf(
+            Arguments.of("=scope=kartverk:annet", "=scope=kartverk:annet"),
+            Arguments.of(
+                "=scope=kartverk:annet, then 1023 other parameters",
+                "=scope=kartverk:annet&${List(1023) { "a" }.joinToString("&")}&scope=kartverk:matrikkel.read",
+            ),
+            Arguments.of("scope=kartverk:a&", "scope=kartverk:a&"),
+            Arguments.of("&scope=kartverk:a", "&scope=kartverk:a"),
+            Arguments.of("scope=kartverk:a&&page=0", "scope=kartverk:a&&page=0"),
+            Arguments.of("scope=kartverk:a&page", "scope=kartverk:a&page"),
+            Arguments.of("scope", "scope"),
+        )
+
+        @JvmStatic
+        fun allowedParameters(): List<Arguments> = listOf(
+            Arguments.of(listOf<String>(), "The query must be empty"),
+            Arguments.of(listOf("scope"), "The query must contain only the parameter scope, sent once"),
+            Arguments.of(
+                listOf("scope", "page", "size"),
+                "The query must contain only the parameters scope, page and size, each sent once",
+            ),
+        )
+
+        @JvmStatic
+        fun refusedParameters(): List<Arguments> = listOf(
+            Arguments.of("scope=kartverk:a&page=0&page=1", FieldError("page", ValidationCode.NOT_ALLOWED, "page must be sent once")),
+            Arguments.of("scope=kartverk:a&sort=created", FieldError("sort", ValidationCode.NOT_ALLOWED, "sort is not allowed")),
+            Arguments.of("scope=kartverk:a&Page=0", FieldError("Page", ValidationCode.NOT_ALLOWED, "Page is not allowed")),
+            Arguments.of("scope=kartverk:a&p%61ge=0", FieldError("p%61ge", ValidationCode.NOT_ALLOWED, "p%61ge is not allowed")),
         )
     }
 }

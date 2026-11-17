@@ -2,6 +2,8 @@ package no.kartverket.maskinportenmanagement.restserver.config
 
 import io.ktor.server.config.MapApplicationConfig
 import no.kartverket.maskinportenmanagement.client.DigdirEnvironment
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.net.URI
 import java.time.Duration
@@ -38,14 +40,18 @@ class ConfigTest {
     }
 
     @Test
-    fun `seconds must be a whole number, 0 or more, and default when unset`() {
+    fun `seconds are a whole number, 0 or more, and default when unset`() {
         assertEquals(Duration.ofSeconds(30), MapApplicationConfig("key" to "30").seconds("key", default = Duration.ZERO))
         assertEquals(Duration.ZERO, MapApplicationConfig("key" to "0").seconds("key", default = Duration.ofMinutes(1)))
         assertEquals(Duration.ofMinutes(1), MapApplicationConfig().seconds("key", default = Duration.ofMinutes(1)))
-        for (raw in listOf("-1", "1.5", "1m")) {
-            val e = assertFailsWith<IllegalStateException>(raw) { MapApplicationConfig("key" to raw).seconds("key", default = Duration.ZERO) }
-            assertContains(e.message!!, "must be a whole number of seconds", message = raw)
-        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["-1", "1.5", "1m"])
+    fun `seconds must be a whole number, 0 or more`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> { MapApplicationConfig("key" to raw).seconds("key", default = Duration.ZERO) }
+
+        assertContains(e.message!!, "must be a whole number of seconds")
     }
 
     @Test
@@ -55,44 +61,40 @@ class ConfigTest {
         assertContains(e.message!!, "Missing required configuration key")
     }
 
-    @Test
-    fun `a port must be a number from 1 to 65535`() {
-        for (raw in listOf("http", "0", "65536")) {
-            val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("server.port" to raw).port("server.port")
-            }
-
-            assertContains(e.message!!, "server.port", message = raw)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["http", "0", "65536"])
+    fun `a port must be a number from 1 to 65535`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("server.port" to raw).port("server.port")
         }
+
+        assertContains(e.message!!, "server.port")
     }
 
-    @Test
-    fun `a URL must be http or https and have a host`() {
-        for (raw in listOf("localhost:8080", "ftp://digdir.test", "https://", "not a url")) {
-            val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
-            }
-
-            assertContains(e.message!!, "http or https URL", message = raw)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["localhost:8080", "ftp://digdir.test", "https://", "not a url"])
+    fun `a URL must be http or https and have a host`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
         }
+
+        assertContains(e.message!!, "http or https URL")
     }
 
-    @Test
-    fun `a URL must not have a query or fragment`() {
-        for (raw in listOf("https://digdir.test?x=1", "https://digdir.test#top")) {
-            val e = assertFailsWith<IllegalStateException>(raw) {
-                MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
-            }
-
-            assertContains(e.message!!, "query or fragment", message = raw)
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["https://digdir.test?x=1", "https://digdir.test#top"])
+    fun `a URL must not have a query or fragment`(raw: String) {
+        val e = assertFailsWith<IllegalStateException> {
+            MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url")
         }
+
+        assertContains(e.message!!, "query or fragment")
     }
 
-    @Test
-    fun `an http or https URL is accepted as it is`() {
-        for (raw in listOf("http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no")) {
-            assertEquals(URI(raw), MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url"))
-        }
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["http://localhost:8080", "https://api.samarbeid.digdir.no", "HTTPS://api.samarbeid.digdir.no"])
+    fun `an http or https URL is accepted as it is`(raw: String) {
+        assertEquals(URI(raw), MapApplicationConfig("externalFiltering.url" to raw).url("externalFiltering.url"))
     }
 
     @Test
